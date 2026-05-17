@@ -3,6 +3,7 @@ import cors from 'cors';
 import { config } from './config/index.js';
 import './routes'; //this imports all the routes
 import { routes } from './lib/ApiRouter';
+import { errorHandler } from './middleware/error-handler.js';
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -22,6 +23,9 @@ export const createApp = (): express.Express => {
 
   //setting up routes
   app.use("/api", routes);
+
+  // Error handling middleware
+  app.use(errorHandler);
 
   return app;
 };
