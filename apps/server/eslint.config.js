@@ -1,68 +1,67 @@
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
-import prettier from 'eslint-config-prettier';
-import prettierPlugin from 'eslint-plugin-prettier';
+import eslint from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
+import eslintPluginPrettier from "eslint-plugin-prettier";
+import tseslint from "typescript-eslint";
 
-export default [
-  js.configs.recommended,
+export default tseslint.config(
   {
-    files: ['**/*.ts'],
-    ignores: ['drizzle.config.ts'],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "drizzle.config.ts",
+      "eslint.config.js",
+    ],
+  },
+  eslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  {
     languageOptions: {
-      parser: typescriptParser,
       parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: './tsconfig.json',
-      },
-      globals: {
-        console: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
       },
     },
+  },
+  {
+    files: ["**/*.ts"],
     plugins: {
-      '@typescript-eslint': typescript,
-      'prettier': prettierPlugin,
+      prettier: eslintPluginPrettier,
     },
     rules: {
-      // Disable base rule as we use TypeScript's version
-      'no-unused-vars': 'off',
-      
-      // TypeScript specific rules
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-      }],
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-      
-      // General rules
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'eqeqeq': ['error', 'always'],
-      
-      // Import rules
-      'no-duplicate-imports': 'error',
-      'sort-imports': ['error', {
-        ignoreCase: true,
-        ignoreDeclarationSort: true,
-      }],
-      
-      // Prettier as ESLint rule
-      'prettier/prettier': 'error',
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/explicit-module-boundary-types": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-non-null-assertion": "warn",
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "prefer-const": "error",
+      "no-var": "error",
+      eqeqeq: ["error", "always"],
+      "no-duplicate-imports": "error",
+      "sort-imports": [
+        "error",
+        {
+          ignoreCase: true,
+          ignoreDeclarationSort: true,
+        },
+      ],
+      "prettier/prettier": "error",
     },
   },
   {
-    files: ['**/*.js'],
+    files: ["**/*.js"],
+    ...tseslint.configs.disableTypeChecked,
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+      ecmaVersion: "latest",
+      sourceType: "module",
     },
   },
-  prettier, // Disable ESLint rules that conflict with Prettier
-];
+  eslintConfigPrettier,
+);

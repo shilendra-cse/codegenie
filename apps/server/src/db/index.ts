@@ -12,4 +12,4 @@ const pool = new Pool({
 });
 
 // Initialize database connection with pool
-export const db = drizzle({client: pool});
+export const db = drizzle({ client: pool });

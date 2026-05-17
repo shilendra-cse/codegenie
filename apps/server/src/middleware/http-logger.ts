@@ -1,12 +1,12 @@
 // apps/server/src/middleware/http-logger.ts
 import { randomUUID } from "node:crypto";
-import type { Request, Response } from "express";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import type { Request } from "express";
 import pinoHttp from "pino-http";
 import { logger } from "@/lib/logger.js";
 
 /** Paths that should not clutter logs (kube/Docker health probes) */
 const QUIET_PATHS = new Set(["/health", "/favicon.ico"]);
-
 
 export const httpLogger = pinoHttp({
   logger,
@@ -34,15 +34,15 @@ export const httpLogger = pinoHttp({
     return "info";
   },
 
-  customSuccessMessage(req, res) {
+  customSuccessMessage(req, _res) {
     return `${req.method} ${req.url} completed`;
   },
 
-  customErrorMessage(req, res, err) {
+  customErrorMessage(req, _res, err) {
     return `${req.method} ${req.url} failed: ${err.message}`;
   },
 
-  customProps(req, res) {
+  customProps(req, _res) {
     const expressReq = req as Request;
     return {
       requestId: req.id,
@@ -63,15 +63,15 @@ export const httpLogger = pinoHttp({
   },
 
   serializers: {
-    req(req) {
+    req(req: IncomingMessage & { id?: string }) {
       return {
         id: req.id,
         method: req.method,
         url: req.url,
-        remoteAddress: req.remoteAddress,
+        remoteAddress: req.socket?.remoteAddress,
       };
     },
-    res(res) {
+    res(res: ServerResponse) {
       return {
         statusCode: res.statusCode,
       };

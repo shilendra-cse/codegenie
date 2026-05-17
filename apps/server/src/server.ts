@@ -10,7 +10,7 @@ export const startServer = async () => {
     logger.info("✅ Database connected successfully");
 
     const app = createApp();
-    
+
     app.listen(config.server.port, config.server.host, () => {
       logger.info(
         `🚀 Server running on http://${config.server.host}:${config.server.port}`,

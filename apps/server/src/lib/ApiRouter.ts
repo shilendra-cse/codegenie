@@ -1,7 +1,7 @@
-import express, { Router, Request, Response, NextFunction } from "express";
+import express, { NextFunction, Request, Response, Router } from "express";
 import {
-  ControllerFunction,
   AuthenticatedRequest,
+  ControllerFunction,
 } from "@/types/base.types.js";
 import { protect } from "@/middleware/auth.js";
 
@@ -15,7 +15,7 @@ class ApiRouter {
   private authMiddleware(auth: "secure" | "public") {
     return auth === "secure"
       ? protect
-      : (_req: Request, _res: Response, next: Function) => next();
+      : (_req: Request, _res: Response, next: NextFunction) => next();
   }
 
   private async execute(
@@ -41,7 +41,12 @@ class ApiRouter {
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            this.execute(req as AuthenticatedRequest, res, next, controller);
+            void this.execute(
+              req as AuthenticatedRequest,
+              res,
+              next,
+              controller,
+            );
           },
         );
       },
@@ -50,7 +55,7 @@ class ApiRouter {
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            this.execute(req, res, next, controller);
+            void this.execute(req, res, next, controller);
           },
         );
       },
@@ -64,7 +69,12 @@ class ApiRouter {
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            this.execute(req as AuthenticatedRequest, res, next, controller);
+            void this.execute(
+              req as AuthenticatedRequest,
+              res,
+              next,
+              controller,
+            );
           },
         );
       },
@@ -73,7 +83,7 @@ class ApiRouter {
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            this.execute(req, res, next, controller);
+            void this.execute(req, res, next, controller);
           },
         );
       },
@@ -87,7 +97,12 @@ class ApiRouter {
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            this.execute(req as AuthenticatedRequest, res, next, controller);
+            void this.execute(
+              req as AuthenticatedRequest,
+              res,
+              next,
+              controller,
+            );
           },
         );
       },
@@ -96,7 +111,7 @@ class ApiRouter {
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            this.execute(req, res, next, controller);
+            void this.execute(req, res, next, controller);
           },
         );
       },
@@ -110,7 +125,12 @@ class ApiRouter {
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            this.execute(req as AuthenticatedRequest, res, next, controller);
+            void this.execute(
+              req as AuthenticatedRequest,
+              res,
+              next,
+              controller,
+            );
           },
         );
       },
@@ -119,7 +139,7 @@ class ApiRouter {
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            this.execute(req, res, next, controller);
+            void this.execute(req, res, next, controller);
           },
         );
       },

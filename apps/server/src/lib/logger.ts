@@ -1,7 +1,6 @@
 import { config, isDevelopment } from "@/config";
 import pino from "pino";
 
-
 export const logger = pino({
   level: config.logging.level,
   ...(isDevelopment && {

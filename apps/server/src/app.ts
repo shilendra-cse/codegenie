@@ -1,12 +1,12 @@
-import express from 'express';
-import cors from 'cors';
-import { toNodeHandler } from 'better-auth/node';
-import { config } from './config/index.js';
-import './routes'; //this imports all the routes
-import { routes } from './lib/ApiRouter';
-import { auth } from './lib/auth.js';
-import { errorHandler } from './middleware/error-handler.js';
-import { httpLogger } from './middleware/http-logger.js';
+import express from "express";
+import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
+import { config } from "./config/index.js";
+import "./routes"; //this imports all the routes
+import { routes } from "./lib/ApiRouter";
+import { auth } from "./lib/auth.js";
+import { errorHandler } from "./middleware/error-handler.js";
+import { httpLogger } from "./middleware/http-logger.js";
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -18,16 +18,16 @@ export const createApp = (): express.Express => {
   app.use(cors(config.security.cors));
 
   // Better Auth must run before express.json() or auth requests hang
-  app.all('/api/auth/*splat', toNodeHandler(auth));
+  app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json());
 
   // Health check endpoint
-  app.get('/health', (_req, res) => {
+  app.get("/health", (_req, res) => {
     res.status(200).json({
-      status: 'ok',
+      status: "ok",
       timestamp: new Date().toISOString(),
-      environment: config.server.environment
+      environment: config.server.environment,
     });
   });
 
