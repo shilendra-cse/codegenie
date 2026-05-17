@@ -65,33 +65,25 @@ const parseEnv = () => {
       },
       security: {
         helmet: {
-          contentSecurityPolicy: getEnvValue(
-            {
-              development: false,
-              production: {
-                directives: {
-                  defaultSrc: ["'self'"],
-                  styleSrc: ["'self'", "'unsafe-inline'"],
-                  scriptSrc: ["'self'"],
-                  imgSrc: ["'self'", "data:", "https:"],
-                },
-              },
-            },
-            false,
-          ),
+          contentSecurityPolicy:
+            env.NODE_ENV === "production"
+              ? {
+                  directives: {
+                    defaultSrc: ["'self'"],
+                    styleSrc: ["'self'", "'unsafe-inline'"],
+                    scriptSrc: ["'self'"],
+                    imgSrc: ["'self'", "data:", "https:"],
+                  },
+                }
+              : false,
         },
         cors: {
-          origin: getEnvValue(
-            {
-              development: [
-                "http://localhost:3000",
-                "http://localhost:5173",
-              ] as string[] | boolean,
-              test: false,
-              // production: ['https://taskly.vercel.app'] as string[] | boolean,
-            },
-            false,
-          ),
+          origin:
+            env.NODE_ENV === "development"
+              ? ["http://localhost:3000", "http://localhost:5173"]
+              : env.NODE_ENV === "production" && env.FRONTEND_URL
+                ? env.FRONTEND_URL
+                : false,
           credentials: true,
           methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         },
