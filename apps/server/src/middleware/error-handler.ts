@@ -1,5 +1,6 @@
 import { isDevelopment } from "@/config";
 import { HttpError } from "@/lib/http-error";
+import { logger } from "@/lib/logger";
 import type { ApiResponse } from "@/types/base.types";
 import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
@@ -30,7 +31,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
     } satisfies ApiResponse);
   }
 
-  console.error("Unhandled error: ", err);
+  logger.error({ error: err }, "Unhandled error:");
 
   //handles unknown errors
   return res.status(500).json({

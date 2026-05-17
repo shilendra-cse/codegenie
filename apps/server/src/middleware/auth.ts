@@ -2,6 +2,7 @@ import { Response, NextFunction } from "express";
 import { auth } from "@/lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { AuthenticatedRequest } from "@/types/base.types";
+import { logger } from "@/lib/logger";
 
 export const requireAuth = async (
   req: AuthenticatedRequest,
@@ -26,7 +27,7 @@ export const requireAuth = async (
 
     next();
   } catch (error) {
-    console.error("Failed to authenticate user:", error);
+    logger.error({ error }, "Failed to authenticate user:");
     res.status(401).json({
       status: 401,
       message: "Unauthorized",

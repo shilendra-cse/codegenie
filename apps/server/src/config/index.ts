@@ -23,6 +23,8 @@ const envSchema = z.object({
     FRONTEND_URL: z.string().optional(),
 
     JWT_SECRET: z.string().optional(),
+
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
 // Get environment-specific values
@@ -90,6 +92,9 @@ const parseEnv = () => {
                 jwt: {
                     secret: getEnvValue({ development: 'development-secret', test: 'test-secret', production: 'production-secret' }, 'development-secret'),
                 },
+            },
+            logging: {
+                level: env.LOG_LEVEL,
             },
         }
     } catch (error) {

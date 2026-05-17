@@ -6,9 +6,13 @@ import './routes'; //this imports all the routes
 import { routes } from './lib/ApiRouter';
 import { auth } from './lib/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { httpLogger } from './middleware/http-logger.js';
 
 export const createApp = (): express.Express => {
   const app = express();
+
+  // HTTP Logger middleware
+  app.use(httpLogger);
 
   // Apply CORS middleware
   app.use(cors(config.security.cors));

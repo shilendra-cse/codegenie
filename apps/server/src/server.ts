@@ -1,22 +1,27 @@
-import { config } from '@/config/index.js';
-import { db } from '@/db/index.js';
-import { createApp } from '@/app.js';
+import { config } from "@/config/index.js";
+import { db } from "@/db/index.js";
+import { createApp } from "@/app.js";
+import { logger } from "./lib/logger";
 
 export const startServer = async () => {
   try {
     // Test database connection on startup
-    await db.execute('SELECT 1');
-    console.log('✅ Database connected successfully');
+    await db.execute("SELECT 1");
+    logger.info("✅ Database connected successfully");
 
     const app = createApp();
-
+    
     app.listen(config.server.port, config.server.host, () => {
-      console.log(`🚀 Server running on http://${config.server.host}:${config.server.port}`);
-      console.log(`📊 Environment: ${config.server.environment}`);
-      console.log(`🔗 Health check: http://${config.server.host}:${config.server.port}/health`);
+      logger.info(
+        `🚀 Server running on http://${config.server.host}:${config.server.port}`,
+      );
+      logger.info(`📊 Environment: ${config.server.environment}`);
+      logger.info(
+        `🔗 Health check: http://${config.server.host}:${config.server.port}/health`,
+      );
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error({ error }, "❌ Failed to start server:");
     process.exit(1);
   }
 };
