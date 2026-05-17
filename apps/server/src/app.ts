@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import { toNodeHandler } from 'better-auth/node';
 import { config } from './config/index.js';
 import './routes'; //this imports all the routes
 import { routes } from './lib/ApiRouter';
+import { auth } from './lib/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 export const createApp = (): express.Express => {
@@ -10,6 +12,10 @@ export const createApp = (): express.Express => {
 
   // Apply CORS middleware
   app.use(cors(config.security.cors));
+
+  // Better Auth must run before express.json() or auth requests hang
+  app.all('/api/auth/*splat', toNodeHandler(auth));
+
   app.use(express.json());
 
   // Health check endpoint
