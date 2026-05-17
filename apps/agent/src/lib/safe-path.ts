@@ -15,12 +15,9 @@ export default function safePath(inputPath: string) {
     ? rootCmp
     : rootCmp + path.sep;
 
-  if (
-    candidateCmp !== rootCmp &&
-    !candidateCmp.startsWith(rootCmpWithSep)
-  ) {
+  if (candidateCmp !== rootCmp && !candidateCmp.startsWith(rootCmpWithSep)) {
     throw new Error(
-      `Path ${candidateResolved} is not within the security scope of ai | Error while safePath check`
+      `Path ${candidateResolved} is not within the security scope of ai | Error while safePath check`,
     );
   }
 

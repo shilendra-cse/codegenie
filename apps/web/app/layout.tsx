@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className="h-screen w-screen relative">
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
           {/* Dark Dot Matrix */}

@@ -7,5 +7,5 @@ Usage:
 - Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.
 - The edit will FAIL if "oldString" is not unique in the file. Either provide a larger string with more surrounding context to make it unique or use "replaceAll" to change every instance of "oldString". 
 - Use "replaceAll" for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.
-`
+`;
 export default editDescription;

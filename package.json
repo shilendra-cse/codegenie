@@ -10,6 +10,11 @@
     "build:agent": "pnpm --filter agent build",
     "build:web": "pnpm --filter web build",
     "build:server": "pnpm --filter server build",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "typecheck": "pnpm -r --if-present run type-check",
+    "format:check": "pnpm -r --if-present run format:check",
+    "build": "pnpm -r build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -1,0 +1,7 @@
+{
+  "eslint.workingDirectories": [
+    { "pattern": "apps/agent" },
+    { "pattern": "apps/server" },
+    { "pattern": "apps/web" }
+  ]
+}

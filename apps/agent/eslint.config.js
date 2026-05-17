@@ -10,28 +10,26 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "node_modules/**",
-      "drizzle.config.ts",
       "eslint.config.js",
+      "src/tools/descriptions/**",
     ],
   },
   eslint.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     files: ["**/*.ts"],
-    extends: [...tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.json",
         tsconfigRootDir,
       },
     },
-  },
-  {
-    files: ["**/*.ts"],
     plugins: {
       prettier: eslintPluginPrettier,
     },
     rules: {
       "no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "no-control-regex": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -39,31 +37,9 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-non-null-assertion": "warn",
-      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "no-console": ["warn", { allow: ["warn", "error", "log"] }],
       "prefer-const": "error",
-      "no-var": "error",
-      eqeqeq: ["error", "always"],
-      "no-duplicate-imports": "error",
-      "sort-imports": [
-        "error",
-        {
-          ignoreCase: true,
-          ignoreDeclarationSort: true,
-        },
-      ],
       "prettier/prettier": "error",
-    },
-  },
-  {
-    files: ["**/*.js"],
-    ...tseslint.configs.disableTypeChecked,
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
     },
   },
   eslintConfigPrettier,

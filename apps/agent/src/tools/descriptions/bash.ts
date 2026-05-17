@@ -120,6 +120,6 @@ Important:
 
 # Other common operations
 - View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments
-`
+`;
 
 export default bashDescription;
