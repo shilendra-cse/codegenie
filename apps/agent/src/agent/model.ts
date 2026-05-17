@@ -1,8 +1,9 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
+import { config } from "../config/index.js";
 
 const glm = createOpenAI({
-  apiKey: process.env.ZAI_API_KEY!,
+  apiKey: config.zai.apiKey,
   baseURL: "https://api.z.ai/api/coding/paas/v4/",
 });
 
