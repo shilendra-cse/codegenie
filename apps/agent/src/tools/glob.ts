@@ -2,8 +2,8 @@ import { tool } from "ai";
 import fg from "fast-glob";
 import { z } from "zod";
 import globDescription from "./descriptions/glob.js";
-import safePath from "../utils/safePath.js"
-import { validateGlobPattern } from "../utils/valGlobPattern.js";
+import safePath from "../lib/safe-path.js";
+import { validateGlobPattern } from "../lib/val-glob-pattern.js";
 
 const globInputSchema = z.object({
     pattern: z.string()

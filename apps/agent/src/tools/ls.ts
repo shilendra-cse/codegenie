@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { exec, execFile } from "child_process";
 import { promisify } from "util";
-import safePath from "../utils/safePath.js";
+import safePath from "../lib/safe-path.js";
 import lsDescription from "./descriptions/ls.js";
 const execFileAsync = promisify(execFile);
 

@@ -10,9 +10,9 @@ const envSchema = z.object({
     DATABASE_URL: z.string().optional(),
     DB_HOST: z.string().default('localhost'),
     DB_PORT: z.string().transform(Number).default(5439),
-    DB_NAME: z.string().default('taskly_db'),
-    DB_USER: z.string().default('taskly_user'),
-    DB_PASSWORD: z.string().default('taskly_password'),
+    DB_NAME: z.string().default('codegenie_db'),
+    DB_USER: z.string().default('codegenie_user'),
+    DB_PASSWORD: z.string().default('codegenie_password'),
 
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),

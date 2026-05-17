@@ -4,7 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "npm run docker:up && tsx watch src/index.ts",
+    "dev": "pnpm docker:up && tsx watch src/index.ts",
     "dev:only": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "better-auth": "^1.6.11",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",
