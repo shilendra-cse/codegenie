@@ -6,16 +6,20 @@ import { AuthenticatedRequest } from "@/types/base.types";
 export const requireAuth = async (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
     });
 
-    if(!session) {
-        res.status(401).json({ error: "Unauthorized" });
-        return;
+    if (!session) {
+      res.status(401).json({
+        status: 401,
+        message: "Unauthorized",
+        type: "error",
+      });
+      return;
     }
 
     req.user = session.user;
@@ -23,7 +27,11 @@ export const requireAuth = async (
     next();
   } catch (error) {
     console.error("Failed to authenticate user:", error);
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({
+      status: 401,
+      message: "Unauthorized",
+      type: "error",
+    });
   }
 };
 

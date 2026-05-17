@@ -1,6 +1,9 @@
-import express, { Router, Request, Response } from 'express';
-import { ControllerFunction, AuthenticatedRequest } from '@/types/base.types.js';
-import { protect } from '@/middleware/auth.js';
+import express, { Router, Request, Response, NextFunction } from "express";
+import {
+  ControllerFunction,
+  AuthenticatedRequest,
+} from "@/types/base.types.js";
+import { protect } from "@/middleware/auth.js";
 
 class ApiRouter {
   private router: Router;
@@ -9,97 +12,117 @@ class ApiRouter {
     this.router = express.Router();
   }
 
-  private authMiddleware(auth: 'secure' | 'public') {
-    return auth === 'secure' 
-      ? protect 
+  private authMiddleware(auth: "secure" | "public") {
+    return auth === "secure"
+      ? protect
       : (_req: Request, _res: Response, next: Function) => next();
   }
 
-  private async executePublic(req: Request, res: Response, controller: ControllerFunction) {
+  private async execute(
+    req: Request | AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+    controller: ControllerFunction,
+  ) {
     try {
       const response = await controller(req, res);
-      res.status(response.status).json(response);
+      if (!res.headersSent) {
+        res.status(response.status).json(response);
+      }
     } catch (error) {
-      console.error('Controller error:', error);
-      res.status(500).json({
-        status: 500,
-        message: 'Internal Server Error',
-        type: 'error'
-      });
-    }
-  }
-
-  private async executeSecure(req: AuthenticatedRequest, res: Response, controller: ControllerFunction) {
-    try {
-      const response = await controller(req, res);
-      res.status(response.status).json(response);
-    } catch (error) {
-      console.error('Controller error:', error);
-      res.status(500).json({
-        status: 500,
-        message: 'Internal Server Error',
-        type: 'error'
-      });
+      next(error);
     }
   }
 
   get(route: string) {
     return {
       authSecure: (controller: ControllerFunction) => {
-        return this.router.get(route, this.authMiddleware('secure'), (req, res) => {
-          this.executeSecure(req as AuthenticatedRequest, res, controller);
-        });
+        return this.router.get(
+          route,
+          this.authMiddleware("secure"),
+          (req, res, next) => {
+            this.execute(req as AuthenticatedRequest, res, next, controller);
+          },
+        );
       },
       noAuth: (controller: ControllerFunction) => {
-        return this.router.get(route, this.authMiddleware('public'), (req, res) => {
-          this.executePublic(req, res, controller);
-        });
-      }
+        return this.router.get(
+          route,
+          this.authMiddleware("public"),
+          (req, res, next) => {
+            this.execute(req, res, next, controller);
+          },
+        );
+      },
     };
   }
 
   post(route: string) {
     return {
       authSecure: (controller: ControllerFunction) => {
-        return this.router.post(route, this.authMiddleware('secure'), (req, res) => {
-          this.executeSecure(req as AuthenticatedRequest, res, controller);
-        });
+        return this.router.post(
+          route,
+          this.authMiddleware("secure"),
+          (req, res, next) => {
+            this.execute(req as AuthenticatedRequest, res, next, controller);
+          },
+        );
       },
       noAuth: (controller: ControllerFunction) => {
-        return this.router.post(route, this.authMiddleware('public'), (req, res) => {
-          this.executePublic(req, res, controller);
-        });
-      }
+        return this.router.post(
+          route,
+          this.authMiddleware("public"),
+          (req, res, next) => {
+            this.execute(req, res, next, controller);
+          },
+        );
+      },
     };
   }
 
   put(route: string) {
     return {
       authSecure: (controller: ControllerFunction) => {
-        return this.router.put(route, this.authMiddleware('secure'), (req, res) => {
-          this.executeSecure(req as AuthenticatedRequest, res, controller);
-        });
+        return this.router.put(
+          route,
+          this.authMiddleware("secure"),
+          (req, res, next) => {
+            this.execute(req as AuthenticatedRequest, res, next, controller);
+          },
+        );
       },
       noAuth: (controller: ControllerFunction) => {
-        return this.router.put(route, this.authMiddleware('public'), (req, res) => {
-          this.executePublic(req, res, controller);
-        });
-      }
+        return this.router.put(
+          route,
+          this.authMiddleware("public"),
+          (req, res, next) => {
+            this.execute(req, res, next, controller);
+          },
+        );
+      },
     };
   }
 
   delete(route: string) {
     return {
       authSecure: (controller: ControllerFunction) => {
-        return this.router.delete(route, this.authMiddleware('secure'), (req, res) => {
-          this.executeSecure(req as AuthenticatedRequest, res, controller);
-        });
+        return this.router.delete(
+          route,
+          this.authMiddleware("secure"),
+          (req, res, next) => {
+            this.execute(req as AuthenticatedRequest, res, next, controller);
+          },
+        );
       },
       noAuth: (controller: ControllerFunction) => {
-        return this.router.delete(route, this.authMiddleware('public'), (req, res) => {
-          this.executePublic(req, res, controller);
-        });
-      }
+        return this.router.delete(
+          route,
+          this.authMiddleware("public"),
+          (req, res, next) => {
+            this.execute(req, res, next, controller);
+          },
+        );
+      },
     };
   }
 
