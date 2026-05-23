@@ -13,6 +13,7 @@
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
     "typecheck": "pnpm -r --if-present run type-check",
+    "typecheck:shared": "pnpm --filter @codegenie/shared type-check",
     "format:check": "pnpm -r --if-present run format:check",
     "build": "pnpm -r build",
     "test": "echo \"Error: no test specified\" && exit 1"

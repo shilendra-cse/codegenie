@@ -62,6 +62,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@codegenie/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.2
@@ -162,6 +165,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@codegenie/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@radix-ui/react-slot':
         specifier: ^1.2.3
         version: 1.2.4(@types/react@19.2.2)(react@19.1.0)
@@ -222,6 +228,12 @@ importers:
         version: 1.4.0
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
         version: 5.9.3
 
 packages:
