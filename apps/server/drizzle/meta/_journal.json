@@ -8,6 +8,13 @@
       "when": 1760932575509,
       "tag": "0000_glossy_the_fallen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779554260545,
+      "tag": "0001_perfect_lightspeed",
+      "breakpoints": true
     }
   ]
 }
