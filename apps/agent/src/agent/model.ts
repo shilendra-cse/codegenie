@@ -2,9 +2,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 import { config } from "../config/index.js";
 
-const glm = createOpenAI({
-  apiKey: config.zai.apiKey,
-  baseURL: "https://api.z.ai/api/coding/paas/v4/",
+const openai = createOpenAI({
+  apiKey: config.openai.apiKey,
 });
 
-export const model: LanguageModel = glm.chat("glm-4.6");
+export const model: LanguageModel = openai.chat("gpt-4");

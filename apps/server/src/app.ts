@@ -7,6 +7,7 @@ import { routes } from "./lib/ApiRouter";
 import { auth } from "./lib/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { httpLogger } from "./middleware/http-logger.js";
+import { logger } from "./lib/logger.js";
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -24,6 +25,7 @@ export const createApp = (): express.Express => {
 
   // Health check endpoint
   app.get("/health", (_req, res) => {
+    logger.info("Health check endpoint hit");
     res.status(200).json({
       status: "ok",
       timestamp: new Date().toISOString(),

@@ -6,7 +6,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  ZAI_API_KEY: z.string(),
+  OPENAI_API_KEY: z.string(),
 
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
@@ -21,8 +21,8 @@ const parseEnv = () => {
       server: {
         environment: env.NODE_ENV,
       },
-      zai: {
-        apiKey: env.ZAI_API_KEY,
+      openai: {
+        apiKey: env.OPENAI_API_KEY as string,
       },
       logging: {
         level: env.LOG_LEVEL,
