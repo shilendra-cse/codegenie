@@ -17,7 +17,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+  
+  redis:
+    image: redis:7-alpine
+    container_name: codegenie-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - codegenie_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   codegenie_postgres_data:
+    driver: local
+
+  codegenie_redis_data:
     driver: local

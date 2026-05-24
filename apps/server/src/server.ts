@@ -1,17 +1,27 @@
+import type { Server } from "node:http";
 import { config } from "@/config/index.js";
 import { db } from "@/db/index.js";
 import { createApp } from "@/app.js";
-import { logger } from "./lib/logger";
+import { logger } from "./lib/logger.js";
+import { redis } from "./lib/redis.js";
 
-export const startServer = async () => {
+let httpServer: Server | null = null;
+
+export function getHttpServer(): Server | null {
+  return httpServer;
+}
+
+export const startServer = async (): Promise<void> => {
   try {
-    // Test database connection on startup
     await db.execute("SELECT 1");
     logger.info("✅ Database connected successfully");
 
+    await redis.ping();
+    logger.info("✅ Redis connected successfully");
+
     const app = createApp();
 
-    app.listen(config.server.port, config.server.host, () => {
+    httpServer = app.listen(config.server.port, config.server.host, () => {
       logger.info(
         `🚀 Server running on http://${config.server.host}:${config.server.port}`,
       );

@@ -1,16 +1,6 @@
-import { startServer } from "@/server.js";
-import { logger } from "./lib/logger";
+import { getHttpServer, startServer } from "@/server.js";
+import { registerGracefulShutdown } from "./lib/shutdown.js";
 
-// Handle graceful shutdown
-process.on("SIGTERM", () => {
-  logger.info("SIGTERM received, shutting down gracefully");
-  process.exit(0);
-});
+registerGracefulShutdown(getHttpServer);
 
-process.on("SIGINT", () => {
-  logger.info("SIGINT received, shutting down gracefully");
-  process.exit(0);
-});
-
-// Start the server
 void startServer();

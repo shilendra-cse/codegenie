@@ -29,6 +29,11 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
+
+  REDIS_HOST: z.string().default("localhost"),
+  REDIS_PORT: z.string().transform(Number).default(6379),
+  REDIS_PASSWORD: z.string().default("codegenie_password"),
+  REDIS_URL: z.string().default("redis://localhost:6379"),
 });
 
 // Get environment-specific values
@@ -107,6 +112,12 @@ const parseEnv = () => {
       },
       logging: {
         level: env.LOG_LEVEL,
+      },
+      redis: {
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD,
+        url: env.REDIS_URL,
       },
     };
   } catch (error) {
