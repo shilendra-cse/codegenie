@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import "dotenv/config";
+import { logger } from "@/lib/logger";
 
 // Schema
 const envSchema = z.object({
@@ -34,6 +37,8 @@ const envSchema = z.object({
   REDIS_PORT: z.string().transform(Number).default(6379),
   REDIS_PASSWORD: z.string().default("codegenie_password"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
+
+  WORKSPACES_ROOT: z.string().min(1),
 });
 
 // Get environment-specific values
@@ -49,6 +54,13 @@ const getEnvValue = <T>(
 const parseEnv = () => {
   try {
     const env = envSchema.parse(process.env);
+    const workspacesRoot = path.resolve(env.WORKSPACES_ROOT);
+
+    if (env.NODE_ENV === "production" && !fs.existsSync(workspacesRoot)) {
+      logger.error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
+      throw new Error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
+    }
+
     return {
       server: {
         port: env.PORT,
@@ -118,6 +130,9 @@ const parseEnv = () => {
         port: env.REDIS_PORT,
         password: env.REDIS_PASSWORD,
         url: env.REDIS_URL,
+      },
+      workspaces: {
+        root: workspacesRoot,
       },
     };
   } catch (error) {
