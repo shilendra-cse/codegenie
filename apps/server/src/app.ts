@@ -8,6 +8,7 @@ import { auth } from "./lib/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { httpLogger } from "./middleware/http-logger.js";
 import { logger } from "./lib/logger.js";
+import { registerOpenApiDocs } from "./lib/openapi.js";
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -22,6 +23,8 @@ export const createApp = (): express.Express => {
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json());
+
+  registerOpenApiDocs(app);
 
   // Health check endpoint
   app.get("/health", (_req, res) => {
