@@ -1,12 +1,10 @@
-import { createApi } from "@/lib/ApiRouter";
+import { api } from "@/lib/ApiRouter";
 import {
   createItem,
   getHealth,
   getItem,
   listItems,
 } from "./example.controller";
-
-const api = createApi();
 
 api.get("/example/health").noAuth(getHealth);
 api.get("/example/items").authSecure(listItems);

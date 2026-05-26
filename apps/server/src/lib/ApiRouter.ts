@@ -169,5 +169,5 @@ class ApiRouter {
 }
 
 const apiRouterInstance = new ApiRouter();
-export const createApi = () => apiRouterInstance;
+export const api = apiRouterInstance;
 export const routes = apiRouterInstance.getRouter();

@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 export interface ApiResponse {
   status: number;
   message: string;
-  data?: any;
+  data?: unknown;
   type: "success" | "error";
 }
 
