@@ -1,11 +1,11 @@
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { auth } from "@/lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
-import { AuthenticatedRequest } from "@/types/base.types";
+import type { AuthenticatedRequest } from "@/types/base.types";
 import { logger } from "@/lib/logger";
 
 export const requireAuth = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
@@ -23,7 +23,7 @@ export const requireAuth = async (
       return;
     }
 
-    req.user = session.user;
+    (req as AuthenticatedRequest).user = session.user;
 
     next();
   } catch (error) {

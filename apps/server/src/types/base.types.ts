@@ -8,13 +8,18 @@ export interface ApiResponse {
 }
 
 export interface AuthenticatedRequest extends Request {
-  user?: {
+  user: Required<{
     id: string;
     email: string;
-  };
+  }>;
 }
 
-export type ControllerFunction = (
-  req: Request | AuthenticatedRequest,
+export type PublicController = (
+  req: Request,
   res: Response,
-) => Promise<ApiResponse>;
+) => ApiResponse | Promise<ApiResponse>;
+
+export type AuthenticatedController = (
+  req: AuthenticatedRequest,
+  res: Response,
+) => ApiResponse | Promise<ApiResponse>;

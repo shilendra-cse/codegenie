@@ -1,7 +1,8 @@
 import express, { NextFunction, Request, Response, Router } from "express";
-import {
+import type {
+  AuthenticatedController,
   AuthenticatedRequest,
-  ControllerFunction,
+  PublicController,
 } from "@/types/base.types.js";
 import { protect } from "@/middleware/auth.js";
 
@@ -18,14 +19,30 @@ class ApiRouter {
       : (_req: Request, _res: Response, next: NextFunction) => next();
   }
 
-  private async execute(
-    req: Request | AuthenticatedRequest,
+  private async executePublic(
+    req: Request,
     res: Response,
     next: NextFunction,
-    controller: ControllerFunction,
+    controller: PublicController,
   ) {
     try {
-      const response = await controller(req, res);
+      const response = await Promise.resolve(controller(req, res));
+      if (!res.headersSent) {
+        res.status(response.status).json(response);
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async executeSecure(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+    controller: AuthenticatedController,
+  ) {
+    try {
+      const response = await Promise.resolve(controller(req, res));
       if (!res.headersSent) {
         res.status(response.status).json(response);
       }
@@ -36,12 +53,12 @@ class ApiRouter {
 
   get(route: string) {
     return {
-      authSecure: (controller: ControllerFunction) => {
+      authSecure: (controller: AuthenticatedController) => {
         return this.router.get(
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            void this.execute(
+            void this.executeSecure(
               req as AuthenticatedRequest,
               res,
               next,
@@ -50,12 +67,12 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: ControllerFunction) => {
+      noAuth: (controller: PublicController) => {
         return this.router.get(
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            void this.execute(req, res, next, controller);
+            void this.executePublic(req, res, next, controller);
           },
         );
       },
@@ -64,12 +81,12 @@ class ApiRouter {
 
   post(route: string) {
     return {
-      authSecure: (controller: ControllerFunction) => {
+      authSecure: (controller: AuthenticatedController) => {
         return this.router.post(
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            void this.execute(
+            void this.executeSecure(
               req as AuthenticatedRequest,
               res,
               next,
@@ -78,12 +95,12 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: ControllerFunction) => {
+      noAuth: (controller: PublicController) => {
         return this.router.post(
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            void this.execute(req, res, next, controller);
+            void this.executePublic(req, res, next, controller);
           },
         );
       },
@@ -92,12 +109,12 @@ class ApiRouter {
 
   put(route: string) {
     return {
-      authSecure: (controller: ControllerFunction) => {
+      authSecure: (controller: AuthenticatedController) => {
         return this.router.put(
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            void this.execute(
+            void this.executeSecure(
               req as AuthenticatedRequest,
               res,
               next,
@@ -106,12 +123,12 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: ControllerFunction) => {
+      noAuth: (controller: PublicController) => {
         return this.router.put(
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            void this.execute(req, res, next, controller);
+            void this.executePublic(req, res, next, controller);
           },
         );
       },
@@ -120,12 +137,12 @@ class ApiRouter {
 
   delete(route: string) {
     return {
-      authSecure: (controller: ControllerFunction) => {
+      authSecure: (controller: AuthenticatedController) => {
         return this.router.delete(
           route,
           this.authMiddleware("secure"),
           (req, res, next) => {
-            void this.execute(
+            void this.executeSecure(
               req as AuthenticatedRequest,
               res,
               next,
@@ -134,12 +151,12 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: ControllerFunction) => {
+      noAuth: (controller: PublicController) => {
         return this.router.delete(
           route,
           this.authMiddleware("public"),
           (req, res, next) => {
-            void this.execute(req, res, next, controller);
+            void this.executePublic(req, res, next, controller);
           },
         );
       },
