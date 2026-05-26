@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import "dotenv/config";
-import { logger } from "@/lib/logger";
 
 // Schema
 const envSchema = z.object({
@@ -34,9 +33,9 @@ const envSchema = z.object({
     .default("info"),
 
   REDIS_HOST: z.string().default("localhost"),
-  REDIS_PORT: z.string().transform(Number).default(6379),
+  REDIS_PORT: z.string().transform(Number).default(6380),
   REDIS_PASSWORD: z.string().default("codegenie_password"),
-  REDIS_URL: z.string().default("redis://localhost:6379"),
+  REDIS_URL: z.string().default("redis://localhost:6380"),
 
   WORKSPACES_ROOT: z.string().min(1),
 });
@@ -57,7 +56,7 @@ const parseEnv = () => {
     const workspacesRoot = path.resolve(env.WORKSPACES_ROOT);
 
     if (env.NODE_ENV === "production" && !fs.existsSync(workspacesRoot)) {
-      logger.error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
+      console.error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
       throw new Error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
     }
 

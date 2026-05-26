@@ -23,7 +23,7 @@ services:
     container_name: codegenie-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - codegenie_redis_data:/data
     healthcheck:
