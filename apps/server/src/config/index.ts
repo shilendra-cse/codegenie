@@ -38,6 +38,9 @@ const envSchema = z.object({
   REDIS_URL: z.string().default("redis://localhost:6380"),
 
   WORKSPACES_ROOT: z.string().min(1),
+
+  BETTER_AUTH_URL: z.string().default("http://localhost:3001"),
+  BETTER_AUTH_SECRET: z.string().default("your-better-auth-secret"),
 });
 
 // Get environment-specific values
@@ -132,6 +135,10 @@ const parseEnv = () => {
       },
       workspaces: {
         root: workspacesRoot,
+      },
+      betterAuth: {
+        url: env.BETTER_AUTH_URL,
+        secret: env.BETTER_AUTH_SECRET,
       },
     };
   } catch (error) {

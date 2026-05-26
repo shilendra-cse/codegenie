@@ -52,3 +52,10 @@ export async function listRepos(userId: string): Promise<GitHubRepoSummary[]> {
     htmlUrl: repo.html_url ?? "",
   }));
 }
+
+export async function isGitHubLinked(userId: string): Promise<boolean> {
+  const row = await db.query.account.findFirst({
+    where: and(eq(account.userId, userId), eq(account.providerId, "github")),
+  });
+  return Boolean(row?.accessToken);
+}
