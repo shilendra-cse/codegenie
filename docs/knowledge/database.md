@@ -161,11 +161,12 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 
 ## 4. Conventions
 
-- **IDs:** `uuid` for our tables (generated in app code); Better Auth tables keep text ids, so FKs to `user` are `text`.
-- **Time:** every timestamp is `timestamptz`.
+- **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
+- **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
 - **Deletion:** cascade `user → projects → tasks → jobs → job_events`; projects are archived (`archived_at`), not hard-deleted.
-- **Naming:** snake_case tables/columns; one schema file per table group in `apps/server/src/db/schema/`.
+- **Naming:** snake_case tables/columns; one kebab-case schema file per table in `apps/server/src/db/schema/` (e.g. `job-events-schema.ts`), relations in `relations.ts`, all re-exported from `src/db/schema.ts`.
+- **Shared types:** `packages/shared/src/types/api.ts` mirrors these tables for the API and web app; change both together.
 
 ## 5. Migrations
 
