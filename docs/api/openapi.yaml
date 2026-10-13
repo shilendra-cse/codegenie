@@ -1,0 +1,329 @@
+openapi: 3.0.3
+info:
+  title: CodeGenie API
+  version: 1.0.0
+  description: HTTP API for the CodeGenie web app.
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+tags:
+  - name: Health
+  - name: Example
+  - name: GitHub
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Process health check
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessHealth"
+
+  /api/example/health:
+    get:
+      tags: [Example]
+      summary: Example resource health check
+      operationId: getExampleHealth
+      security: []
+      responses:
+        "200":
+          description: Example resource is up
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [health]
+                        properties:
+                          health:
+                            $ref: "#/components/schemas/ExampleHealth"
+
+  /api/example/items:
+    get:
+      tags: [Example]
+      summary: List example items for the signed-in user
+      operationId: listExampleItems
+      responses:
+        "200":
+          description: Items for the current user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [items]
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ExampleItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Example]
+      summary: Create an example item
+      operationId: createExampleItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExampleItem"
+      responses:
+        "201":
+          description: Item created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [item]
+                        properties:
+                          item:
+                            $ref: "#/components/schemas/ExampleItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/example/items/{itemId}:
+    get:
+      tags: [Example]
+      summary: Get one example item
+      operationId: getExampleItem
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested item
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [item]
+                        properties:
+                          item:
+                            $ref: "#/components/schemas/ExampleItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/github/status:
+    get:
+      tags: [GitHub]
+      summary: Whether the current user has linked GitHub
+      operationId: getGitHubLinkedStatus
+      responses:
+        "200":
+          description: Link status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [github]
+                        properties:
+                          github:
+                            type: object
+                            required: [isLinked]
+                            properties:
+                              isLinked:
+                                type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/github/repositories:
+    get:
+      tags: [GitHub]
+      summary: List GitHub repositories for the signed-in user
+      operationId: listGitHubRepositories
+      responses:
+        "200":
+          description: Repositories the user can access
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [repos]
+                        properties:
+                          repos:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GitHubRepo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: GitHub account is not linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Better Auth session cookie set by signing in.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [status, message, type, data]
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        type:
+          type: string
+          enum: [success]
+        data:
+          type: object
+
+    ErrorEnvelope:
+      type: object
+      required: [status, message, type]
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        type:
+          type: string
+          enum: [error]
+        code:
+          type: string
+        data:
+          type: object
+
+    ProcessHealth:
+      type: object
+      required: [status, timestamp, environment]
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+        environment:
+          type: string
+          example: development
+
+    ExampleHealth:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [up]
+        timestamp:
+          type: string
+          format: date-time
+
+    ExampleItem:
+      type: object
+      required: [id, userId, name, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateExampleItem:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    GitHubRepo:
+      type: object
+      required: [fullName, owner, name, defaultBranch, private, htmlUrl]
+      properties:
+        fullName:
+          type: string
+          example: octocat/Hello-World
+        owner:
+          type: string
+        name:
+          type: string
+        defaultBranch:
+          type: string
+          example: main
+        private:
+          type: boolean
+        htmlUrl:
+          type: string
+          format: uri
+
+security:
+  - sessionCookie: []

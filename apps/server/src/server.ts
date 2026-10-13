@@ -29,6 +29,9 @@ export const startServer = async (): Promise<void> => {
       logger.info(
         `🔗 Health check: http://${config.server.host}:${config.server.port}/health`,
       );
+      logger.info(
+        `🔗 OpenAPI Docs: http://${config.server.host}:${config.server.port}/api/docs`,
+      );
     });
   } catch (error) {
     logger.error({ error }, "❌ Failed to start server:");
