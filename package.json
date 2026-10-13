@@ -18,7 +18,7 @@
     "typecheck:shared": "pnpm --filter @codegenie/shared type-check",
     "format:check": "pnpm -r --if-present run format:check",
     "build": "pnpm -r build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "pnpm -r --if-present run test"
   },
   "keywords": [],
   "author": "",
@@ -27,5 +27,8 @@
   "dependencies": {
     "g": "^2.0.1",
     "pnpm": "^12.11.2"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.4"
   }
 }
