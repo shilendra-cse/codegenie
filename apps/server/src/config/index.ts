@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import { z } from "zod";
 import "dotenv/config";
 
@@ -26,8 +24,6 @@ const envSchema = z.object({
 
   FRONTEND_URL: z.string().optional(),
 
-  JWT_SECRET: z.string().optional(),
-
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
@@ -36,8 +32,6 @@ const envSchema = z.object({
   REDIS_PORT: z.string().transform(Number).default(6380),
   REDIS_PASSWORD: z.string().default("codegenie_password"),
   REDIS_URL: z.string().default("redis://localhost:6380"),
-
-  WORKSPACES_ROOT: z.string().min(1),
 
   BETTER_AUTH_URL: z.string().default("http://localhost:3001"),
   BETTER_AUTH_SECRET: z.string().default("your-better-auth-secret"),
@@ -56,12 +50,6 @@ const getEnvValue = <T>(
 const parseEnv = () => {
   try {
     const env = envSchema.parse(process.env);
-    const workspacesRoot = path.resolve(env.WORKSPACES_ROOT);
-
-    if (env.NODE_ENV === "production" && !fs.existsSync(workspacesRoot)) {
-      console.error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
-      throw new Error(`WORKSPACES_ROOT does not exist: ${workspacesRoot}`);
-    }
 
     return {
       server: {
@@ -113,16 +101,6 @@ const parseEnv = () => {
           ),
           timeWindow: "15 minutes" as const,
         },
-        jwt: {
-          secret: getEnvValue(
-            {
-              development: "development-secret",
-              test: "test-secret",
-              production: "production-secret",
-            },
-            "development-secret",
-          ),
-        },
       },
       logging: {
         level: env.LOG_LEVEL,
@@ -132,9 +110,6 @@ const parseEnv = () => {
         port: env.REDIS_PORT,
         password: env.REDIS_PASSWORD,
         url: env.REDIS_URL,
-      },
-      workspaces: {
-        root: workspacesRoot,
       },
       betterAuth: {
         url: env.BETTER_AUTH_URL,

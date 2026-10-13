@@ -1,8 +1,8 @@
 {
   "name": "codegenie",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Web-based autonomous coding agent: assign a task, get a pull request.",
   "scripts": {
     "setup": "bash script/setup.sh",
     "migrate": "bash script/migrate.sh",
@@ -20,14 +20,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r --if-present run test"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.18.1",
-  "dependencies": {
-    "g": "^2.0.1",
-    "pnpm": "^12.11.2"
-  },
   "devDependencies": {
     "vitest": "^5.0.4"
   }
