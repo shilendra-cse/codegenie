@@ -87,8 +87,6 @@ if grep -q 'your-google-client-id' apps/server/.env; then
   warn "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in apps/server/.env before Google sign-in."
 fi
 
-mkdir -p apps/server/workspaces
-
 log "Starting Postgres and Redis"
 compose up -d
 

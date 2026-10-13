@@ -1,147 +1,70 @@
-# CodeGenie Agent
-Still in development, will be deployed soon
+# CodeGenie
 
-An intelligent AI-powered software engineering agent that can analyze, understand, and execute various programming tasks autonomously.
+A web-based autonomous coding agent. Connect your GitHub repositories, describe a task, and CodeGenie completes it in an isolated cloud sandbox and opens a pull request.
 
-## Features
+> Status: in development, working towards the MVP. See [docs/knowledge/development-plan.md](docs/knowledge/development-plan.md).
 
-- **AI-Powered**: Uses Vercel's AI SDK and multi-model support for intelligent task understanding and execution
-- **Multi-Tool Support**: Equipped with various development tools for comprehensive code manipulation
-- **Secure Operations**: Implements robust security measures including path validation and glob pattern sanitization
-- **TypeScript**: Built with modern TypeScript for type safety and better developer experience
+## Repository layout
 
-## Available Tools
+```
+apps/
+  web/        Next.js UI
+  server/     Express API (auth, projects, tasks, live job events)
+  agent/      AI coding agent (terminal REPL for now)
+packages/
+  shared/     Types shared across apps
+docs/
+  api/        OpenAPI spec
+  knowledge/  Requirements, architecture, database and development plan
+script/       Setup and migration scripts
+```
 
-### Core Development Tools
-- **Bash Tool** (`tools/bash.ts`): Execute shell commands with timeout protection
-- **Read Tool** (`tools/read.ts`): Read file contents safely
-- **Write Tool** (`tools/write.ts`): Create and modify files
-- **Edit Tool** (`tools/edit.ts`): Perform targeted file edits
-- **Glob Tool** (`tools/glob.ts`): Search files using glob patterns with security validation
-- **Grep Tool** (`tools/grep.ts`): Search within file contents
+## Prerequisites
 
-### Security Features
-- **Path Validation** (`utils/safePath.ts`): Prevents directory traversal attacks
-- **Glob Pattern Sanitization** (`utils/valGlobPattern.ts`): Validates and sanitizes file patterns
-- **Input Validation**: Comprehensive validation using Zod schemas
+- Node.js 24
+- pnpm 10 (`corepack enable`)
+- Docker (Postgres and Redis run in containers)
 
-## =� Getting Started
+## Getting started
 
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-- OpenAI API key
-
-### Installation
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd codegenie/agent
+pnpm setup
 ```
 
-2. Install dependencies:
+This installs dependencies, creates `.env` files from the examples, starts Postgres and Redis, and runs database migrations. Then fill in the credentials it warns about:
+
+- `apps/server/.env`: GitHub and Google OAuth client ids and secrets
+- `apps/agent/.env`: `OPENAI_API_KEY`
+
+Start each app in its own terminal:
+
 ```bash
-npm install
+pnpm dev:server   # API at http://localhost:3001
+pnpm dev:web      # UI at http://localhost:3000
+pnpm dev:agent    # terminal coding agent
 ```
 
-3. Set up environment variables:
-Create a `.env` file in the `agent` directory:
-```
-OPENAI_API_KEY=your_openai_api_key_here
-```
+Sign in at http://localhost:3000/signin.
 
-### Usage
+## Common commands
 
-Run the agent:
-```bash
-npm start
-```
+| Command | What it does |
+|---|---|
+| `pnpm migrate` | Apply database migrations |
+| `pnpm lint` | Lint all packages |
+| `pnpm typecheck` | Type-check all packages |
+| `pnpm test` | Run all tests (Vitest) |
+| `pnpm build` | Build all packages |
 
-The agent will prompt you for a task description. Example tasks:
-- "Create a new React component for user authentication"
-- "Find all TypeScript files with TODO comments"
-- "Refactor the utils directory to use ES6 modules"
-- "Add unit tests for the validation functions"
+API docs are served at http://localhost:3001/api/docs while the server is running.
 
-## Configuration
+## Documentation
 
-### Environment Variables
-- `OPENAI_API_KEY`: Your OpenAI API key (required)
-OR - Choose your own model from ai sdk
-
-### Tool Limits
-- Maximum bash command timeout: 120 seconds
-- Maximum glob pattern length: 200 characters
-- Maximum glob results: 100 files
-- Maximum agent steps: 10 per task
-
-## Security
-
-The agent implements multiple security layers:
-
-1. **Path Validation**: Prevents access to system directories and parent directory traversal
-2. **Pattern Sanitization**: Validates glob patterns to prevent injection attacks
-3. **Input Validation**: Uses Zod schemas to validate all inputs
-4. **Ignored Directories**: Automatically excludes `node_modules` and `dist` directories
-
-## Dependencies
-
-### Core Dependencies
-- `ai`: AI SDK for model integration
-- `@ai-sdk/openai`: OpenAI provider
-- `zod`: Schema validation
-- `fast-glob`: Efficient file pattern matching
-- `dotenv`: Environment variable management
-
-### Development Dependencies
-- `tsx`: TypeScript execution
-- `@types/node`: Node.js type definitions
-- `typescript`: TypeScript compiler
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- [Requirements](docs/knowledge/requirements.md)
+- [Architecture](docs/knowledge/architecture.md)
+- [Database](docs/knowledge/database.md)
+- [Development plan](docs/knowledge/development-plan.md)
 
 ## License
 
-ISC License
-
-## =
- Examples
-
-### Example 1: File Search
-```bash
-User: "Find all TypeScript files in the src directory"
-Agent: Uses glob tool to search for `**/*.ts` patterns
-```
-
-### Example 2: Code Analysis
-```bash
-User: "Analyze the authentication logic in the codebase"
-Agent: Uses grep and read tools to examine auth-related code
-```
-
-### Example 3: Refactoring
-```bash
-User: "Convert all require() statements to ES6 imports"
-Agent: Uses glob to find JS files, read to examine content, and edit to make changes
-```
-
-## Troubleshooting
-
-### Common Issues
-1. **API Key Error**: Ensure your OpenAI API key is correctly set in `.env`
-2. **Permission Denied**: Check file permissions for target directories
-3. **Pattern Validation Failed**: Ensure glob patterns are valid and don't contain dangerous sequences
-
-### Debug Mode
-The agent logs all tool executions and responses to help with debugging.
-
----
-
-Built by Shilendra Singh - - - > "Hello guys"
+ISC
