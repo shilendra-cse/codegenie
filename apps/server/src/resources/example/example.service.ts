@@ -44,7 +44,11 @@ export function getExampleItemById(
 ): ExampleItem {
   const item = getUserItems(userId).find((row) => row.id === itemId);
   if (!item) {
-    throw new HttpError(404, "Example item not found", "EXAMPLE_ITEM_NOT_FOUND");
+    throw new HttpError(
+      404,
+      "Example item not found",
+      "EXAMPLE_ITEM_NOT_FOUND",
+    );
   }
   return item;
 }
