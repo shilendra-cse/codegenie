@@ -1,6 +1,14 @@
-import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { projects } from "./projects-schema";
+import {
+  index,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { user } from "./auth-schema";
 import { jobs } from "./jobs-schema";
+import { tasks } from "./tasks-schema";
 
 export const messageRoleEnum = pgEnum("message_role", [
   "user",
@@ -11,20 +19,21 @@ export const messageRoleEnum = pgEnum("message_role", [
 export const messages = pgTable(
   "messages",
   {
-    id: text("id").primaryKey(),
-    projectId: text("project_id")
-      .references(() => projects.id, { onDelete: "cascade" })
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .references(() => tasks.id, { onDelete: "cascade" })
       .notNull(),
-    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
-    role: messageRoleEnum("message_role").notNull(),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    role: messageRoleEnum("role").notNull(),
+    authorUserId: text("author_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     content: text("content").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
-    index("messages_project_id_created_at_idx").on(
-      table.projectId,
-      table.createdAt,
-    ),
-    index("messages_job_id_idx").on(table.jobId),
+    index("messages_task_id_created_at_idx").on(table.taskId, table.createdAt),
   ],
 );
