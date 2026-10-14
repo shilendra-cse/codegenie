@@ -14,6 +14,8 @@
     "build:web": "pnpm --filter web build",
     "build:server": "pnpm --filter server build",
     "build:worker": "pnpm --filter @codegenie/worker build",
+    "sandbox:build-image": "pnpm --filter @codegenie/sandbox build-image",
+    "sandbox:clean": "pnpm --filter @codegenie/sandbox clean",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
     "typecheck": "pnpm -r --if-present run type-check",

@@ -15,7 +15,9 @@
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build-image": "docker build -t codegenie-base -f images/base/Dockerfile images/base",
+    "clean": "ids=$(docker ps -aq --filter label=codegenie=1); [ -z \"$ids\" ] || docker rm -f $ids"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
