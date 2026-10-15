@@ -100,7 +100,14 @@ On hitting a per-job limit the agent stops gracefully and delivers a draft PR ma
 3. Median job: ≤ 15 min and ≤ $1.
 4. The author uses CodeGenie for real tasks on their own projects.
 
-## 7. Open questions
+## 7. Product decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each job records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
+| Future model choice | Introduced together with whoever pays: **tiers** (fast / balanced / best, mapped server-side) with paid plans, and **free choice from the model catalog** with bring-your-own API key. | User choice is low-risk once users carry the cost. The agent already takes the model as a parameter, so no rework is needed. |
+
+## 8. Open questions
 
 - **Who pays for LLM usage at scale?** MVP absorbs it within the quotas above; BYO API key or paid plans are post-MVP.
 - **Waitlist vs instant access?** Default: instant access with quotas; switch to a waitlist if costs spike.
