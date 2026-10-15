@@ -1,0 +1,102 @@
+import { tool } from "ai";
+import { z } from "zod";
+import { wrapWithLog } from "../core/output-log.js";
+import { truncateForModel } from "../../lib/truncate.js";
+import {
+  CHECK_NAMES,
+  type CheckName,
+  type ToolContext,
+} from "../core/context.js";
+import { runChecksDescription } from "./description.js";
+import { runTool } from "../core/run-tool.js";
+
+const CHECK_TIMEOUT_MS = 10 * 60_000;
+/** Per failing check; the end of the output matters most, so it gets 80%. */
+const FAILURE_OUTPUT_CHARS = 6_000;
+
+export const runChecksInput = z.object({
+  only: z
+    .array(z.enum(CHECK_NAMES))
+    .optional()
+    .describe('Run only these checks, e.g. ["test"]'),
+});
+
+type CheckResult = {
+  name: CheckName;
+  command: string;
+  passed: boolean;
+  timedOut: boolean;
+  exitCode: number;
+  seconds: number;
+  output: string;
+  logPath: string;
+};
+
+export async function runChecks(
+  ctx: ToolContext,
+  input: z.input<typeof runChecksInput>,
+) {
+  const { only } = runChecksInput.parse(input);
+  const selected = CHECK_NAMES.filter(
+    (name) => ctx.commands[name] && (!only || only.includes(name)),
+  );
+  if (selected.length === 0) {
+    return only
+      ? `None of the requested checks (${only.join(", ")}) are configured for this repository.`
+      : "No check commands were detected for this repository. Inspect package.json and run checks with bash.";
+  }
+
+  const results: CheckResult[] = [];
+  for (const name of selected) {
+    const command = ctx.commands[name]!;
+    const logPath = ctx.outputLog.nextPath(`check-${name}`);
+    const started = Date.now();
+    const result = await ctx.sandbox.exec(wrapWithLog(command, logPath), {
+      timeoutMs: CHECK_TIMEOUT_MS,
+    });
+    results.push({
+      name,
+      command,
+      passed: result.exitCode === 0 && !result.timedOut,
+      timedOut: result.timedOut,
+      exitCode: result.exitCode,
+      seconds: (Date.now() - started) / 1000,
+      output: [result.stdout, result.stderr].filter(Boolean).join("\n"),
+      logPath,
+    });
+  }
+
+  const summary = results.map((r) => {
+    const status = r.passed
+      ? "passed"
+      : r.timedOut
+        ? "timed out"
+        : `failed (exit ${r.exitCode})`;
+    return `${r.passed ? "✓" : "✗"} ${r.name}: ${status} in ${r.seconds.toFixed(1)}s — ${r.command}`;
+  });
+
+  const failures = results
+    .filter((r) => !r.passed)
+    .map((r) => {
+      const tail = truncateForModel(r.output.trimEnd(), {
+        maxChars: FAILURE_OUTPUT_CHARS,
+        headRatio: 0.2,
+      });
+      return `--- ${r.name} output (full log: ${r.logPath}) ---\n${tail.text || "(no output)"}`;
+    });
+
+  const failed = results.length - results.filter((r) => r.passed).length;
+  const verdict =
+    failed === 0
+      ? "All checks passed."
+      : `${failed} of ${results.length} checks failed.`;
+
+  return [...summary, verdict, ...failures].join("\n");
+}
+
+export const runChecksTool = (ctx: ToolContext) =>
+  tool({
+    description: runChecksDescription,
+    inputSchema: runChecksInput,
+    execute: (input) => runTool(() => runChecks(ctx, input)),
+  });
