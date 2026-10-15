@@ -18,7 +18,7 @@ CodeGenie is a web-based autonomous coding agent. A user connects their GitHub r
 | D6 | Delivery | Worker (not the agent) commits, pushes, opens PR. **Draft PR** if checks fail, ready PR if they pass. Never push to default branch. | Model can't push half-done work; consistent git hygiene. |
 | D7 | Autonomy | Fire-and-forget to PR. Plan-approval step is a **post-MVP** per-task toggle. | Keep MVP flow minimal. |
 | D8 | Sandbox lifetime | **One sandbox per job, deleted at the end.** Pause/resume for follow-ups is post-MVP. | Cost and simplicity. |
-| D9 | LLM | Provider-agnostic via **Vercel AI SDK**; model set by env (`AGENT_MODEL`) | Avoid lock-in; pick the strongest tool-use model at implementation time. |
+| D9 | LLM | Provider-agnostic via **Vercel AI SDK**; platform-controlled model from a **catalog** (prices, context window), selected by env (`AGENT_MODEL`); currently `gpt-6-luna` | Avoid lock-in; predictable cost; pick models by eval results. See [agent.md](./agent.md). |
 | D10 | Hosting | **Vercel** (web) + **Railway** (api, worker, Postgres, Redis) | Managed, cheap at MVP scale, private networking between services. |
 | D11 | Domains & auth cookies | Custom domain; web at `app.`, API proxied via Next.js rewrite (`/api/*` → api service) | Single browser origin: no third-party-cookie or CORS problems with Better Auth. |
 | D12 | Task intake | All sources normalize to one `Task`; MVP = prompt only, then Jira, then Notion | Pipeline is source-agnostic; integrations are adapters. |
@@ -85,7 +85,9 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/j
 Consumes `run-job` from BullMQ and runs the pipeline in §5. Configurable concurrency. Also runs a periodic **reaper** that fails stalled jobs and deletes orphaned sandboxes.
 
 ### packages/agent
-`runAgent({ task, repoContext, commands, sandbox, emit, limits, signal })`. Tools are thin wrappers over `Sandbox`; never touch the host filesystem.
+Details: **[agent.md](./agent.md)**.
+
+`runAgent({ runId, task, ctx, model, limits, emit, signal })` → `AgentResult`. `ctx` carries the sandbox and check commands; `model` is a resolved catalog entry. Tools are thin wrappers over `Sandbox`; never touch the host filesystem.
 
 ### packages/sandbox
 ```ts

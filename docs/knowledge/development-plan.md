@@ -20,25 +20,25 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 ### Phase 0 — Foundations
 **Goal:** repo in its final shape, new schema in place, CI guarding `main`.
 
-- [ ] CI on GitHub Actions: lint, type-check, Vitest on every PR.
-- [ ] Add Vitest to the workspace.
-- [ ] Cleanup: root `g`/`pnpm` deps, unused JWT/bcrypt config, stale README, web metadata.
-- [ ] Package skeletons: `packages/sandbox`, `packages/agent`, `apps/worker`.
-- [ ] New Drizzle schema per [database.md](./database.md); delete `0000`/`0001`; generate one clean initial migration.
-- [ ] Update `packages/shared` types (Task, Job, Message, JobEvent, enums) to match the schema.
-- [ ] Remove `WORKSPACES_ROOT` / `lib/workspaces.ts`.
+- [x] CI on GitHub Actions: lint, type-check, Vitest on every PR.
+- [x] Add Vitest to the workspace.
+- [x] Cleanup: root `g`/`pnpm` deps, unused JWT/bcrypt config, stale README, web metadata.
+- [x] Package skeletons: `packages/sandbox`, `packages/agent`, `apps/worker`.
+- [x] New Drizzle schema per [database.md](./database.md); delete `0000`/`0001`; generate one clean initial migration.
+- [x] Update `packages/shared` types (Task, Job, Message, JobEvent, enums) to match the schema.
+- [x] Remove `WORKSPACES_ROOT` / `lib/workspaces.ts`.
 
 **Done when:** CI is green on `main`; `pnpm setup` from scratch produces a migrated DB; `pnpm dev:*` runs.
 
 ### Phase 1 — Agent core (local)
 **Goal:** the agent completes mid-sized JS/TS tasks against a local Docker sandbox.
 
-- [ ] `Sandbox` interface + `DockerSandbox` (`exec`, `readFile`, `writeFile`, `listFiles`, `destroy`).
-- [ ] Base image: git, ripgrep, fd, Node + corepack (npm/pnpm/yarn), bun.
-- [ ] Move `apps/agent` → `packages/agent`; tools rebuilt on `Sandbox`: `list_files`, `read_file`, `search`, `edit_file` (unique match), `write_file`, `bash`, `run_checks`, `finish_task`; output truncation.
-- [ ] Loop fixes: native SDK tool messages, `AGENT_MODEL` env, step/time/cost limits, stop only on `finish_task`, `AbortSignal` cancellation, context compaction.
+- [x] `Sandbox` interface + `DockerSandbox` (`exec`, `readFile`, `writeFile`, `listFiles`, `destroy`).
+- [x] Base image: git, ripgrep, fd, Node + corepack (npm/pnpm/yarn). bun deferred (see [sandbox.md](./sandbox.md) TODO).
+- [x] Tools rebuilt on `Sandbox` in `packages/agent` ([agent.md](./agent.md)): `list_files`, `read_file`, `search`, `edit_file` (unique match), `write_file`, `bash`, `run_checks`, `finish_task`; output truncation.
+- [x] Agent loop: native SDK tool messages, model catalog (platform-controlled), step/time/cost limits with forced wrap-up, stop only on `finish_task`, `AbortSignal` cancellation, cache-friendly context compaction ([agent.md](./agent.md)).
 - [ ] Environment setup: detect package manager and install/lint/type-check/test commands; honor `AGENTS.md` / `.codegenie.yml`.
-- [ ] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` printing events.
+- [ ] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` printing events; reads `AGENT_MODEL`; remove `apps/agent`.
 - [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (incl. CodeGenie); `pnpm eval` reports pass rate, checks-pass rate, time, cost.
 
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)
