@@ -39,6 +39,7 @@ interface Sandbox {
 |---|---|
 | Base image | `codegenie-base` from `node:24-bookworm` + ripgrep + fd + corepack (pnpm, yarn). Minimal: the base already has git, curl, python3, make/gcc. |
 | Node version | Node 24 only (see TODO). |
+| Environment | `CI=true` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` for every command, so test runners and corepack never wait for input. |
 | User | Non-root `agent` user; git identity `CodeGenie <bot@codegenie.dev>`. |
 | Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). |
 | Network | Full internet access (needed for clone and package installs). |

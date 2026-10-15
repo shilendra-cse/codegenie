@@ -2,11 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import { wrapWithLog } from "../core/output-log.js";
 import { truncateForModel } from "../../lib/truncate.js";
-import {
-  CHECK_NAMES,
-  type CheckName,
-  type ToolContext,
-} from "../core/context.js";
+import { CHECK_NAMES, type Check } from "@codegenie/shared";
+import type { ToolContext } from "../core/context.js";
 import { runChecksDescription } from "./description.js";
 import { runTool } from "../core/run-tool.js";
 
@@ -22,8 +19,8 @@ export const runChecksInput = z.object({
 });
 
 type CheckResult = {
-  name: CheckName;
-  command: string;
+  check: Check;
+  label: string;
   passed: boolean;
   timedOut: boolean;
   exitCode: number;
@@ -37,9 +34,17 @@ export async function runChecks(
   input: z.input<typeof runChecksInput>,
 ) {
   const { only } = runChecksInput.parse(input);
-  const selected = CHECK_NAMES.filter(
-    (name) => ctx.commands[name] && (!only || only.includes(name)),
+  // Run in the canonical order (lint, typecheck, test, build).
+  const selected = CHECK_NAMES.flatMap((name) =>
+    ctx.checks.filter(
+      (check) => check.name === name && (!only || only.includes(name)),
+    ),
   );
+  // Several checks with the same name (e.g. tests in web/ and api/) are labelled by folder.
+  const label = (check: Check) =>
+    ctx.checks.filter((c) => c.name === check.name).length > 1
+      ? `${check.name} (${check.cwd})`
+      : check.name;
   if (selected.length === 0) {
     return only
       ? `None of the requested checks (${only.join(", ")}) are configured for this repository.`
@@ -47,16 +52,16 @@ export async function runChecks(
   }
 
   const results: CheckResult[] = [];
-  for (const name of selected) {
-    const command = ctx.commands[name]!;
-    const logPath = ctx.outputLog.nextPath(`check-${name}`);
+  for (const check of selected) {
+    const logPath = ctx.outputLog.nextPath(`check-${check.name}`);
     const started = Date.now();
-    const result = await ctx.sandbox.exec(wrapWithLog(command, logPath), {
+    const result = await ctx.sandbox.exec(wrapWithLog(check.command, logPath), {
       timeoutMs: CHECK_TIMEOUT_MS,
+      cwd: check.cwd,
     });
     results.push({
-      name,
-      command,
+      check,
+      label: label(check),
       passed: result.exitCode === 0 && !result.timedOut,
       timedOut: result.timedOut,
       exitCode: result.exitCode,
@@ -72,7 +77,7 @@ export async function runChecks(
       : r.timedOut
         ? "timed out"
         : `failed (exit ${r.exitCode})`;
-    return `${r.passed ? "✓" : "✗"} ${r.name}: ${status} in ${r.seconds.toFixed(1)}s — ${r.command}`;
+    return `${r.passed ? "✓" : "✗"} ${r.label}: ${status} in ${r.seconds.toFixed(1)}s — ${r.check.command}`;
   });
 
   const failures = results
@@ -82,7 +87,7 @@ export async function runChecks(
         maxChars: FAILURE_OUTPUT_CHARS,
         headRatio: 0.2,
       });
-      return `--- ${r.name} output (full log: ${r.logPath}) ---\n${tail.text || "(no output)"}`;
+      return `--- ${r.label} output (full log: ${r.logPath}) ---\n${tail.text || "(no output)"}`;
     });
 
   const failed = results.length - results.filter((r) => r.passed).length;

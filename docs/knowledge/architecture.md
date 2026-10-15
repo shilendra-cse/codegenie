@@ -55,17 +55,19 @@ Browser ──HTTPS──► apps/web (Next.js, Vercel)                         
 apps/
   web/        Next.js UI
   server/     Express API (auth, REST, SSE, webhooks) — never touches sandboxes
-  worker/     BullMQ consumer: job pipeline + agent runs           (new)
+  worker/     BullMQ consumer: calls the runner for queued jobs
+  cli/        local dev harness: calls the runner, prints events    (planned)
 packages/
-  agent/      agent loop + tools, library (was apps/agent)          (moved)
-  sandbox/    Sandbox interface + DaytonaSandbox + DockerSandbox    (new)
-  shared/     API/event types shared across apps
+  runner/     runs a job end to end: checkout → setup → agent → verify → deliver (no AI logic)
+  agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools
+  sandbox/    Sandbox interface + DockerSandbox (+ DaytonaSandbox)
+  shared/     types shared across apps and packages (API, events, setup)
 docs/
   api/        OpenAPI spec
   knowledge/  architecture, design and feature docs
 ```
 
-`apps/agent`'s REPL survives as a dev harness inside `packages/agent` (runs against `DockerSandbox`).
+Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; apps → runner. The old `apps/agent` REPL is replaced by `apps/cli`. Details: [runner.md](./runner.md), [agent.md](./agent.md), [sandbox.md](./sandbox.md).
 
 ---
 

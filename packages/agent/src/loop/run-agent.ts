@@ -1,3 +1,4 @@
+import type { SetupResult } from "@codegenie/shared";
 import { UsageTracker } from "../model/usage.js";
 import type { ResolvedModel } from "../model/resolve-model.js";
 import { buildRepoContext } from "../prompt/repo-context.js";
@@ -42,6 +43,8 @@ export type RunAgentOptions = {
   ctx: ToolContext;
   model: ResolvedModel;
   limits?: Partial<AgentLimits>;
+  /** Result of the runner's setup stage; summarized in the prompt. */
+  setup?: SetupResult;
   emit?: Emit;
   /** Abort to cancel the run. */
   signal?: AbortSignal;
@@ -70,7 +73,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   // Built once: the system prompt and tools are the stable, cacheable prefix of every request.
   let system: string;
   try {
-    system = buildSystemPrompt(await buildRepoContext(ctx));
+    system = buildSystemPrompt(await buildRepoContext(ctx, options.setup));
   } catch (error) {
     if (!isInfrastructureError(error)) throw error;
     return buildResult(newState(0), run, "failed", {

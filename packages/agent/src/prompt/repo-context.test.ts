@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "../testing/fake-sandbox.js";
+import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { createToolContext } from "../tools/core/context.js";
 import { buildRepoContext } from "./repo-context.js";
 
@@ -21,7 +21,10 @@ describe("buildRepoContext", () => {
         "AGENTS.md": "Use pnpm. Tests live next to the code.",
         "src/app.ts": "",
       }),
-      { lint: "pnpm lint", test: "pnpm test" },
+      [
+        { name: "lint", command: "pnpm lint", cwd: "." },
+        { name: "test", command: "pnpm test", cwd: "." },
+      ],
     );
 
     const context = await buildRepoContext(ctx);
@@ -39,7 +42,7 @@ describe("buildRepoContext", () => {
       "## AGENTS.md (instructions from the repository owners)\nUse pnpm.",
     );
     expect(context).toContain(
-      "## Check commands (used by run_checks)\nlint: pnpm lint\ntest: pnpm test",
+      "## Setup (done before you started)\nChecks (run_checks):\n- lint: pnpm lint\n- test: pnpm test",
     );
   });
 
@@ -50,7 +53,7 @@ describe("buildRepoContext", () => {
     expect(context).not.toContain("package.json");
     expect(context).not.toContain("README");
     expect(context).toContain(
-      "## Check commands (used by run_checks)\nNone detected.",
+      "## Setup (done before you started)\nChecks (run_checks): none detected.",
     );
   });
 
@@ -59,5 +62,39 @@ describe("buildRepoContext", () => {
       createToolContext(new FakeSandbox({ "package.json": "{ not json" })),
     );
     expect(context).toContain("(package.json could not be parsed)");
+  });
+
+  it("summarizes the setup stage, including a failed install", async () => {
+    const ctx = createToolContext(new FakeSandbox({ "package.json": "{}" }), [
+      { name: "test", command: "npm run test", cwd: "." },
+      { name: "test", command: "npm run test", cwd: "web" },
+    ]);
+    const context = await buildRepoContext(ctx, {
+      ecosystem: "node",
+      packageManager: "npm",
+      install: {
+        command: "npm install",
+        status: "failed",
+        durationMs: 4_200,
+        logPath: "/tmp/codegenie/logs/setup-install-retry.log",
+        errorTail: "npm ERR! 404 Not Found",
+      },
+      checks: ctx.checks,
+      notes: ["Installing dependencies failed (npm install)."],
+    });
+    expect(context).toContain(
+      [
+        "## Setup (done before you started)",
+        "Package manager: npm",
+        "Install: FAILED (`npm install`). Full output: /tmp/codegenie/logs/setup-install-retry.log",
+        "Last lines:",
+        "npm ERR! 404 Not Found",
+        "Checks (run_checks):",
+        "- test: npm run test",
+        "- test: npm run test (in web)",
+        "Notes:",
+        "- Installing dependencies failed (npm install).",
+      ].join("\n"),
+    );
   });
 });

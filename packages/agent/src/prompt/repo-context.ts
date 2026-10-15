@@ -1,6 +1,7 @@
 import { SandboxFileError } from "@codegenie/sandbox";
 import { splitLines } from "../lib/lines.js";
-import { CHECK_NAMES, type ToolContext } from "../tools/core/context.js";
+import type { SetupResult } from "@codegenie/shared";
+import type { ToolContext } from "../tools/core/context.js";
 import { listFiles } from "../tools/list-files/list-files.js";
 
 const README_LINES = 80;
@@ -56,10 +57,10 @@ function summarizePackageJson(raw: string) {
 
 /**
  * Builds the repository overview placed in the system prompt, once per run:
- * file tree, package.json summary, README excerpt, AGENTS.md and check commands.
- * Missing files are skipped.
+ * file tree, package.json summary, README excerpt, AGENTS.md and the setup
+ * results (package manager, install status, checks, notes). Missing files are skipped.
  */
-export async function buildRepoContext(ctx: ToolContext) {
+export async function buildRepoContext(ctx: ToolContext, setup?: SetupResult) {
   const sections: string[] = [];
 
   sections.push(
@@ -93,12 +94,39 @@ export async function buildRepoContext(ctx: ToolContext) {
     );
   }
 
-  const commands = CHECK_NAMES.filter((name) => ctx.commands[name]).map(
-    (name) => `${name}: ${ctx.commands[name]}`,
-  );
-  sections.push(
-    `## Check commands (used by run_checks)\n${commands.length ? commands.join("\n") : "None detected."}`,
-  );
+  sections.push(describeSetup(ctx, setup));
 
   return sections.join("\n\n");
+}
+
+function describeInstall(install: SetupResult["install"]) {
+  const took = `${(install.durationMs / 1000).toFixed(1)}s`;
+  switch (install.status) {
+    case "ok":
+      return `succeeded (\`${install.command}\`, ${took})`;
+    case "ok-after-retry":
+      return `succeeded after retrying with \`${install.command}\` (${took}); the lockfile may be out of date`;
+    case "skipped":
+      return "skipped (nothing to install)";
+    case "failed":
+      return `FAILED (\`${install.command}\`). Full output: ${install.logPath}\nLast lines:\n${install.errorTail ?? "(no output)"}`;
+  }
+}
+
+/** What the runner's setup stage did, so the agent starts from facts, not guesses. */
+function describeSetup(ctx: ToolContext, setup?: SetupResult) {
+  const lines: string[] = ["## Setup (done before you started)"];
+  if (setup) {
+    lines.push(`Package manager: ${setup.packageManager ?? "not detected"}`);
+    lines.push(`Install: ${describeInstall(setup.install)}`);
+  }
+  lines.push(
+    ctx.checks.length
+      ? `Checks (run_checks):\n${ctx.checks.map((c) => `- ${c.name}: ${c.command}${c.cwd === "." ? "" : ` (in ${c.cwd})`}`).join("\n")}`
+      : "Checks (run_checks): none detected.",
+  );
+  if (setup?.notes.length) {
+    lines.push(`Notes:\n${setup.notes.map((n) => `- ${n}`).join("\n")}`);
+  }
+  return lines.join("\n");
 }

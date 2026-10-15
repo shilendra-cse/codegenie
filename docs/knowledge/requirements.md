@@ -19,11 +19,11 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 **In scope — "mid-sized task on a moderately complex repo":**
 - Tasks a developer would finish in roughly 1–4 hours: add a feature or endpoint, fix a bug, write tests, refactor a module, update a dependency and fix the fallout.
 - Typically touches ~1–15 files.
-- Repos: JS/TS, single package or simple monorepo (npm, pnpm, yarn or bun workspaces), up to roughly 100k lines of code.
+- Repos: JS/TS, single package or simple monorepo (npm, pnpm or yarn; bun later), up to roughly 100k lines of code.
 - Install, lint, type-check and tests runnable inside the sandbox **without external services** (no required databases, cloud credentials or private registries).
 
 **Out of scope for MVP:**
-- Languages other than JS/TS (architecture allows adding them later).
+- Languages other than JS/TS. Setup is pluggable per ecosystem ([runner.md](./runner.md)), so languages can be added without redesign; Python is the first planned addition.
 - Large or highly complex codebases, polyglot monorepos, tasks spanning multiple repos.
 - Tasks needing running external services, secrets or manual setup to verify.
 - Vague open-ended work ("improve the app") — the agent may attempt it but quality is not a target.

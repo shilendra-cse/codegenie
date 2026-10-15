@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "../testing/fake-sandbox.js";
+import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { createToolContext, createTools } from "./index.js";
 
 describe("createTools", () => {

@@ -1,10 +1,25 @@
 {
   "eslint.workingDirectories": [
-    { "pattern": "apps/agent" },
-    { "pattern": "apps/server" },
-    { "pattern": "apps/web" },
-    { "pattern": "apps/worker" },
-    { "pattern": "packages/agent" },
-    { "pattern": "packages/sandbox" }
+    {
+      "pattern": "apps/agent"
+    },
+    {
+      "pattern": "apps/server"
+    },
+    {
+      "pattern": "apps/web"
+    },
+    {
+      "pattern": "apps/worker"
+    },
+    {
+      "pattern": "packages/agent"
+    },
+    {
+      "pattern": "packages/sandbox"
+    },
+    {
+      "pattern": "packages/runner"
+    }
   ]
 }

@@ -8,7 +8,7 @@ The agent is the part of CodeGenie that does the work: an LLM loop that explores
 
 ```
 caller (CLI / worker)
-  └─ runAgent({ task, ctx, model, limits, emit, signal })
+  └─ runAgent({ task, ctx, model, setup, limits, emit, signal })
        ├─ prompt:  system rules + repository context (built once per run)
        ├─ loop:    streamText ⇄ tools, until finish_task / limit / cancel / failure
        │     └─ tools ─► Sandbox interface ─► DockerSandbox / DaytonaSandbox
@@ -60,7 +60,7 @@ Tests sit next to the code: `*.test.ts` need nothing, `*.integration.test.ts` ne
 | `edit_file` | Exact replacement; `oldString` must match once (or `replaceAll`); returns the edited lines |
 | `write_file` | Create or overwrite a file; parent folders created |
 | `bash` | Shell command in `/workspace`; 2 min default, 10 min max; stdout + stderr combined |
-| `run_checks` | Runs the repo's lint / typecheck / test / build commands; ✓/✗ per check plus the end of failing output |
+| `run_checks` | Runs the repo's checks (from setup), each in its own folder; ✓/✗ per check plus the end of failing output |
 | `finish_task` | Ends the run with a summary (used in the PR description) |
 
 Shared rules:
@@ -108,7 +108,8 @@ The worker maps `incomplete` to a succeeded job delivered as a draft PR marked i
 ## 5. Prompt
 
 - **System prompt** = fixed rules (`AGENT_RULES`) + repository context. It is built once per run and never changes, so together with the tool definitions it forms a stable prefix the provider can cache.
-- **Repository context:** file tree (2 levels), `package.json` (name, scripts, dependencies), first 80 lines of the README, `AGENTS.md` (capped at 8,000 characters), and the check commands. Missing files are skipped.
+- **Repository context:** file tree (2 levels), `package.json` (name, scripts, dependencies), first 80 lines of the README, `AGENTS.md` (capped at 8,000 characters). Missing files are skipped.
+- **Setup section:** what the runner's setup stage did (package manager, install status with the end of the error and the log path if it failed, the checks for `run_checks`, notes). Passed in as `runAgent({ setup })`; see [runner.md](./runner.md).
 - **First user message** = the task.
 
 ## 6. Context compaction
@@ -142,7 +143,6 @@ To add a model: add a catalog entry with values from the provider's model and pr
 ## 9. Known limitations / TODO
 
 - [ ] Not yet run against a real model end to end (first real runs come with the CLI).
-- [ ] Repository context lacks setup results (package manager, install status) until setup detection lands.
 - [ ] Cost limit is checked between steps, so a run can slightly exceed it.
 - [ ] Token estimate for compaction is a character heuristic.
 - [ ] Utility model for cheap side tasks (PR titles/descriptions), tiers, bring-your-own-key and fallback models are post-MVP.

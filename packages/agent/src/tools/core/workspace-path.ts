@@ -1,9 +1,9 @@
 import path from "node:path";
-import { WORKSPACE_DIR } from "@codegenie/sandbox";
+import { SANDBOX_LOG_DIR, WORKSPACE_DIR } from "@codegenie/sandbox";
 import { ToolError } from "./tool-error.js";
 
 /** Full command output is saved here, outside /workspace so it never ends up in the diff. */
-export const LOG_DIR = "/tmp/codegenie/logs";
+export const LOG_DIR = SANDBOX_LOG_DIR;
 
 export type PathAccess = "read" | "write";
 

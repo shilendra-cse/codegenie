@@ -304,6 +304,40 @@ importers:
         specifier: ^8.59.3
         version: 8.59.3(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)
 
+  packages/runner:
+    dependencies:
+      '@codegenie/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
+      '@codegenie/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@9.37.0(jiti@2.6.1))
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.7.0
+      eslint:
+        specifier: ^9.37.0
+        version: 9.37.0(jiti@2.6.1)
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@9.37.0(jiti@2.6.1))
+      eslint-plugin-prettier:
+        specifier: ^5.5.5
+        version: 5.5.5(eslint-config-prettier@10.1.8(eslint@9.37.0(jiti@2.6.1)))(eslint@9.37.0(jiti@2.6.1))(prettier@3.8.3)
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.59.3
+        version: 8.59.3(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)
+
   packages/sandbox:
     devDependencies:
       '@eslint/js':

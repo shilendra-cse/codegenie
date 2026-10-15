@@ -25,10 +25,4 @@ export function createTools(ctx: ToolContext) {
 export type AgentTools = ReturnType<typeof createTools>;
 export type AgentToolName = keyof AgentTools;
 
-export {
-  CHECK_NAMES,
-  createToolContext,
-  type CheckCommands,
-  type CheckName,
-  type ToolContext,
-} from "./core/context.js";
+export { createToolContext, type ToolContext } from "./core/context.js";
