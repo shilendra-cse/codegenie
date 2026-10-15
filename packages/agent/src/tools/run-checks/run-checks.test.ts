@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "../../testing/fake-sandbox.js";
+import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { createToolContext } from "../core/context.js";
 import { LOG_DIR } from "../core/workspace-path.js";
 import { runChecks } from "./run-checks.js";
@@ -16,10 +16,10 @@ describe("run_checks", () => {
       command.includes("pnpm test")
         ? { exitCode: 1, stdout: "running…\nFAIL user.test.ts\n1 failed" }
         : { stdout: "ok" };
-    const ctx = createToolContext(sandbox, {
-      test: "pnpm test",
-      lint: "pnpm lint",
-    });
+    const ctx = createToolContext(sandbox, [
+      { name: "test", command: "pnpm test", cwd: "." },
+      { name: "lint", command: "pnpm lint", cwd: "." },
+    ]);
 
     const out = await runChecks(ctx, {});
     const lines = out.split("\n");
@@ -36,10 +36,10 @@ describe("run_checks", () => {
 
   it("runs only the requested checks", async () => {
     const sandbox = new FakeSandbox();
-    const ctx = createToolContext(sandbox, {
-      lint: "pnpm lint",
-      test: "pnpm test",
-    });
+    const ctx = createToolContext(sandbox, [
+      { name: "lint", command: "pnpm lint", cwd: "." },
+      { name: "test", command: "pnpm test", cwd: "." },
+    ]);
     expect(await runChecks(ctx, { only: ["test"] })).toMatch(
       /^✓ test: passed.*\nAll checks passed\.$/,
     );
@@ -52,7 +52,29 @@ describe("run_checks", () => {
   it("treats a timed-out check as failed", async () => {
     const sandbox = new FakeSandbox();
     sandbox.execHandler = () => ({ exitCode: 124, timedOut: true });
-    const ctx = createToolContext(sandbox, { test: "pnpm test" });
+    const ctx = createToolContext(sandbox, [
+      { name: "test", command: "pnpm test", cwd: "." },
+    ]);
     expect(await runChecks(ctx, {})).toMatch(/✗ test: timed out/);
+  });
+
+  it("passes each check's folder to the sandbox and labels same-named checks", async () => {
+    const sandbox = new FakeSandbox();
+    const ctx = createToolContext(sandbox, [
+      { name: "test", command: "npm test", cwd: "web" },
+      { name: "test", command: "pytest", cwd: "api" },
+      { name: "lint", command: "npm run lint", cwd: "." },
+    ]);
+    const out = await runChecks(ctx, {});
+    expect(sandbox.execCalls.map((c) => c.options.cwd)).toEqual([
+      ".",
+      "web",
+      "api",
+    ]);
+    expect(out.split("\n").slice(0, 3)).toEqual([
+      expect.stringMatching(/^✓ lint: passed/),
+      expect.stringMatching(/^✓ test \(web\): passed/),
+      expect.stringMatching(/^✓ test \(api\): passed/),
+    ]);
   });
 });

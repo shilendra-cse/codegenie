@@ -11,14 +11,31 @@ describe.skipIf(!sandbox)("run_checks against DockerSandbox", () => {
   });
 
   it("reports pass/fail with the failing output", async () => {
-    const ctx = createToolContext(sandbox!, {
-      lint: "echo 'lint ok'",
-      test: "echo 'running tests'; echo 'FAIL math.test.ts: expected 2, got 3' >&2; exit 1",
-    });
+    const ctx = createToolContext(sandbox!, [
+      { name: "lint", command: "echo 'lint ok'", cwd: "." },
+      {
+        name: "test",
+        command:
+          "echo 'running tests'; echo 'FAIL math.test.ts: expected 2, got 3' >&2; exit 1",
+        cwd: ".",
+      },
+    ]);
     const out = await runChecks(ctx, {});
     expect(out).toMatch(/^✓ lint: passed/);
     expect(out).toMatch(/\n✗ test: failed \(exit 1\)/);
     expect(out).toContain("1 of 2 checks failed.");
     expect(out).toContain("FAIL math.test.ts: expected 2, got 3");
+  });
+
+  it("runs each check in its own folder", async () => {
+    await sandbox!.exec("mkdir -p web api");
+    const ctx = createToolContext(sandbox!, [
+      { name: "test", command: "pwd", cwd: "web" },
+      { name: "test", command: "pwd && exit 1", cwd: "api" },
+    ]);
+    const out = await runChecks(ctx, {});
+    expect(out).toMatch(/^✓ test \(web\): passed/);
+    expect(out).toMatch(/\n✗ test \(api\): failed \(exit 1\)/);
+    expect(out).toContain("/workspace/api");
   });
 });

@@ -1,6 +1,9 @@
 /** Directory inside every sandbox where the repository lives. Relative paths resolve against it. */
 export const WORKSPACE_DIR = "/workspace";
 
+/** Where full command output is saved inside a sandbox, outside the repository. */
+export const SANDBOX_LOG_DIR = "/tmp/codegenie/logs";
+
 export type ExecOptions = {
   /** Working directory inside the sandbox. Default: WORKSPACE_DIR. */
   cwd?: string;

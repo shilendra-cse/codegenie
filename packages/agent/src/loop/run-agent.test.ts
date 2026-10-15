@@ -1,7 +1,7 @@
 import { SandboxGoneError } from "@codegenie/sandbox";
 import type { JobEvent } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "../testing/fake-sandbox.js";
+import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { scriptedModel, type ScriptedStep } from "../testing/mock-model.js";
 import { createToolContext } from "../tools/core/context.js";
 import { runAgent, type RunAgentOptions } from "./run-agent.js";

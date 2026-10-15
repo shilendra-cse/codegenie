@@ -44,3 +44,15 @@ export type {
 } from "./types/api.js";
 
 export { jobChannel } from "./types/api.js";
+
+export type {
+  Check,
+  CheckName,
+  EcosystemId,
+  PackageManager,
+  InstallStatus,
+  InstallResult,
+  SetupResult,
+} from "./types/setup.js";
+
+export { CHECK_NAMES } from "./types/setup.js";

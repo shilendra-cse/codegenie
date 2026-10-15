@@ -1,13 +1,13 @@
 import path from "node:path";
+import { SandboxFileError } from "../core/errors.js";
 import {
-  SandboxFileError,
   WORKSPACE_DIR,
   type ExecOptions,
   type ExecResult,
   type FileEntry,
   type ListFilesOptions,
   type Sandbox,
-} from "@codegenie/sandbox";
+} from "../core/types.js";
 
 type ExecHandler = (
   command: string,
