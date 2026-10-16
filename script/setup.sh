@@ -73,10 +73,10 @@ pnpm install
 
 log "Environment files"
 copy_env_if_missing apps/server/.env.example apps/server/.env
-copy_env_if_missing apps/agent/.env.example apps/agent/.env
+copy_env_if_missing apps/cli/.env.example apps/cli/.env
 
-if grep -q 'your-openai-api-key' apps/agent/.env; then
-  warn "Set OPENAI_API_KEY in apps/agent/.env before running the agent."
+if grep -q 'your-openai-api-key' apps/cli/.env; then
+  warn "Set OPENAI_API_KEY in apps/cli/.env before running the agent."
 fi
 
 if grep -q 'your-github-client-id' apps/server/.env; then
@@ -105,7 +105,11 @@ Start each app in its own terminal, from the repo root:
 
   pnpm dev:server   API at http://localhost:3001
   pnpm dev:web      UI at http://localhost:3000
-  pnpm dev:agent    terminal coding agent
 
 Sign-in is at http://localhost:3000/signin
+
+Run the agent on a repository (builds the sandbox image first):
+
+  pnpm sandbox:build-image
+  pnpm agent:run --repo <path|git url> --task "<what to do>"
 EOF

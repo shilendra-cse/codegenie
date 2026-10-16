@@ -56,7 +56,7 @@ apps/
   web/        Next.js UI
   server/     Express API (auth, REST, SSE, webhooks) — never touches sandboxes
   worker/     BullMQ consumer: calls the runner for queued jobs
-  cli/        local dev harness: calls the runner, prints events    (planned)
+  cli/        local dev harness: calls the runner, prints events
 packages/
   runner/     runs a job end to end: checkout → setup → agent → verify → deliver (no AI logic)
   agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools

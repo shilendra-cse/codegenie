@@ -1,0 +1,145 @@
+import path from "node:path";
+import { parseArgs } from "node:util";
+import type { AgentLimits } from "@codegenie/agent";
+import type { RepoSource, SetupOverrides } from "@codegenie/runner";
+import { CHECK_NAMES, type Check, type CheckName } from "@codegenie/shared";
+
+export class UsageError extends Error {}
+
+export type CliOptions = {
+  help: false;
+  source: RepoSource;
+  task: { text: string } | { file: string };
+  model?: string;
+  limits: Partial<AgentLimits>;
+  setupOverrides: SetupOverrides;
+  patchPath?: string;
+  keep: boolean;
+  json: boolean;
+};
+
+export const USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<text>" [options]
+
+  --repo <path|url>      local folder or public git URL (required)
+  --ref <branch|tag>     branch or tag to clone (git URLs)
+  --task <text>          the task, or --task-file <file>
+  --model <id>           catalog model (default: AGENT_MODEL)
+  --max-steps <n>        default 150
+  --max-cost <usd>       default 2
+  --timeout <minutes>    default 30
+  --install <cmd>        install command instead of the detected one
+  --no-install           skip installing dependencies
+  --check <name=cmd>     override a check (lint, typecheck, test, build); repeatable
+  --patch <file>         save the diff to a file
+  --keep                 keep the sandbox for inspection
+  --json                 print the result as JSON
+  --help`;
+
+const GIT_URL = /^(https?:\/\/|ssh:\/\/|git@)/;
+
+function positiveNumber(flag: string, value: string | undefined) {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    throw new UsageError(`${flag} must be a positive number`);
+  }
+  return number;
+}
+
+function parseCheck(spec: string): Check {
+  const separator = spec.indexOf("=");
+  const name = spec.slice(0, separator);
+  const command = spec.slice(separator + 1).trim();
+  if (separator < 1 || !command) {
+    throw new UsageError(`--check expects name=command, got "${spec}"`);
+  }
+  if (!CHECK_NAMES.includes(name as CheckName)) {
+    throw new UsageError(
+      `--check name must be one of: ${CHECK_NAMES.join(", ")}`,
+    );
+  }
+  return { name: name as CheckName, command, cwd: "." };
+}
+
+export function parseCliArgs(
+  argv: string[],
+  cwd: string,
+): CliOptions | { help: true } {
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args: argv[0] === "--" ? argv.slice(1) : argv,
+      options: {
+        repo: { type: "string" },
+        ref: { type: "string" },
+        task: { type: "string" },
+        "task-file": { type: "string" },
+        model: { type: "string" },
+        "max-steps": { type: "string" },
+        "max-cost": { type: "string" },
+        timeout: { type: "string" },
+        install: { type: "string" },
+        "no-install": { type: "boolean", default: false },
+        check: { type: "string", multiple: true },
+        patch: { type: "string" },
+        keep: { type: "boolean", default: false },
+        json: { type: "boolean", default: false },
+        help: { type: "boolean", default: false },
+      },
+    }));
+  } catch (error) {
+    throw new UsageError(
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
+  if (values.help) return { help: true };
+
+  if (!values.repo) throw new UsageError("--repo is required");
+  if (Boolean(values.task) === Boolean(values["task-file"])) {
+    throw new UsageError("Pass exactly one of --task or --task-file");
+  }
+  if (values.install && values["no-install"]) {
+    throw new UsageError("--install and --no-install can't be combined");
+  }
+
+  const source: RepoSource = GIT_URL.test(values.repo)
+    ? {
+        type: "git",
+        url: values.repo,
+        ...(values.ref ? { ref: values.ref } : {}),
+      }
+    : { type: "local", path: path.resolve(cwd, values.repo) };
+  if (values.ref && source.type === "local") {
+    throw new UsageError("--ref only applies to git URLs");
+  }
+
+  const timeoutMinutes = positiveNumber("--timeout", values.timeout);
+  const limits: Partial<AgentLimits> = {};
+  const maxSteps = positiveNumber("--max-steps", values["max-steps"]);
+  const maxCost = positiveNumber("--max-cost", values["max-cost"]);
+  if (maxSteps !== undefined) limits.maxSteps = Math.floor(maxSteps);
+  if (maxCost !== undefined) limits.maxCostUsd = maxCost;
+  if (timeoutMinutes !== undefined)
+    limits.maxWallTimeMs = timeoutMinutes * 60_000;
+
+  const setupOverrides: SetupOverrides = {};
+  if (values["no-install"]) setupOverrides.install = false;
+  else if (values.install) setupOverrides.install = values.install;
+  if (values.check?.length)
+    setupOverrides.checks = values.check.map(parseCheck);
+
+  return {
+    help: false,
+    source,
+    task: values.task
+      ? { text: values.task }
+      : { file: path.resolve(cwd, values["task-file"]!) },
+    model: values.model,
+    limits,
+    setupOverrides,
+    patchPath: values.patch ? path.resolve(cwd, values.patch) : undefined,
+    keep: values.keep,
+    json: values.json,
+  };
+}
