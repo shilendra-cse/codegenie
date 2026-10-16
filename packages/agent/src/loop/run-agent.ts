@@ -26,35 +26,24 @@ import {
   type RunState,
 } from "./run-segment.js";
 
-/** Times the model may stop without calling finish_task before the run fails. */
 const MAX_NUDGES = 2;
-/** Separate time budget for the final summary step after a limit is reached. */
 const WRAP_UP_TIMEOUT_MS = 2 * 60_000;
-/** Allowance for the JSON schemas of tool inputs when estimating prompt size. */
 const TOOL_SCHEMA_CHARS = 4_000;
 
 const NUDGE =
   "You stopped without calling finish_task. Continue working on the task, or call finish_task if it is complete.";
 
 export type RunAgentOptions = {
-  /** Used as jobId on emitted events. */
   runId: string;
   task: string;
   ctx: ToolContext;
   model: ResolvedModel;
   limits?: Partial<AgentLimits>;
-  /** Result of the runner's setup stage; summarized in the prompt. */
   setup?: SetupResult;
   emit?: Emit;
-  /** Abort to cancel the run. */
   signal?: AbortSignal;
 };
 
-/**
- * Runs the agent on one task: the model calls tools in the sandbox until it calls
- * finish_task, a limit is reached, the run is cancelled, or something breaks.
- * Emits tool and text events as it goes; the caller reports the final outcome.
- */
 export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   const { runId, task, ctx, model } = options;
   const limits: AgentLimits = { ...DEFAULT_LIMITS, ...options.limits };
@@ -70,7 +59,6 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     }),
   });
 
-  // Built once: the system prompt and tools are the stable, cacheable prefix of every request.
   let system: string;
   try {
     system = buildSystemPrompt(await buildRepoContext(ctx, options.setup));
@@ -147,7 +135,6 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     state.messages.push({ role: "user", content: NUDGE });
   }
 
-  /** After a limit: one forced finish_task step so the run ends with an honest summary. */
   async function wrapUp(limit: LimitReached): Promise<AgentResult> {
     state.messages.push({
       role: "user",

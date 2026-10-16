@@ -4,7 +4,6 @@ export type AgentLimits = {
   maxCostUsd: number;
 };
 
-/** Defaults from the MVP requirements; override per run. */
 export const DEFAULT_LIMITS: AgentLimits = {
   maxSteps: 150,
   maxWallTimeMs: 30 * 60_000,

@@ -1,4 +1,3 @@
-// What the model reads about this tool: effectively part of the prompt. Tune against evals.
 export const readFileDescription = `Read a file with line numbers.
 - Output lines look like "  12│ code". The number and "│ " are NOT part of the file: never include them in edit_file's oldString.
 - Reads up to 2000 lines at a time. For longer files, use offset (1-based line number) to continue where the header says.

@@ -5,20 +5,15 @@ import { RepoReader } from "./core/repo-reader.js";
 import { DETECTORS } from "./detectors/index.js";
 import { runInstall } from "./install/run-install.js";
 
-/** Caller-provided corrections that win over detection (e.g. CLI flags, later project settings). */
 export type SetupOverrides = {
-  /** A command to use instead of the detected install, or false to skip installing. */
   install?: string | false;
-  /** Replace detected checks with the same name; others are added. */
   checks?: Check[];
 };
 
 export type RunSetupOptions = {
-  /** Used as jobId on emitted events. */
   runId: string;
   emit?: (event: JobEvent) => void;
   overrides?: SetupOverrides;
-  /** Defaults to all registered detectors. */
   detectors?: EcosystemDetector[];
 };
 
@@ -27,11 +22,6 @@ function mergeChecks(detected: Check[], overrides: Check[] = []) {
   return [...detected.filter((c) => !overridden.has(c.name)), ...overrides];
 }
 
-/**
- * Prepares the repository in /workspace before the agent runs: detects the
- * ecosystem, installs dependencies and finds check commands. Deterministic, no AI.
- * Never fails the run: problems are reported in the result's notes and install status.
- */
 export async function runSetup(
   sandbox: Sandbox,
   options: RunSetupOptions,

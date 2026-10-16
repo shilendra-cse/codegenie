@@ -1,7 +1,3 @@
-/**
- * Collects a byte stream up to `maxBytes`. Once over the limit it keeps the first and
- * last maxBytes/2 bytes, since the end of output (e.g. test failures) usually matters most.
- */
 export class CappedBuffer {
   private head: Buffer[] = [];
   private headBytes = 0;
@@ -46,8 +42,8 @@ export class CappedBuffer {
   }
 
   toString() {
+    // Decode as one buffer so a multi-byte character split across head and tail stays intact.
     if (!this.truncated) {
-      // Decode as one buffer so multi-byte characters spanning head/tail stay intact.
       return Buffer.concat([...this.head, ...this.tail]).toString("utf8");
     }
     const head = Buffer.concat(this.head).toString("utf8");

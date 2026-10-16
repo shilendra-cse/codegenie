@@ -1,7 +1,6 @@
 import type { JobEvent } from "@codegenie/shared";
 import type { TextStreamPart, ToolSet } from "ai";
 
-/** Tool output in events is a preview for the UI; the model still receives the full result. */
 export const EVENT_OUTPUT_CHARS = 2_000;
 
 export type Emit = (event: JobEvent) => void;
@@ -13,7 +12,6 @@ function preview(value: unknown) {
     : text;
 }
 
-/** Maps an AI SDK stream part to a job event, or null if the UI doesn't need it. */
 export function toJobEvent(
   part: TextStreamPart<ToolSet>,
   jobId: string,

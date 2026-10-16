@@ -7,9 +7,7 @@ export type AgentStatus = "succeeded" | "incomplete" | "failed" | "cancelled";
 
 export type AgentResult = {
   status: AgentStatus;
-  /** finish_task summary; present for succeeded and usually for incomplete runs. */
   summary: string | null;
-  /** Why the run failed or ended early. */
   error?: string;
   limitReached?: LimitReached;
   steps: number;
@@ -17,7 +15,6 @@ export type AgentResult = {
   model: string;
   usage: UsageSnapshot;
   compactions: number;
-  /** Full transcript (task + model/tool messages), for debugging and follow-ups. */
   messages: ModelMessage[];
 };
 
@@ -45,7 +42,6 @@ export function buildResult(
   };
 }
 
-/** The summary from a finish_task call in these messages, if any. */
 export function findFinishSummary(messages: ModelMessage[]): string | null {
   for (const message of messages) {
     if (message.role !== "assistant" || typeof message.content === "string") {

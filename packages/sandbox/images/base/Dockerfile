@@ -11,9 +11,7 @@ RUN apt-get update \
 # pnpm and yarn via corepack
 RUN corepack enable
 
-# Non-interactive by default, for every command (setup, checks, the agent's bash):
-# - CI=true: test runners (vitest, jest) run once instead of starting in watch mode
-# - corepack downloads the package manager a repo asks for without a Y/n prompt
+# CI=true stops test runners from starting in watch mode; corepack must not prompt before downloading.
 ENV CI=true \
   COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 

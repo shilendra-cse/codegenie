@@ -47,7 +47,6 @@ export async function search(
   ]);
   const result = await ctx.sandbox.exec(command, { timeoutMs: 60_000 });
 
-  // ripgrep: 0 = matches, 1 = no matches, 2 = error (e.g. invalid regex).
   if (result.exitCode === 1)
     return `No matches for ${JSON.stringify(pattern)}.`;
   if (result.exitCode !== 0) {

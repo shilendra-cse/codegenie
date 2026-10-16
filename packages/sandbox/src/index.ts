@@ -1,4 +1,3 @@
-// Sandbox abstraction the agent's tools run against (docs/knowledge/sandbox.md).
 export * from "./core/types.js";
 export * from "./core/errors.js";
 export { createSandbox } from "./create-sandbox.js";

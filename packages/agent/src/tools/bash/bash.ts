@@ -6,7 +6,6 @@ import type { ToolContext } from "../core/context.js";
 import { bashDescription } from "./description.js";
 import { runTool } from "../core/run-tool.js";
 
-/** Leaves room in the 30k-character result for the exit code and log notice. */
 const MAX_OUTPUT_CHARS = 28_000;
 
 export const bashInput = z.object({
@@ -27,7 +26,6 @@ export async function bash(ctx: ToolContext, input: z.input<typeof bashInput>) {
     timeoutMs,
   });
 
-  // stdout holds the command's combined output (2>&1 | tee); stderr only has wrapper errors.
   const raw = [result.stdout, result.stderr].filter(Boolean).join("\n");
   const output = truncateForModel(raw, { maxChars: MAX_OUTPUT_CHARS });
 

@@ -8,15 +8,10 @@ export type ResolvedModel = {
   languageModel: LanguageModel;
 };
 
-/** Providers the platform can call. API keys are read from the environment (e.g. OPENAI_API_KEY). */
 const registry = createProviderRegistry({
   openai: createOpenAI(),
 });
 
-/**
- * Turns a catalog id like "openai:<model-id>" into a callable model.
- * Unknown ids are rejected: without catalog prices the cost limit can't work.
- */
 export function resolveModel(
   id: string,
   catalog: ModelSpec[] = MODEL_CATALOG,

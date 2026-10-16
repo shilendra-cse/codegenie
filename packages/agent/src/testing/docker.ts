@@ -1,9 +1,5 @@
 import { DockerSandbox } from "@codegenie/sandbox";
 
-/**
- * Starts a real DockerSandbox for an integration test file, or returns null so the
- * file can skip. In CI a missing Docker/image is a failure, never a silent skip.
- */
 export async function dockerSandboxOrSkip(
   suite: string,
 ): Promise<DockerSandbox | null> {

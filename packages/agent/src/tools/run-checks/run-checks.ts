@@ -8,7 +8,6 @@ import { runChecksDescription } from "./description.js";
 import { runTool } from "../core/run-tool.js";
 
 const CHECK_TIMEOUT_MS = 10 * 60_000;
-/** Per failing check; the end of the output matters most, so it gets 80%. */
 const FAILURE_OUTPUT_CHARS = 6_000;
 
 export const runChecksInput = z.object({
@@ -34,13 +33,11 @@ export async function runChecks(
   input: z.input<typeof runChecksInput>,
 ) {
   const { only } = runChecksInput.parse(input);
-  // Run in the canonical order (lint, typecheck, test, build).
   const selected = CHECK_NAMES.flatMap((name) =>
     ctx.checks.filter(
       (check) => check.name === name && (!only || only.includes(name)),
     ),
   );
-  // Several checks with the same name (e.g. tests in web/ and api/) are labelled by folder.
   const label = (check: Check) =>
     ctx.checks.filter((c) => c.name === check.name).length > 1
       ? `${check.name} (${check.cwd})`

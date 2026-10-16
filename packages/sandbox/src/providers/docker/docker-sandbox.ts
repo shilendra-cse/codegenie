@@ -35,7 +35,6 @@ import { docker, isContainerGone } from "./docker-cli.js";
 
 export type DockerSandboxOptions = {
   resources?: SandboxResources;
-  /** Image to start from. Default: codegenie-base. */
   image?: string;
 };
 
@@ -116,8 +115,7 @@ export class DockerSandbox implements Sandbox {
       `${k}=${v}`,
     ]);
 
-    // The timeout is enforced inside the container: killing the docker CLI on the
-    // host would leave the command running in the container.
+    // Enforced inside the container: killing the host-side docker client would leave the command running.
     const started = Date.now();
     const result = await runProcess(
       "docker",
@@ -141,7 +139,6 @@ export class DockerSandbox implements Sandbox {
     this.throwIfGone(result);
 
     const elapsed = Date.now() - started;
-    // 124: `timeout` sent SIGTERM; 137: it had to SIGKILL after the grace period.
     const timedOut =
       result.killed ||
       result.code === 124 ||
@@ -169,6 +166,7 @@ export class DockerSandbox implements Sandbox {
         abs,
       );
     }
+    // Refuse rather than truncate: an edit written back from partial content would corrupt the file.
     if (result.truncated) {
       throw new SandboxFileError(
         `${abs} is larger than ${MAX_READ_FILE_BYTES} bytes`,
@@ -181,7 +179,7 @@ export class DockerSandbox implements Sandbox {
   async writeFile(filePath: string, content: string): Promise<void> {
     this.assertAlive();
     const abs = resolveInSandbox(filePath);
-    // Content goes through stdin, never into the command line: no quoting or injection issues.
+    // Content goes through stdin, never the command line: no quoting or injection issues.
     const result = await docker(
       [
         "exec",
@@ -254,10 +252,6 @@ export class DockerSandbox implements Sandbox {
       .sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  /**
-   * Docker-only: copy a local directory's contents into /workspace.
-   * Not on the Sandbox interface because remote sandboxes (Daytona) clone from GitHub instead.
-   */
   async copyIn(localDir: string): Promise<void> {
     this.assertAlive();
     const source = `${path.resolve(localDir)}/.`;
@@ -270,7 +264,7 @@ export class DockerSandbox implements Sandbox {
         `Failed to copy ${localDir} into sandbox: ${cp.stderr.trim()}`,
       );
     }
-    // docker cp creates root-owned files; hand them to the agent user.
+    // docker cp creates root-owned files; the agent runs as a non-root user.
     const chown = await docker([
       "exec",
       "-u",
@@ -291,7 +285,6 @@ export class DockerSandbox implements Sandbox {
   async destroy(): Promise<void> {
     if (this.destroyed) return;
     this.destroyed = true;
-    // `rm -f` also succeeds-or-reports-missing for an already removed container; either is fine.
     await docker(["rm", "-f", this.id]);
   }
 

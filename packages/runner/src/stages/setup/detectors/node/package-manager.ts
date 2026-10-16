@@ -2,7 +2,6 @@ import type { PackageManager } from "@codegenie/shared";
 import type { InstallPlan } from "../../core/detector.js";
 import type { PackageJson } from "./package-json.js";
 
-/** Lockfiles in order of precedence. */
 const LOCKFILES: [file: string, manager: PackageManager][] = [
   ["pnpm-lock.yaml", "pnpm"],
   ["yarn.lock", "yarn"],
@@ -20,10 +19,6 @@ export type ManagerDetection = {
   hasLockfile: boolean;
 };
 
-/**
- * The package.json "packageManager" field wins (corepack installs that exact
- * version), then the lockfile; with neither, npm.
- */
 export async function detectPackageManager(
   pkg: PackageJson,
   hasRootEntry: (name: string) => Promise<boolean>,
@@ -52,7 +47,6 @@ export async function detectPackageManager(
   return { manager: "npm", source: "default", hasLockfile: false };
 }
 
-/** Install commands for a package manager; null when it can't install in the sandbox. */
 export function installPlan(
   manager: PackageManager,
   hasLockfile: boolean,
@@ -71,7 +65,6 @@ export function installPlan(
         ? { frozen: "yarn install --frozen-lockfile", fallback: "yarn install" }
         : { frozen: "yarn install", fallback: null };
     case "bun":
-      // Not in the sandbox image yet.
       return null;
   }
 }

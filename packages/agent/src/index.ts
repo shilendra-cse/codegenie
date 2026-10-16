@@ -1,4 +1,3 @@
-// CodeGenie agent: loop, model selection, prompt and sandbox-backed tools.
 export * from "./loop/index.js";
 export * from "./model/index.js";
 export * from "./prompt/index.js";

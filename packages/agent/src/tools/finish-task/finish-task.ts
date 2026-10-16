@@ -9,7 +9,6 @@ export const finishTaskInput = z.object({
     .describe("What you changed and why, for the user and the pull request"),
 });
 
-/** Ends the run. The agent loop (step 3) watches for this call and reads the summary. */
 export const finishTaskTool = () =>
   tool({
     description: finishTaskDescription,
