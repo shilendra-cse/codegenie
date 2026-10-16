@@ -10,9 +10,13 @@ A web-based autonomous coding agent. Connect your GitHub repositories, describe 
 apps/
   web/        Next.js UI
   server/     Express API (auth, projects, tasks, live job events)
-  agent/      AI coding agent (terminal REPL for now)
+  worker/     Job runner for queued tasks
+  cli/        Run a job from the terminal (pnpm agent:run)
 packages/
-  shared/     Types shared across apps
+  runner/     Runs a job end to end: sandbox, checkout, setup, agent, verify
+  agent/      The AI agent: model, prompt, tools, loop
+  sandbox/    Isolated environments (Docker)
+  shared/     Types shared across apps and packages
 docs/
   api/        OpenAPI spec
   knowledge/  Requirements, architecture, database and development plan
@@ -34,14 +38,21 @@ pnpm setup
 This installs dependencies, creates `.env` files from the examples, starts Postgres and Redis, and runs database migrations. Then fill in the credentials it warns about:
 
 - `apps/server/.env`: GitHub and Google OAuth client ids and secrets
-- `apps/agent/.env`: `OPENAI_API_KEY`
+- `apps/cli/.env`: `OPENAI_API_KEY` (and optionally `AGENT_MODEL`)
 
 Start each app in its own terminal:
 
 ```bash
 pnpm dev:server   # API at http://localhost:3001
 pnpm dev:web      # UI at http://localhost:3000
-pnpm dev:agent    # terminal coding agent
+```
+
+Run the agent on a repository:
+
+```bash
+pnpm sandbox:build-image   # once, and after sandbox image changes
+pnpm agent:run --repo ../my-project --task "Add a /health endpoint with a test"
+pnpm agent:run --help      # all options
 ```
 
 Sign in at http://localhost:3000/signin.
@@ -64,6 +75,7 @@ API docs are served at http://localhost:3001/api/docs while the server is runnin
 - [Architecture](docs/knowledge/architecture.md)
 - [Database](docs/knowledge/database.md)
 - [Development plan](docs/knowledge/development-plan.md)
+- [Runner](docs/knowledge/runner.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md)
 
 ## License
 

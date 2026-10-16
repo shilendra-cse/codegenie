@@ -264,6 +264,37 @@ export class DockerSandbox implements Sandbox {
         `Failed to copy ${localDir} into sandbox: ${cp.stderr.trim()}`,
       );
     }
+    await this.chownWorkspace();
+  }
+
+  async copyInFiles(localDir: string, files: string[]): Promise<void> {
+    this.assertAlive();
+    const copy = await runProcess(
+      "sh",
+      [
+        "-c",
+        // macOS tar adds xattrs (e.g. com.apple.provenance) and ._ files that Docker rejects.
+        'COPYFILE_DISABLE=1 tar --no-xattrs -C "$1" -cf - --null -T - | docker cp - "$2:$3"',
+        "sh",
+        path.resolve(localDir),
+        this.id,
+        WORKSPACE_DIR,
+      ],
+      {
+        input: files.map((f) => `${f}\0`).join(""),
+        timeoutMs: COPY_IN_TIMEOUT_MS,
+      },
+    );
+    this.throwIfGone(copy);
+    if (copy.code !== 0) {
+      throw new SandboxError(
+        `Failed to copy ${localDir} into sandbox: ${copy.stderr.trim()}`,
+      );
+    }
+    await this.chownWorkspace();
+  }
+
+  private async chownWorkspace() {
     // docker cp creates root-owned files; the agent runs as a non-root user.
     const chown = await docker([
       "exec",

@@ -38,7 +38,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Tools rebuilt on `Sandbox` in `packages/agent` ([agent.md](./agent.md)): `list_files`, `read_file`, `search`, `edit_file` (unique match), `write_file`, `bash`, `run_checks`, `finish_task`; output truncation.
 - [x] Agent loop: native SDK tool messages, model catalog (platform-controlled), step/time/cost limits with forced wrap-up, stop only on `finish_task`, `AbortSignal` cancellation, cache-friendly context compaction ([agent.md](./agent.md)).
 - [x] Environment setup in `packages/runner` (setup stage): pluggable ecosystem detection (Node), package manager, frozen-then-fallback install, lint/typecheck/test/build checks; result passed to the agent's prompt and `run_checks`; `AGENTS.md` read into the prompt ([runner.md](./runner.md)). `.codegenie.yml` deferred.
-- [ ] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` printing events; reads `AGENT_MODEL`; remove `apps/agent`.
+- [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running the full job via the runner (`runJob`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
 - [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (incl. CodeGenie); `pnpm eval` reports pass rate, checks-pass rate, time, cost.
 
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)

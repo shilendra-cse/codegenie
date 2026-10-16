@@ -1,42 +1,62 @@
 # Runner
 
-> Status: **In progress** (setup stage built) · Last updated: 2026-10-15 · Code: `packages/runner` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
+> Status: **In progress** (everything except deliver built) · Last updated: 2026-10-16 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
 The runner executes a coding job end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
 
 The CLI (`apps/cli`) and the worker (`apps/worker`) both use the runner, so a local run behaves exactly like production.
 
-## 1. Stages
+## 1. Stages: `runJob()`
 
 ```
-checkout → setup → agent → verify → deliver
+sandbox → checkout → setup → baseline → agent → verify → diff → (deliver) → cleanup
 ```
 
 | Stage | What it does | Status |
 |---|---|---|
-| checkout | Repository into `/workspace` (clone or local copy) + baseline commit | planned |
-| **setup** | Detect the project type, install dependencies, find check commands | **built** |
-| agent | `runAgent()` from `@codegenie/agent`, with the setup result | agent built; wiring planned |
-| verify | Run the checks again after the agent | planned |
-| deliver | Commit, push, open the PR | planned |
+| sandbox | Create a fresh sandbox | built |
+| checkout | Git URL: shallow clone (public repos). Local folder: copy tracked and untracked-but-not-ignored files, so `node_modules`, build output and `.env` stay out | built |
+| setup | Detect the project type, install dependencies, find check commands (section 2) | built |
+| baseline | Commit the state after setup, so the diff only contains the agent's changes; `node_modules/` always excluded | built |
+| agent | `runAgent()` with the setup result | built |
+| verify | Run every check again, independently of the agent | built |
+| diff | Patch and per-file changes against the baseline | built |
+| deliver | Commit, push, open the PR | planned (needs the GitHub App) |
+| cleanup | Destroy the sandbox, always (unless asked to keep it) | built |
+
+`runJob()` never throws for job problems. It returns a `JobResult`: `status` (the agent's status, or `failed` with `failedStage` and `error` when an earlier stage broke), plus the checkout, setup, agent, verify and diff results that exist. `checksPassed` is the verify outcome (`null` when there are no checks); failing checks don't change the agent's status.
+
+Events: `stage_changed` (prepare, checkout, setup, agent, verify), `sandbox_created`, and the setup and agent events.
 
 ```
 packages/runner/src/
-├── index.ts
-├── lib/shell-quote.ts
-└── stages/
-    └── setup/
-        ├── run-setup.ts           runSetup(sandbox, { runId, emit, overrides }) → SetupResult
-        ├── install/run-install.ts frozen install → fallback → continue on failure
-        ├── core/
-        │   ├── detector.ts        EcosystemDetector interface, Detection, InstallPlan
-        │   └── repo-reader.ts     read-only view of the repo for detectors
-        └── detectors/
-            ├── index.ts           registry: [nodeDetector]
-            └── node/              package-manager · scripts · node-detector
+├── index.ts              public API
+├── job/                  runJob(), JobResult (+ unit and integration tests)
+├── stages/               each stage: index.ts, its files and tests
+│   ├── checkout/         clone or local copy; local-files picks what to copy
+│   ├── setup/            detectors, install
+│   ├── changes/          baseline commit, diff
+│   └── verify/           re-run checks
+└── lib/                  run-logged (command + full log), shell-quote
 ```
 
-## 2. Setup stage
+## 2. CLI: `pnpm agent:run`
+
+`apps/cli` runs a job from the terminal and prints live progress, the summary, check results and the diff.
+
+```bash
+pnpm agent:run --repo ../my-project --task "Add a /health endpoint with a test"
+pnpm agent:run --repo https://github.com/org/repo.git --ref main --task-file task.md --patch out.patch
+```
+
+- Configuration in `apps/cli/.env`: `OPENAI_API_KEY`, `AGENT_MODEL` (default `openai:gpt-6-luna`).
+- Options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--install` / `--no-install`, `--check name=cmd`, `--patch`, `--keep`, `--json`. See `--help`.
+- Relative paths resolve against the folder the command was run from.
+- Ctrl+C cancels cleanly (the sandbox is removed); a second Ctrl+C force-quits.
+- Exit codes: 0 succeeded, 2 incomplete, 1 failed, 130 cancelled.
+- Your local repository is never modified: the agent works on a copy.
+
+## 3. Setup stage
 
 Prepares the repository the way a developer would, before the agent starts, so the agent begins with dependencies installed and knows how to check its work.
 
@@ -80,10 +100,11 @@ The sandbox image sets `CI=true` (test runners don't start in watch mode) and `C
 
 Write a detector in `detectors/<language>/` implementing `EcosystemDetector`, add it to `DETECTORS`, and make sure its toolchain is available in the sandbox. Nothing else changes: checks are already a list with a working directory, and the result format is language-neutral.
 
-## 3. Deferred (not in the MVP)
+## 4. Deferred (not in the MVP)
 
 - [ ] `.codegenie.yml` for repository owners to override install and checks
 - [ ] User settings layer (project setup editable in the UI, stored in `projects.setup_config`)
+- [ ] Private repositories (needs GitHub App tokens)
 - [ ] Several projects per repository (e.g. `web/` and `api/` each with their own install and checks)
 - [ ] Node version selection (`.nvmrc`, `engines`) and toolchain checks; other languages via `mise`
 - [ ] Baseline check run before the agent starts, to separate pre-existing failures from new ones

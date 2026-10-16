@@ -1,28 +1,11 @@
 // Real Docker sandbox with network access: runs actual npm and pnpm installs.
 import { DockerSandbox } from "@codegenie/sandbox";
+import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { runSetup } from "./run-setup.js";
 
-async function dockerSandboxOrSkip(): Promise<DockerSandbox | null> {
-  try {
-    return await DockerSandbox.create();
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    if (process.env.CI) {
-      throw new Error(
-        `setup integration tests require Docker in CI: ${reason}`,
-        {
-          cause: error,
-        },
-      );
-    }
-    console.warn(`Skipping setup integration tests: ${reason}`);
-    return null;
-  }
-}
-
 const sandboxes: DockerSandbox[] = [];
-const first = await dockerSandboxOrSkip();
+const first = await dockerSandboxOrSkip("setup");
 
 async function freshSandbox(files: Record<string, string>) {
   const sandbox =

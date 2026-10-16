@@ -6,11 +6,10 @@
   "scripts": {
     "setup": "bash script/setup.sh",
     "migrate": "bash script/migrate.sh",
-    "dev:agent": "pnpm --filter agent dev",
+    "agent:run": "pnpm --filter @codegenie/cli start",
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
     "dev:worker": "pnpm --filter @codegenie/worker dev",
-    "build:agent": "pnpm --filter agent build",
     "build:web": "pnpm --filter web build",
     "build:server": "pnpm --filter server build",
     "build:worker": "pnpm --filter @codegenie/worker build",

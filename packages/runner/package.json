@@ -18,6 +18,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@codegenie/agent": "workspace:*",
     "@codegenie/sandbox": "workspace:*",
     "@codegenie/shared": "workspace:*"
   },
