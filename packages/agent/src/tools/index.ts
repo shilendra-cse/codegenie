@@ -8,7 +8,6 @@ import { runChecksTool } from "./run-checks/run-checks.js";
 import { searchTool } from "./search/search.js";
 import { writeFileTool } from "./write-file/write-file.js";
 
-/** The tools the model can call, all bound to one run's sandbox and state. */
 export function createTools(ctx: ToolContext) {
   return {
     list_files: listFilesTool(ctx),

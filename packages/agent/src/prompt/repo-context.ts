@@ -55,11 +55,6 @@ function summarizePackageJson(raw: string) {
   }
 }
 
-/**
- * Builds the repository overview placed in the system prompt, once per run:
- * file tree, package.json summary, README excerpt, AGENTS.md and the setup
- * results (package manager, install status, checks, notes). Missing files are skipped.
- */
 export async function buildRepoContext(ctx: ToolContext, setup?: SetupResult) {
   const sections: string[] = [];
 
@@ -113,7 +108,6 @@ function describeInstall(install: SetupResult["install"]) {
   }
 }
 
-/** What the runner's setup stage did, so the agent starts from facts, not guesses. */
 function describeSetup(ctx: ToolContext, setup?: SetupResult) {
   const lines: string[] = ["## Setup (done before you started)"];
   if (setup) {

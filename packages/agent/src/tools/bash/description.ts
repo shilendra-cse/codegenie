@@ -1,4 +1,3 @@
-// What the model reads about this tool: effectively part of the prompt. Tune against evals.
 export const bashDescription = `Run a shell command in /workspace (bash).
 - Use for installing packages, running scripts, git log/status, and anything the other tools don't cover.
 - Prefer read_file, search and list_files over cat, grep and find.

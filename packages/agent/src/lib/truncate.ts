@@ -1,9 +1,7 @@
-/** Upper bound for any single tool result sent to the model (~7.5k tokens). */
 export const MAX_TOOL_OUTPUT_CHARS = 30_000;
 
 export type TruncateOptions = {
   maxChars?: number;
-  /** Share of the budget for the beginning; the rest goes to the end. Default 0.4. */
   headRatio?: number;
 };
 
@@ -12,11 +10,6 @@ export type TruncateResult = {
   truncated: boolean;
 };
 
-/**
- * Shortens text for the model, keeping whole lines from the start and the end with a
- * marker in between. Endings (errors, summaries) usually matter most, so they get more room.
- * Falls back to character slicing when single lines are too long to keep whole.
- */
 export function truncateForModel(
   text: string,
   options: TruncateOptions = {},

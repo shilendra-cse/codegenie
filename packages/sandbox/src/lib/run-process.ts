@@ -4,25 +4,19 @@ import { CappedBuffer } from "./capped-buffer.js";
 export const MAX_OUTPUT_BYTES = 1024 * 1024;
 
 export type RunProcessOptions = {
-  /** Written to the process's stdin, then stdin is closed. */
   input?: string;
-  /** Kill the process after this long. Undefined = no limit. */
   timeoutMs?: number;
-  /** Per-stream capture limit. Default MAX_OUTPUT_BYTES. */
   maxOutputBytes?: number;
 };
 
 export type RunProcessResult = {
-  /** Exit code, or null if the process was killed by a signal. */
   code: number | null;
   stdout: string;
   stderr: string;
-  /** Killed by our host-side timeout. */
   killed: boolean;
   truncated: boolean;
 };
 
-/** Runs a process on the host and collects its output. Never throws for non-zero exits. */
 export function runProcess(
   command: string,
   args: string[],

@@ -14,10 +14,6 @@ type ExecHandler = (
   options: ExecOptions,
 ) => Partial<ExecResult> | Promise<Partial<ExecResult>>;
 
-/**
- * In-memory Sandbox for fast unit tests: files live in a Map, exec is scripted.
- * Mirrors DockerSandbox semantics (absolute paths, listFiles skipping node_modules/.git).
- */
 export class FakeSandbox implements Sandbox {
   readonly id = "fake-sandbox";
   readonly files = new Map<string, string>();

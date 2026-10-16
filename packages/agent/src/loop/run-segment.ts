@@ -14,19 +14,15 @@ import type { Compactor } from "./compaction.js";
 import { isInfrastructureError } from "./errors.js";
 import { toJobEvent, type Emit } from "./events.js";
 
-/** Provider errors (rate limits, 5xx) are retried by the AI SDK this many times. */
 const MAX_MODEL_RETRIES = 3;
 
-/** Mutable state of one agent run, shared by all its segments. */
 export type RunState = {
-  /** Task plus every completed step's messages; only ever appended to. */
   messages: ModelMessage[];
   steps: number;
   usage: UsageTracker;
   compactor: Compactor;
 };
 
-/** Fixed for the whole run. */
 export type RunEnvironment = {
   runId: string;
   model: ResolvedModel;
@@ -34,7 +30,6 @@ export type RunEnvironment = {
   tools: AgentTools;
   emit: Emit;
   maxCostUsd: number;
-  /** Aborted when a tool hits an infrastructure error. */
   infraAbort: AbortController;
 };
 
@@ -42,7 +37,6 @@ export type SegmentParams = {
   maxSteps: number;
   signal: AbortSignal;
   toolChoice?: ToolChoice<AgentTools>;
-  /** Stop when the run's cost limit is reached (off for the final wrap-up step). */
   costLimit: boolean;
 };
 
@@ -52,18 +46,12 @@ export type SegmentOutcome = {
   modelError?: unknown;
 };
 
-/**
- * One streamText call: the model takes steps (tool calls) until it calls finish_task,
- * stops on its own, hits a stop condition, or the signal aborts. Streams events and
- * appends the messages of completed steps to the run state.
- */
 export async function runSegment(
   state: RunState,
   env: RunEnvironment,
   params: SegmentParams,
 ): Promise<SegmentOutcome> {
   const outcome: SegmentOutcome = { finishSummary: null };
-  // Messages of completed steps; survives an abort mid-step.
   let completed: ModelMessage[] = [];
 
   const stopWhen: StopCondition<AgentTools>[] = [
@@ -94,8 +82,8 @@ export async function runSegment(
   });
 
   for await (const part of result.fullStream) {
+    // The SDK would pass this to the model, which can't fix a dead sandbox: stop the run instead.
     if (part.type === "tool-error" && isInfrastructureError(part.error)) {
-      // The SDK would hand this to the model; the model can't fix a dead sandbox.
       outcome.infraError = part.error;
       env.infraAbort.abort();
     } else if (part.type === "error") {

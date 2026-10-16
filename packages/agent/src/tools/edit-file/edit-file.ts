@@ -7,7 +7,6 @@ import { editFileDescription } from "./description.js";
 import { numberLines, splitLines } from "../../lib/lines.js";
 import { runTool } from "../core/run-tool.js";
 
-/** Lines of context shown around an edit so the model can check it. */
 const SNIPPET_CONTEXT = 2;
 
 export const editFileInput = z.object({
@@ -73,7 +72,6 @@ export async function editFile(
     : content.replace(oldString, () => newString);
   await ctx.sandbox.writeFile(abs, updated);
 
-  // Show the first replacement in context, numbered against the updated file.
   const lines = splitLines(updated);
   const editLine = content.slice(0, firstIndex).split("\n").length;
   const editedLineCount = splitLines(newString).length || 1;

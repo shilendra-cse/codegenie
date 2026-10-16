@@ -2,7 +2,6 @@ import path from "node:path";
 import { SANDBOX_LOG_DIR, WORKSPACE_DIR } from "@codegenie/sandbox";
 import { ToolError } from "./tool-error.js";
 
-/** Full command output is saved here, outside /workspace so it never ends up in the diff. */
 export const LOG_DIR = SANDBOX_LOG_DIR;
 
 export type PathAccess = "read" | "write";
@@ -11,15 +10,6 @@ function isWithin(abs: string, dir: string) {
   return abs === dir || abs.startsWith(`${dir}/`);
 }
 
-/**
- * Resolves a path the model gave us to an absolute path inside the sandbox.
- * - Relative paths resolve against /workspace; everything must stay inside it.
- * - Reads may also target LOG_DIR (saved command output).
- * - Writes inside any .git directory are refused: git is handled outside the agent.
- *
- * The container is the real security boundary; these checks keep the agent on task
- * and protect the repository's history.
- */
 export function resolveWorkspacePath(input: string, access: PathAccess) {
   if (!input.trim()) {
     throw new ToolError("Path is empty.");
@@ -42,7 +32,6 @@ export function resolveWorkspacePath(input: string, access: PathAccess) {
   return abs;
 }
 
-/** Path to show the model: relative to /workspace when inside it, otherwise absolute. */
 export function displayPath(abs: string) {
   if (abs === WORKSPACE_DIR) return ".";
   if (isWithin(abs, WORKSPACE_DIR)) return abs.slice(WORKSPACE_DIR.length + 1);

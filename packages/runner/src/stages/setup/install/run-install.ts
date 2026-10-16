@@ -13,7 +13,6 @@ async function attempt(
   command: string,
   logPath: string,
 ): Promise<Attempt> {
-  // Same pattern as the agent's bash tool: combined output, full log, real exit code.
   const wrapped = `mkdir -p ${shellQuote(SANDBOX_LOG_DIR)} && set -o pipefail && { ${command}\n} 2>&1 | tee ${shellQuote(logPath)}`;
   const result = await sandbox.exec(wrapped, { timeoutMs: INSTALL_TIMEOUT_MS });
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
@@ -31,11 +30,6 @@ function tail(output: string) {
   return output.trimEnd().split("\n").slice(-ERROR_TAIL_LINES).join("\n");
 }
 
-/**
- * Installs dependencies: the reproducible (frozen) command first, the lenient
- * fallback if that fails. Never throws for a failed install: the agent is told
- * and may fix it.
- */
 export async function runInstall(
   sandbox: Sandbox,
   plan: InstallPlan | null,

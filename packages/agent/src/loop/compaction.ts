@@ -4,19 +4,13 @@ const CHARS_PER_TOKEN = 4;
 
 export type CompactorOptions = {
   contextWindow: number;
-  /** Characters sent with every request besides the messages (system prompt, tool definitions). */
   fixedChars: number;
-  /** Compact when the prompt is estimated above this share of the window. Default 0.6. */
   triggerRatio?: number;
-  /** Compact down to this share of the window. Default 0.4. */
   targetRatio?: number;
-  /** Steps kept in full when compacting. Default 10. */
   keepRecentSteps?: number;
-  /** Never keep fewer steps than this in full. Default 3. */
   minRecentSteps?: number;
 };
 
-/** Rough token estimate: good enough to decide when to compact. */
 export function estimateTokens(messages: ModelMessage[], fixedChars = 0) {
   return Math.ceil(
     (JSON.stringify(messages).length + fixedChars) / CHARS_PER_TOKEN,
@@ -36,11 +30,6 @@ function describeCall(toolName: string, input: unknown) {
   return detail ? `${toolName} ${detail}` : toolName;
 }
 
-/**
- * Returns a copy of `messages` where tool results before index `upTo` are replaced by a
- * one-line note. Tool calls, the task and the model's own text are kept, so the model
- * still knows what it did. Deterministic: the same input always gives the same output.
- */
 export function compactBefore(
   messages: ModelMessage[],
   upTo: number,
@@ -85,15 +74,7 @@ export function compactBefore(
   });
 }
 
-/**
- * Cache-friendly context compaction.
- *
- * Providers discount a repeated prompt prefix, and any change to earlier messages loses
- * that discount. So compaction happens rarely and in one big batch: when the prompt
- * passes the trigger share of the window, old tool results are replaced until it is
- * under the target share. The cut-off (watermark) is remembered and only moves at the
- * next compaction, so between compactions every request starts with the same prefix.
- */
+// Compacts rarely and in one batch, and keeps the cut-off (watermark) fixed in between, so the prompt prefix stays identical and cacheable.
 export class Compactor {
   private watermark = 0;
   private count = 0;
@@ -109,19 +90,16 @@ export class Compactor {
     this.minRecent = options.minRecentSteps ?? 3;
   }
 
-  /** Number of compactions so far. */
   get compactions() {
     return this.count;
   }
 
-  /** Messages to send for this step. `messages` is always the full, original history. */
   apply(messages: ModelMessage[]): ModelMessage[] {
     const view = compactBefore(messages, this.watermark);
     if (estimateTokens(view, this.options.fixedChars) <= this.trigger) {
       return view;
     }
 
-    // A step starts with an assistant message; keep the last N steps in full.
     const stepStarts = messages.flatMap((m, i) =>
       m.role === "assistant" ? [i] : [],
     );

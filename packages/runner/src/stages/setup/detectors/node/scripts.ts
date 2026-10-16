@@ -2,20 +2,14 @@ import type { Check, PackageManager } from "@codegenie/shared";
 import type { PackageJson } from "./package-json.js";
 
 const TYPECHECK_SCRIPTS = ["typecheck", "type-check", "tsc", "check-types"];
-/** npm init's default test script, which always fails. */
 const NPM_PLACEHOLDER_TEST = /no test specified/;
 
-/** Runs a local binary (e.g. tsc) with each package manager, without downloading it. */
 const EXEC: Record<Exclude<PackageManager, "bun">, string> = {
   npm: "npx --no-install",
   pnpm: "pnpm exec",
   yarn: "yarn",
 };
 
-/**
- * Check commands from package.json scripts, run as `<pm> run <script>`.
- * TypeScript repos without a typecheck script get `tsc --noEmit`.
- */
 export function detectChecks(
   pkg: PackageJson,
   manager: PackageManager,

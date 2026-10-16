@@ -3,7 +3,6 @@ import type { PackageJson } from "./package-json.js";
 import { detectPackageManager, installPlan } from "./package-manager.js";
 import { detectChecks } from "./scripts.js";
 
-/** JavaScript / TypeScript projects: anything with a package.json in the root. */
 export const nodeDetector: EcosystemDetector = {
   id: "node",
 

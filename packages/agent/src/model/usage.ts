@@ -2,15 +2,12 @@ import type { LanguageModelUsage } from "ai";
 import type { ModelPricing } from "./types.js";
 
 export type UsageSnapshot = {
-  /** All prompt tokens, including those served from the cache. */
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
-  /** Estimate from catalog prices; tokens are the source of truth. */
   costUsd: number;
 };
 
-/** Accumulates token usage across steps and prices it with the model's catalog entry. */
 export class UsageTracker {
   private inputTokens = 0;
   private cachedInputTokens = 0;
@@ -25,6 +22,7 @@ export class UsageTracker {
   }
 
   get costUsd() {
+    // inputTokens includes cached tokens, which are billed at the cached rate.
     const uncached = Math.max(0, this.inputTokens - this.cachedInputTokens);
     return (
       (uncached * this.pricing.inputPerMTok +
