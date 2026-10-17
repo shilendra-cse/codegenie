@@ -36,6 +36,7 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 | U1 | As a visitor, I sign up / sign in with GitHub. | One-click GitHub sign-in creates an account; session persists across reloads; sign-out works. |
 | U2 | As a user, I grant CodeGenie access to specific repos. | Install the GitHub App choosing all or selected repos; return to CodeGenie with installation recorded; can change selection later on GitHub and CodeGenie reflects it. |
 | U3 | As a user, I connect a repo as a project. | Repo picker lists only repos the installation can access; choosing one creates a project; JS/TS check warns if the repo doesn't look like JS/TS. |
+| U10 | As a user, I set up my project's environment once through a guided conversation. | CodeGenie detects how to install and check the repo (including repos with several projects, e.g. `frontend/` + `backend/`), tries it, and asks at most 5 multiple-choice questions (2–4 options + free text) only when it can't decide. Every kept step and check has actually run; the final config is re-verified from scratch. I see the result and can save, edit or start over. Tasks then reuse the saved config without asking anything. If setup breaks later, the project shows "needs attention" and I can rerun onboarding. ([environment.md](./environment.md)) |
 
 ### Tasks
 | ID | Story | Acceptance criteria |
@@ -93,8 +94,8 @@ On hitting a per-job limit the agent stops gracefully and delivers a draft PR ma
 
 ## 6. Success criteria (MVP is "done" when)
 
-1. All MVP user stories U1–U9 pass their acceptance criteria in production.
-2. On the **eval set** (≥ 10 mid-sized tasks across ≥ 3 real JS/TS repos, including CodeGenie itself):
+1. All MVP user stories U1–U10 pass their acceptance criteria in production.
+2. On the **eval set** (≥ 10 mid-sized tasks across ≥ 3 JS/TS repos: the author's own projects, e.g. DoDesk and BuyerBook, plus small fixture projects):
    - ≥ 60% produce a PR that is mergeable as-is or with light edits.
    - ≥ 80% end with lint, type-check and tests passing.
 3. Median job: ≤ 15 min and ≤ $1.
@@ -105,6 +106,8 @@ On hitting a per-job limit the agent stops gracefully and delivers a draft PR ma
 | Decision | Choice | Rationale |
 |---|---|---|
 | Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each job records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
+| Environment setup | **In the MVP:** a per-repository environment config created once by guided onboarding (rules → try → AI setup agent → multiple-choice questions → verify → approve) and replayed by every task job. | Setup is the foundation of every job; deterministic replay keeps jobs fast and predictable, and questions solve the cases rules and AI can't. |
+| Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files until the worker exists. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-job audit need the database. |
 | Future model choice | Introduced together with whoever pays: **tiers** (fast / balanced / best, mapped server-side) with paid plans, and **free choice from the model catalog** with bring-your-own API key. | User choice is low-risk once users carry the cost. The agent already takes the model as a parameter, so no rework is needed. |
 
 ## 8. Open questions

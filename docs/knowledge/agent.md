@@ -109,7 +109,7 @@ The worker maps `incomplete` to a succeeded job delivered as a draft PR marked i
 
 - **System prompt** = fixed rules (`AGENT_RULES`) + repository context. It is built once per run and never changes, so together with the tool definitions it forms a stable prefix the provider can cache.
 - **Repository context:** file tree (2 levels), `package.json` (name, scripts, dependencies), first 80 lines of the README, `AGENTS.md` (capped at 8,000 characters). Missing files are skipped.
-- **Setup section:** what the runner's setup stage did (package manager, install status with the end of the error and the log path if it failed, the checks for `run_checks`, notes). Passed in as `runAgent({ setup })`; see [runner.md](./runner.md).
+- **Setup section:** what the runner's setup stage did (package manager, install status with the end of the error and the log path if it failed, the checks for `run_checks`, notes). Passed in as `runAgent({ setup })`; see [runner.md](./runner.md). With environment onboarding it will show the replayed setup steps and each check's baseline status, so the agent knows which checks were already failing ([environment.md](./environment.md)).
 - **First user message** = the task.
 
 ## 6. Context compaction
@@ -140,7 +140,11 @@ To add a model: add a catalog entry with values from the provider's model and pr
 - **Loop tests** cover finishing, real tool execution, event order, the prompt sent, nudges, all three limits with forced wrap-up, cancellation, sandbox loss before and during the run, provider errors, and recovery from tool errors.
 - **Integration tests** run tools against a real `DockerSandbox`.
 
-## 9. Known limitations / TODO
+## 9. Setup agent (planned)
+
+A second agent in this package, `setup-agent/`, used only during environment onboarding: it makes a repository installable and checkable, asks the user multiple-choice questions when it can't decide, and returns a structured environment config. It reuses the loop, with its own prompt and tools (`try_environment`, `ask_user`, `finish_setup`, plus the read/search/bash tools). Limits: 40 steps, 10 minutes, $0.20, at most 5 questions. Design: [environment.md](./environment.md).
+
+## 10. Known limitations / TODO
 
 - [ ] Not yet run against a real model end to end (first real runs come with the CLI).
 - [ ] Cost limit is checked between steps, so a run can slightly exceed it.

@@ -1,6 +1,6 @@
 # Runner
 
-> Status: **In progress** (everything except deliver built) · Last updated: 2026-10-16 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
+> Status: **In progress** (everything except deliver built) · Last updated: 2026-10-17 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
 The runner executes a coding job end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
 
@@ -16,10 +16,10 @@ sandbox → checkout → setup → baseline → agent → verify → diff → (d
 |---|---|---|
 | sandbox | Create a fresh sandbox | built |
 | checkout | Git URL: shallow clone (public repos). Local folder: copy tracked and untracked-but-not-ignored files, so `node_modules`, build output and `.env` stay out | built |
-| setup | Detect the project type, install dependencies, find check commands (section 2) | built |
-| baseline | Commit the state after setup, so the diff only contains the agent's changes; `node_modules/` always excluded | built |
+| setup | Detect the project type, install dependencies, find check commands (section 3). Next: replay the project's environment config ([environment.md](./environment.md)) | built; being replaced |
+| baseline | Commit the state after setup, so the diff only contains the agent's changes; `node_modules/` always excluded. Next: also run every check once before the agent (pre-existing failures) | built; checks run planned |
 | agent | `runAgent()` with the setup result | built |
-| verify | Run every check again, independently of the agent | built |
+| verify | Run every check again, independently of the agent. Next: compare with the baseline (fixed / regressed / still failing) | built; comparison planned |
 | diff | Patch and per-file changes against the baseline | built |
 | deliver | Commit, push, open the PR | planned (needs the GitHub App) |
 | cleanup | Destroy the sandbox, always (unless asked to keep it) | built |
@@ -51,12 +51,15 @@ pnpm agent:run --repo https://github.com/org/repo.git --ref main --task-file tas
 
 - Configuration in `apps/cli/.env`: `OPENAI_API_KEY`, `AGENT_MODEL` (default `openai:gpt-6-luna`).
 - Options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--install` / `--no-install`, `--check name=cmd`, `--patch`, `--keep`, `--json`. See `--help`.
+- Planned with environment onboarding: `pnpm agent:setup`, `--show-environment`, `--no-baseline-checks`; `--install`, `--no-install` and `--check` are removed in favor of the environment config ([environment.md](./environment.md)).
 - Relative paths resolve against the folder the command was run from.
 - Ctrl+C cancels cleanly (the sandbox is removed); a second Ctrl+C force-quits.
 - Exit codes: 0 succeeded, 2 incomplete, 1 failed, 130 cancelled.
 - Your local repository is never modified: the agent works on a copy.
 
 ## 3. Setup stage
+
+> **Being replaced** by environment onboarding: a per-repository environment config created once through a guided conversation and replayed by every job. Design: [environment.md](./environment.md). The description below is the current implementation until that lands.
 
 Prepares the repository the way a developer would, before the agent starts, so the agent begins with dependencies installed and knows how to check its work.
 
@@ -102,10 +105,8 @@ Write a detector in `detectors/<language>/` implementing `EcosystemDetector`, ad
 
 ## 4. Deferred (not in the MVP)
 
-- [ ] `.codegenie.yml` for repository owners to override install and checks
-- [ ] User settings layer (project setup editable in the UI, stored in `projects.setup_config`)
+Moved into the MVP by environment onboarding ([environment.md](./environment.md)): several projects per repository, user-editable setup, baseline check run before the agent.
+
 - [ ] Private repositories (needs GitHub App tokens)
-- [ ] Several projects per repository (e.g. `web/` and `api/` each with their own install and checks)
 - [ ] Node version selection (`.nvmrc`, `engines`) and toolchain checks; other languages via `mise`
-- [ ] Baseline check run before the agent starts, to separate pre-existing failures from new ones
 - [ ] yarn 2+ specifics, bun, private registries, git submodules and LFS

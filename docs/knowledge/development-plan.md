@@ -39,7 +39,12 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Agent loop: native SDK tool messages, model catalog (platform-controlled), step/time/cost limits with forced wrap-up, stop only on `finish_task`, `AbortSignal` cancellation, cache-friendly context compaction ([agent.md](./agent.md)).
 - [x] Environment setup in `packages/runner` (setup stage): pluggable ecosystem detection (Node), package manager, frozen-then-fallback install, lint/typecheck/test/build checks; result passed to the agent's prompt and `run_checks`; `AGENTS.md` read into the prompt ([runner.md](./runner.md)). `.codegenie.yml` deferred.
 - [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running the full job via the runner (`runJob`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
-- [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (incl. CodeGenie); `pnpm eval` reports pass rate, checks-pass rate, time, cost.
+- [ ] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every job.
+  - [ ] **A.** Config type + schema; `apply` / `validate`; jobs replay the config; baseline check run + before/after comparison in verify; rules-only draft, auto-approved.
+  - [ ] **B.** Multi-project draft rules (workspaces, independent sub-projects, orchestration-only root).
+  - [ ] **C.** Setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels.
+  - [ ] **D.** `EnvironmentStore` + CLI file store (last 5 versions); `pnpm agent:setup`, `--show-environment`, `--no-baseline-checks`; health signals (needs attention); remove `--install` / `--check`.
+- [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
 
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)
 
@@ -51,6 +56,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [ ] `DaytonaSandbox`; `codegenie-base` snapshot build script; `SANDBOX_PROVIDER=docker|daytona`.
 - [ ] Reaper: fail stalled jobs, delete orphaned sandboxes.
 - [ ] Per-job limits enforced (30 min / 150 steps / $2).
+- [ ] Environment storage in the database: migration for `project_environments` and `jobs.environment_id`, drop `projects.setup_config`; `DbEnvironmentStore`; jobs load the project's active config and record the version used ([database.md](./database.md)).
 
 **Done when:** a script-enqueued job runs in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill.
 **Needs:** Daytona account.
@@ -69,15 +75,16 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 **Needs:** GitHub App (dev), smee.io or cloudflared tunnel.
 
 ### Phase 4 — API & UI
-**Goal:** the full prompt → PR flow from the browser. *(U3, U4, U5, U6, U7, U9)*
+**Goal:** the full prompt → PR flow from the browser. *(U3, U4, U5, U6, U7, U9, U10)*
 
 - [ ] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /jobs/:id`, `GET /jobs/:id/events` (SSE + replay), `POST /jobs/:id/cancel`; OpenAPI updated.
 - [ ] Authorization: users only access their own resources.
 - [ ] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live job view (stage, tool calls, summary, PR link, cancel), task page (conversation + jobs).
 - [ ] API base URL via env; `/api/*` rewrite in Next.js.
+- [ ] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` job events); question cards; config panel with versions and rollback; "needs attention" banner.
 - [ ] Playwright smoke test (sign in → task → events → PR link) with a mocked model.
 
-**Done when:** U3–U7 and U9 pass their acceptance criteria locally.
+**Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally.
 
 ### Phase 5 — MVP launch
 **Goal:** live, protected, open for signup. *(U8 + non-functional requirements)*

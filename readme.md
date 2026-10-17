@@ -75,7 +75,7 @@ API docs are served at http://localhost:3001/api/docs while the server is runnin
 - [Architecture](docs/knowledge/architecture.md)
 - [Database](docs/knowledge/database.md)
 - [Development plan](docs/knowledge/development-plan.md)
-- [Runner](docs/knowledge/runner.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md)
+- [Runner](docs/knowledge/runner.md), [Environment](docs/knowledge/environment.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md)
 
 ## License
 

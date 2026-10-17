@@ -1,6 +1,6 @@
 # Database Design
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-13 · Engine: PostgreSQL · ORM: Drizzle
+> Status: **Accepted** (MVP) · Last updated: 2026-10-17 · Engine: PostgreSQL · ORM: Drizzle
 
 See [architecture.md](./architecture.md) for how these tables are used by the server and worker.
 
@@ -23,8 +23,11 @@ user ─┬─< session                       (Better Auth)
       ├─< github_installations          (installed_by)
       └─< projects >── github_installations
               │
-              └─< tasks ─┬─< messages >──┐ (job_id nullable)
-                         └─< jobs ───────┘
+              ├─< project_environments            (environment config versions)
+              │         ▲
+              │         └─────────────┐  jobs.environment_id (version a job used)
+              └─< tasks ─┬─< messages │  (messages.job_id nullable)
+                         └─< jobs ────┘
                                └─< job_events
 
 webhook_deliveries                      (standalone, idempotency)
@@ -62,11 +65,35 @@ A repository connected by a user.
 | `repo_owner` | text | |
 | `repo_name` | text | |
 | `default_branch` | text | |
-| `setup_config` | jsonb null | cached detected commands `{ install, test, lint, build }` |
 | `archived_at` | timestamptz null | soft delete |
 | `created_at`, `updated_at` | timestamptz | |
 
 Constraints: **unique (`user_id`, `repo_github_id`)**. Index: (`user_id`, `created_at`).
+
+How to install and check the repository lives in `project_environments` (versioned), not on the project.
+
+### `project_environments`
+A project's environment config: how to install the repository and which checks to run ([environment.md](./environment.md)). Created by onboarding; every job replays the active version.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `project_id` | uuid FK → `projects.id` | cascade |
+| `version` | integer | 1, 2, 3… per project |
+| `config` | jsonb | the `EnvironmentConfig` (steps, checks, meta) |
+| `source` | enum `environment_source` (`detected`, `ai`, `user`, `mixed`) | how this version was created |
+| `status` | enum `environment_status` (`active`, `superseded`) | |
+| `health` | enum `environment_health` (`ok`, `needs_attention`) | set by jobs when a setup step fails or an uncovered project folder appears |
+| `health_reason` | text null | e.g. `step "install client" failed in job …` |
+| `verified_commit` | text | commit onboarding verified the config on |
+| `created_by_user_id` | text FK → `user.id` null | null when created automatically |
+| `created_at` | timestamptz | |
+
+Constraints and indexes:
+- **unique (`project_id`, `version`)**
+- **Partial unique** on (`project_id`) `WHERE status = 'active'`: at most one active config per project.
+
+Lifecycle: onboarding (or a user edit) inserts version N+1 as `active` and marks the previous one `superseded` in the same transaction; rollback reactivates an older version.
 
 ### `tasks`
 A unit of work on a project.
@@ -100,6 +127,7 @@ One agent execution.
 | `status` | enum `job_status` (`queued`, `running`, `succeeded`, `failed`, `cancelled`) | |
 | `stage` | enum `job_stage` (`prepare`, `checkout`, `setup`, `agent`, `verify`, `deliver`) null | current pipeline stage, for UI |
 | `sandbox_id` | text null | Daytona id; used by the reaper |
+| `environment_id` | uuid FK → `project_environments.id` null | the environment config version this job replayed; set null on delete |
 | `model` | text | model that ran the job |
 | `commit_sha` | text null | |
 | `checks_passed` | boolean null | lint + tests outcome |
@@ -164,7 +192,7 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 - **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
 - **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
-- **Deletion:** cascade `user → projects → tasks → jobs → job_events`; projects are archived (`archived_at`), not hard-deleted.
+- **Deletion:** cascade `user → projects → tasks → jobs → job_events` and `projects → project_environments`; projects are archived (`archived_at`), not hard-deleted.
 - **Naming:** snake_case tables/columns; one kebab-case schema file per table in `apps/server/src/db/schema/` (e.g. `job-events-schema.ts`), relations in `relations.ts`, all re-exported from `src/db/schema.ts`.
 - **Shared types:** `packages/shared/src/types/api.ts` mirrors these tables for the API and web app; change both together.
 
@@ -172,7 +200,10 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 
 Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced by one clean initial migration** generated from the new schema. Local databases must be reset (`pnpm --filter @codegenie/server docker:reset`, then `pnpm migrate`). From then on, migrations are additive and generated with `drizzle-kit generate`.
 
+Pending (with the worker, Phase 2): add `project_environments` and `jobs.environment_id`, and drop `projects.setup_config`. Until then the CLI stores environment configs in local files ([environment.md](./environment.md)).
+
 ## 6. Post-MVP
 
 - `integration_connections` — `user_id`, `provider` (`jira`, `notion`), encrypted tokens, external workspace id, for ticket intake.
+- Onboarding conversations on the website: modeled as a job of kind `environment_setup`, with questions and answers as `job_events` (`question_asked`, `question_answered`).
 - Team access to projects (org members) — projects are single-owner in the MVP; nothing in this schema blocks adding a membership table later.
