@@ -32,13 +32,13 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
     for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
   });
 
-  it("copies a local repo, lets the agent change it, verifies and diffs", async () => {
+  it("copies a local repo, lets the agent fix it, verifies against the baseline and diffs", async () => {
     const dir = localRepo({
       ".gitignore": ".env\n",
       "package.json": JSON.stringify({
         name: "calc",
         type: "module",
-        scripts: { test: "node --test" },
+        scripts: { test: "node --test && date +%s%N > report.txt" },
       }),
       "src/math.js": "export const add = (a, b) => a - b;\n",
       "test/math.test.js":
@@ -86,14 +86,22 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
       {},
     );
     expect(
-      result.verify?.filter((c) => !c.passed).map((c) => c.outputTail),
+      result.verify?.checks
+        .filter((c) => c.status !== "passing")
+        .map((c) => c.outputTail),
     ).toEqual([]);
     expect(result).toMatchObject({
       status: "succeeded",
       checkout: { files: 5 },
-      setup: { packageManager: "npm" },
-      verify: [{ name: "test", passed: true }],
-      checksPassed: true,
+      setup: {
+        steps: [{ name: "install", status: "ok" }],
+        baseline: [{ name: "test", status: "failing" }],
+      },
+      verify: {
+        checks: [{ name: "test", comparison: "fixed" }],
+        passed: true,
+        fixed: 1,
+      },
     });
     expect(result.diff!.files.map((f) => f.path).sort()).toEqual([
       "CHANGELOG.md",
@@ -114,6 +122,22 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
     execFileSync("docker", ["rm", "-f", kept], { stdio: "ignore" });
     expect(ls).toContain("NOTES.md");
     expect(ls).not.toContain(".env");
+    expect(ls).toContain("report.txt");
+
+    const replay = await runJob({
+      runId: "it-replay",
+      task: "Nothing",
+      source: { type: "local", path: dir },
+      model: scriptedModel([
+        { toolCalls: [{ toolName: "finish_task", input: { summary: "ok" } }] },
+      ]).resolved,
+      environment: result.setup!.config,
+    });
+    expect(replay.setup!.steps.map((s) => s.command)).toEqual(
+      result.setup!.steps.map((s) => s.command),
+    );
+    expect(replay.setup!.config).toEqual(result.setup!.config);
+    expect(replay.setup!.notes).toEqual([]);
   });
 
   it("clones a public git repository", async () => {
@@ -138,9 +162,10 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
     );
     expect(result).toMatchObject({
       status: "succeeded",
-      setup: { ecosystem: null },
-      checksPassed: null,
+      setup: { steps: [], checks: [] },
+      verify: { passed: null },
       diff: { files: [] },
     });
+    expect(result.setup!.notes[0]).toMatch(/No supported project type/);
   });
 });

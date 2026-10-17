@@ -1,6 +1,6 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { resolveModel } from "@codegenie/agent";
-import { runJob } from "@codegenie/runner";
+import { parseEnvironmentConfig, runJob } from "@codegenie/runner";
 import { parseCliArgs, USAGE, UsageError } from "./args.js";
 import { loadEnvFile, parseConfig } from "./config.js";
 import { createLiveReporter, exitCode, formatSummary } from "./report.js";
@@ -43,6 +43,20 @@ async function main(): Promise<number> {
       return 1;
     }
   }
+  let environment;
+  if (options.environmentPath) {
+    try {
+      environment = parseEnvironmentConfig(
+        JSON.parse(await readFile(options.environmentPath, "utf8")),
+      );
+    } catch (error) {
+      err(
+        `Can't use ${options.environmentPath}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return 1;
+    }
+  }
+
   const task =
     "text" in options.task
       ? options.task.text
@@ -71,7 +85,11 @@ async function main(): Promise<number> {
     source: options.source,
     model,
     limits: options.limits,
-    setupOverrides: options.setupOverrides,
+    environment,
+    setupOverrides: Object.keys(options.setupOverrides).length
+      ? options.setupOverrides
+      : undefined,
+    baselineChecks: options.baselineChecks,
     emit: (event) => live?.onEvent(event),
     signal: controller.signal,
     keepSandbox: options.keep,
@@ -80,6 +98,12 @@ async function main(): Promise<number> {
 
   if (options.patchPath && result.diff) {
     await writeFile(options.patchPath, result.diff.patch);
+  }
+  if (options.saveEnvironmentPath && result.setup) {
+    await writeFile(
+      options.saveEnvironmentPath,
+      `${JSON.stringify(result.setup.config, null, 2)}\n`,
+    );
   }
 
   if (options.json) {
@@ -92,7 +116,12 @@ async function main(): Promise<number> {
       ),
     );
   } else {
-    out(formatSummary(result, { patchPath: options.patchPath }));
+    out(
+      formatSummary(result, {
+        patchPath: options.patchPath,
+        environmentPath: options.saveEnvironmentPath,
+      }),
+    );
     if (options.keep && result.sandboxId) {
       out(
         `\nSandbox kept: docker exec -it ${result.sandboxId} bash  (remove with pnpm sandbox:clean)`,

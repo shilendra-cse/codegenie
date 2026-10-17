@@ -16,10 +16,10 @@ sandbox → checkout → setup → baseline → agent → verify → diff → (d
 |---|---|---|
 | sandbox | Create a fresh sandbox | built |
 | checkout | Git URL: shallow clone (public repos). Local folder: copy tracked and untracked-but-not-ignored files, so `node_modules`, build output and `.env` stay out | built |
-| setup | Detect the project type, install dependencies, find check commands (section 3). Next: replay the project's environment config ([environment.md](./environment.md)) | built; being replaced |
-| baseline | Commit the state after setup, so the diff only contains the agent's changes; `node_modules/` always excluded. Next: also run every check once before the agent (pre-existing failures) | built; checks run planned |
+| setup | Replay the given environment config, or draft one from the repository (rules) and apply it; failed steps flag the environment as needing attention ([environment.md](./environment.md)) | built |
+| baseline | Commit the state after setup, then run every check once: passing / failing / broken / timed-out. Broken and timed-out checks are dropped; files the checks write are excluded from the diff | built |
 | agent | `runAgent()` with the setup result | built |
-| verify | Run every check again, independently of the agent. Next: compare with the baseline (fixed / regressed / still failing) | built; comparison planned |
+| verify | Run the checks again and compare with the baseline: passing / fixed / regressed / still failing | built |
 | diff | Patch and per-file changes against the baseline | built |
 | deliver | Commit, push, open the PR | planned (needs the GitHub App) |
 | cleanup | Destroy the sandbox, always (unless asked to keep it) | built |
@@ -51,57 +51,50 @@ pnpm agent:run --repo https://github.com/org/repo.git --ref main --task-file tas
 
 - Configuration in `apps/cli/.env`: `OPENAI_API_KEY`, `AGENT_MODEL` (default `openai:gpt-6-luna`).
 - Options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--install` / `--no-install`, `--check name=cmd`, `--patch`, `--keep`, `--json`. See `--help`.
-- Planned with environment onboarding: `pnpm agent:setup`, `--show-environment`, `--no-baseline-checks`; `--install`, `--no-install` and `--check` are removed in favor of the environment config ([environment.md](./environment.md)).
+- Environment: `--environment <file>` replays a saved config, `--save-environment <file>` writes the config this run used, `--no-baseline-checks` skips the check run before the agent. `--install`, `--no-install` and `--check` only apply to drafted configs.
+- Planned with environment onboarding: `pnpm agent:setup`, `--show-environment`; `--install`, `--no-install` and `--check` are removed in favor of the environment config ([environment.md](./environment.md)).
 - Relative paths resolve against the folder the command was run from.
 - Ctrl+C cancels cleanly (the sandbox is removed); a second Ctrl+C force-quits.
 - Exit codes: 0 succeeded, 2 incomplete, 1 failed, 130 cancelled.
 - Your local repository is never modified: the agent works on a copy.
 
-## 3. Setup stage
+## 3. Setup
 
-> **Being replaced** by environment onboarding: a per-repository environment config created once through a guided conversation and replayed by every job. Design: [environment.md](./environment.md). The description below is the current implementation until that lands.
+Setup now runs from an **environment config** (steps + checks): either one passed in, which is replayed, or one drafted by the rules and applied. The full design, including onboarding, lives in [environment.md](./environment.md).
 
-Prepares the repository the way a developer would, before the agent starts, so the agent begins with dependencies installed and knows how to check its work.
+```
+packages/runner/src/
+├── job/                 runJob(): runs the stages in order
+├── stages/              one folder per stage, in run order
+│   ├── checkout/
+│   ├── setup/           run-setup.ts: apply steps, baseline commit, baseline checks, check artifacts
+│   ├── verify/          rerun checks; compare.ts: passing / fixed / regressed / still failing
+│   └── changes/         baseline commit + diff (check artifacts excluded)
+└── environment/         config building blocks, independent of jobs (reused by onboarding)
+    ├── config.ts        schema: parseEnvironmentConfig()
+    ├── build-config.ts  draft + results → EnvironmentConfig
+    ├── apply.ts         run steps in order; install alternatives (frozen first, then lenient), keeping what worked
+    ├── checks.ts        run checks; classify passing / failing / broken / timed-out
+    └── draft/           rules: draft.ts, detector.ts, repo-reader.ts, detectors.ts (registry), node/
+```
 
-### Flow
+### Node rules (draft)
 
-1. **Detect:** each registered detector looks at the repository through `RepoReader`; the first match wins. No match: the agent is told no supported project type was found and can explore with `bash`.
-2. **Overrides:** caller corrections win over detection. `install: "<cmd>"` or `false`; `checks: Check[]` replace detected checks with the same name. Used by CLI flags now, project settings in the UI later.
-3. **Install:** the frozen (reproducible) command first, the lenient fallback if it fails; if both fail, setup **continues** and the agent sees the error. Output goes to `/tmp/codegenie/logs/setup-install.log` (`-retry.log` for the fallback). Timeout: 10 minutes.
-4. **Result:** `SetupResult` (in `@codegenie/shared`): ecosystem, package manager, install result, checks, notes. Events: `setup_started`, `setup_completed { success, commands }`.
+The `packageManager` field wins (corepack installs that exact version), then the lockfile, then npm.
 
-The caller passes `result.checks` to the agent's tool context (for `run_checks`) and the whole result to `runAgent({ setup })`, which summarizes it in the agent's prompt.
-
-### Node detector (JavaScript / TypeScript)
-
-Matches any repository with a `package.json` in the root.
-
-**Package manager:** the `packageManager` field wins (corepack installs that exact version), then the lockfile, then npm.
-
-| Signal | Manager | Frozen install | Fallback |
+| Signal | Manager | Install (frozen) | Alternative |
 |---|---|---|---|
 | `pnpm-lock.yaml` | pnpm | `pnpm install --frozen-lockfile` | `pnpm install` |
 | `yarn.lock` | yarn | `yarn install --frozen-lockfile` | `yarn install` |
 | `package-lock.json` / `npm-shrinkwrap.json` | npm | `npm ci` | `npm install` |
-| `bun.lock` / `bun.lockb` | bun | not installed (note: bun is not in the sandbox) | – |
+| `bun.lock` / `bun.lockb` | bun | not installed (bun is not in the sandbox) | – |
 | no lockfile | npm (or the field) | plain install | – |
 
-**Checks**, each run as `<pm> run <script>` in the repository root:
-
-| Check | Scripts (first match) |
-|---|---|
-| lint | `lint` |
-| typecheck | `typecheck`, `type-check`, `tsc`, `check-types`; otherwise `tsc --noEmit` via the package manager when `tsconfig.json` exists and `typescript` is a dependency |
-| test | `test`, unless it is npm's placeholder (`no test specified`) |
-| build | `build` |
+Checks from `package.json` scripts, run as `<pm> run <script>`: `lint`; `typecheck` / `type-check` / `tsc` / `check-types` (or `tsc --noEmit` for TypeScript projects without one); `test` (ignoring npm's placeholder); `build`. Only the repository root is considered until multi-project rules land (environment part B).
 
 ### Non-interactive environment
 
-The sandbox image sets `CI=true` (test runners don't start in watch mode) and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` (corepack doesn't ask before downloading pnpm or yarn). This applies to every command, including the agent's own `bash` calls.
-
-### Adding a language
-
-Write a detector in `detectors/<language>/` implementing `EcosystemDetector`, add it to `DETECTORS`, and make sure its toolchain is available in the sandbox. Nothing else changes: checks are already a list with a working directory, and the result format is language-neutral.
+The sandbox image sets `CI=true` (test runners don't start in watch mode) and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`. This applies to every command, including the agent's own `bash` calls.
 
 ## 4. Deferred (not in the MVP)
 

@@ -64,36 +64,73 @@ describe("buildRepoContext", () => {
     expect(context).toContain("(package.json could not be parsed)");
   });
 
-  it("summarizes the setup stage, including a failed install", async () => {
+  it("summarizes setup steps, baseline statuses and notes", async () => {
     const ctx = createToolContext(new FakeSandbox({ "package.json": "{}" }), [
-      { name: "test", command: "npm run test", cwd: "." },
+      { name: "lint", command: "npm run lint", cwd: "." },
       { name: "test", command: "npm run test", cwd: "web" },
     ]);
     const context = await buildRepoContext(ctx, {
-      ecosystem: "node",
-      packageManager: "npm",
-      install: {
-        command: "npm install",
-        status: "failed",
-        durationMs: 4_200,
-        logPath: "/tmp/codegenie/logs/setup-install-retry.log",
-        errorTail: "npm ERR! 404 Not Found",
+      config: {
+        version: 1,
+        steps: [],
+        checks: ctx.checks,
+        meta: { source: "detected", createdAt: "", decisions: [] },
       },
+      steps: [
+        {
+          name: "install",
+          cwd: ".",
+          command: "npm ci",
+          status: "ok",
+          durationMs: 1,
+          logPath: "/l1",
+        },
+        {
+          name: "install",
+          cwd: "web",
+          command: "npm install",
+          status: "failed",
+          durationMs: 1,
+          logPath: "/tmp/codegenie/logs/setup-2-install.log",
+          errorTail: "npm ERR! 404 Not Found",
+        },
+      ],
+      baseline: [
+        {
+          name: "lint",
+          command: "npm run lint",
+          cwd: ".",
+          status: "passing",
+          durationMs: 1,
+          logPath: "/b1",
+        },
+        {
+          name: "test",
+          command: "npm run test",
+          cwd: "web",
+          status: "failing",
+          durationMs: 1,
+          logPath: "/b2",
+        },
+      ],
       checks: ctx.checks,
-      notes: ["Installing dependencies failed (npm install)."],
+      health: "needs_attention",
+      notes: ['Setup step "install" (web) failed: `npm install`.'],
     });
     expect(context).toContain(
       [
         "## Setup (done before you started)",
-        "Package manager: npm",
-        "Install: FAILED (`npm install`). Full output: /tmp/codegenie/logs/setup-install-retry.log",
-        "Last lines:",
+        "Steps:",
+        "- install: `npm ci` ✓",
+        "- install (in web): `npm install` FAILED. Full output: /tmp/codegenie/logs/setup-2-install.log",
+        "  Last lines:",
         "npm ERR! 404 Not Found",
-        "Checks (run_checks):",
-        "- test: npm run test",
-        "- test: npm run test (in web)",
+        "Checks (run_checks) and their status before your changes:",
+        "- lint: npm run lint (passing)",
+        "- test (in web): npm run test (already failing)",
         "Notes:",
-        "- Installing dependencies failed (npm install).",
+        '- Setup step "install" (web) failed: `npm install`.',
+        "Don't try to fix checks that were already failing unless the task asks for it.",
       ].join("\n"),
     );
   });
