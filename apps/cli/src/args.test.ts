@@ -12,9 +12,32 @@ describe("parseCliArgs", () => {
       model: undefined,
       limits: {},
       setupOverrides: {},
+      environmentPath: undefined,
+      saveEnvironmentPath: undefined,
+      baselineChecks: true,
       patchPath: undefined,
       keep: false,
       json: false,
+    });
+  });
+
+  it("parses environment options", () => {
+    expect(
+      parse(
+        "--repo",
+        ".",
+        "--task",
+        "x",
+        "--environment",
+        "env.json",
+        "--save-environment",
+        "out/env.json",
+        "--no-baseline-checks",
+      ),
+    ).toMatchObject({
+      environmentPath: "/home/me/code/env.json",
+      saveEnvironmentPath: "/home/me/code/out/env.json",
+      baselineChecks: false,
     });
   });
 
@@ -77,6 +100,9 @@ describe("parseCliArgs", () => {
           { name: "lint", command: "npm run lint -- --quiet", cwd: "." },
         ],
       },
+      environmentPath: undefined,
+      saveEnvironmentPath: undefined,
+      baselineChecks: true,
       patchPath: "/home/me/code/out.patch",
       keep: true,
       json: true,
@@ -118,6 +144,19 @@ describe("parseCliArgs", () => {
       /--ref only applies to git URLs/,
     ],
     [["--repo", ".", "--task", "x", "--bogus"], /Unknown option/],
+    [
+      [
+        "--repo",
+        ".",
+        "--task",
+        "x",
+        "--environment",
+        "e.json",
+        "--check",
+        "test=x",
+      ],
+      /can't be combined with --environment/,
+    ],
   ])("rejects %j", (argv, message) => {
     expect(() => parse(...argv)).toThrow(UsageError);
     expect(() => parse(...argv)).toThrow(message);

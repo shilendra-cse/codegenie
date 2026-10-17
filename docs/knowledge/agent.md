@@ -109,7 +109,7 @@ The worker maps `incomplete` to a succeeded job delivered as a draft PR marked i
 
 - **System prompt** = fixed rules (`AGENT_RULES`) + repository context. It is built once per run and never changes, so together with the tool definitions it forms a stable prefix the provider can cache.
 - **Repository context:** file tree (2 levels), `package.json` (name, scripts, dependencies), first 80 lines of the README, `AGENTS.md` (capped at 8,000 characters). Missing files are skipped.
-- **Setup section:** what the runner's setup stage did (package manager, install status with the end of the error and the log path if it failed, the checks for `run_checks`, notes). Passed in as `runAgent({ setup })`; see [runner.md](./runner.md). With environment onboarding it will show the replayed setup steps and each check's baseline status, so the agent knows which checks were already failing ([environment.md](./environment.md)).
+- **Setup section:** the setup steps (✓, or FAILED with the log path and the end of the error), the checks for `run_checks` with their status before the agent's changes (passing / already failing / broken / timed out), and setup notes. When a check was already failing, the agent is told not to fix it unless the task asks. Passed in as `runAgent({ setup })`; see [runner.md](./runner.md) and [environment.md](./environment.md).
 - **First user message** = the task.
 
 ## 6. Context compaction

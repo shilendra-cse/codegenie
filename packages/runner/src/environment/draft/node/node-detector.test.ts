@@ -1,6 +1,6 @@
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { describe, expect, it } from "vitest";
-import { RepoReader } from "../../core/repo-reader.js";
+import { RepoReader } from "../repo-reader.js";
 import { nodeDetector } from "./node-detector.js";
 
 const detect = (files: Record<string, string>) =>

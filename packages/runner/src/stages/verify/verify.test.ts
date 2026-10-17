@@ -1,38 +1,51 @@
 import { FakeSandbox } from "@codegenie/sandbox/testing";
+import type { CheckResult } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
 import { runVerify } from "./verify.js";
 
+const checks = [
+  { name: "lint" as const, command: "npm run lint", cwd: "." },
+  { name: "test" as const, command: "npm run test", cwd: "." },
+];
+
+const baseline = (
+  lint: CheckResult["status"],
+  test: CheckResult["status"],
+): CheckResult[] => [
+  { ...checks[0]!, status: lint, durationMs: 1, logPath: "/b1" },
+  { ...checks[1]!, status: test, durationMs: 1, logPath: "/b2" },
+];
+
 describe("runVerify", () => {
-  it("runs every check in its folder and records the outcome", async () => {
+  it("compares every check with its baseline", async () => {
     const sandbox = new FakeSandbox();
     sandbox.execHandler = (command) =>
-      command.includes("npm run test")
-        ? { exitCode: 1, stdout: "ok 1\nnot ok 2 - health" }
+      command.includes("npm run lint")
+        ? { exitCode: 1, stdout: "lint error" }
         : {};
-    const outcomes = await runVerify(sandbox, [
-      { name: "lint", command: "npm run lint", cwd: "." },
-      { name: "test", command: "npm run test", cwd: "api" },
-    ]);
 
-    expect(outcomes).toEqual([
-      expect.objectContaining({
-        name: "lint",
-        passed: true,
-        logPath: "/tmp/codegenie/logs/verify-1-lint.log",
-      }),
-      expect.objectContaining({
-        name: "test",
-        cwd: "api",
-        passed: false,
-        exitCode: 1,
-        outputTail: "ok 1\nnot ok 2 - health",
-      }),
+    const result = await runVerify(
+      sandbox,
+      checks,
+      baseline("passing", "failing"),
+    );
+    expect(result).toMatchObject({ passed: false, fixed: 1, regressions: 1 });
+    expect(result.checks.map((c) => [c.name, c.comparison])).toEqual([
+      ["lint", "regressed"],
+      ["test", "fixed"],
     ]);
-    expect(outcomes[0]).not.toHaveProperty("outputTail");
-    expect(sandbox.execCalls.map((c) => c.options.cwd)).toEqual([".", "api"]);
+    expect(result.checks[0]).toMatchObject({
+      outputTail: "lint error",
+      logPath: "/tmp/codegenie/logs/verify-1-lint.log",
+    });
   });
 
-  it("returns nothing when there are no checks", async () => {
-    expect(await runVerify(new FakeSandbox(), [])).toEqual([]);
+  it("reports null when there are no checks", async () => {
+    expect(await runVerify(new FakeSandbox(), [], null)).toEqual({
+      checks: [],
+      passed: null,
+      fixed: 0,
+      regressions: 0,
+    });
   });
 });

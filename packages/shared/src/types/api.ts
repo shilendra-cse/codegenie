@@ -1,3 +1,4 @@
+import type { CheckStatus, StepStatus } from "./environment.js";
 // Mirrors apps/server/src/db/schema (see docs/knowledge/database.md).
 // Timestamps are ISO-8601 strings on the wire.
 
@@ -198,7 +199,8 @@ export type JobEventSetupStarted = JobEventBase & {
 export type JobEventSetupCompleted = JobEventBase & {
   type: "setup_completed";
   success: boolean;
-  commands: ProjectSetupConfig;
+  steps: { name: string; status: StepStatus }[];
+  checks: { name: string; cwd: string; status?: CheckStatus }[];
 };
 
 export type JobEventToolStart = JobEventBase & {

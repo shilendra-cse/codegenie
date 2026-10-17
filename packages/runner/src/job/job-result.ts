@@ -1,7 +1,7 @@
 import type { AgentResult } from "@codegenie/agent";
 import type { SetupResult } from "@codegenie/shared";
 import type { Diff } from "../stages/changes/index.js";
-import type { CheckOutcome } from "../stages/verify/index.js";
+import type { VerifyResult } from "../stages/verify/index.js";
 
 export type JobStatus = "succeeded" | "incomplete" | "failed" | "cancelled";
 export type JobStageName =
@@ -19,9 +19,7 @@ export type JobResult = {
   checkout?: { description: string; files: number | null };
   setup?: SetupResult;
   agent?: AgentResult;
-  verify?: CheckOutcome[];
-  /** null when the repository has no checks. */
-  checksPassed?: boolean | null;
+  verify?: VerifyResult;
   diff?: Diff;
   durationMs: number;
 };

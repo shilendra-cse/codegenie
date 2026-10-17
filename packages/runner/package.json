@@ -20,7 +20,8 @@
   "dependencies": {
     "@codegenie/agent": "workspace:*",
     "@codegenie/sandbox": "workspace:*",
-    "@codegenie/shared": "workspace:*"
+    "@codegenie/shared": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
