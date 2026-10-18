@@ -1,6 +1,6 @@
 # Environment
 
-> Status: **Accepted, not built yet** · Last updated: 2026-10-17 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
+> Status: **In progress** (part A built: config, replay, baseline, before/after, rules-only draft) · Last updated: 2026-10-17 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
 
 Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task job.
 
@@ -274,7 +274,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 
 | Part | Contents | Outcome |
 |---|---|---|
-| A | config type + schema; `apply` / `validate`; jobs replay the config; baseline + before/after; rules-only draft, auto-approved | jobs run from an explicit config |
+| A ✅ | config type + schema; `apply` / `validate`; jobs replay the config; baseline + before/after; rules-only draft, auto-approved | jobs run from an explicit config |
 | B | multi-project draft rules | correct drafts for DoDesk and BuyerBook |
 | C | setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels | the guided conversation works |
 | D | `EnvironmentStore` + CLI file store (versions); `agent:setup` and flags; health signals | complete onboarding in the CLI |

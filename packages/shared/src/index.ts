@@ -50,9 +50,21 @@ export type {
   CheckName,
   EcosystemId,
   PackageManager,
-  InstallStatus,
-  InstallResult,
-  SetupResult,
 } from "./types/setup.js";
 
 export { CHECK_NAMES } from "./types/setup.js";
+
+export type {
+  EnvironmentSource,
+  SetupStep,
+  StepStatus,
+  CheckStatus,
+  EnvironmentDecision,
+  EnvironmentConfig,
+  StepResult,
+  CheckResult,
+  EnvironmentHealth,
+  SetupResult,
+} from "./types/environment.js";
+
+export { checkKey } from "./types/environment.js";

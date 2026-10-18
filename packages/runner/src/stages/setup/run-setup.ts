@@ -1,81 +1,107 @@
+import type { Emit } from "@codegenie/agent";
 import type { Sandbox } from "@codegenie/sandbox";
-import type { Check, JobEvent, SetupResult } from "@codegenie/shared";
-import type { EcosystemDetector, InstallPlan } from "./core/detector.js";
-import { RepoReader } from "./core/repo-reader.js";
-import { DETECTORS } from "./detectors/index.js";
-import { runInstall } from "./install/run-install.js";
-
-export type SetupOverrides = {
-  install?: string | false;
-  checks?: Check[];
-};
+import {
+  checkKey,
+  type Check,
+  type EnvironmentConfig,
+  type SetupResult,
+} from "@codegenie/shared";
+import { applySteps } from "../../environment/apply.js";
+import { buildConfig } from "../../environment/build-config.js";
+import { isUsable, runChecks } from "../../environment/checks.js";
+import {
+  draftEnvironment,
+  type DraftOverrides,
+  type DraftStep,
+} from "../../environment/draft/draft.js";
+import { createBaseline } from "../changes/index.js";
 
 export type RunSetupOptions = {
   runId: string;
-  emit?: (event: JobEvent) => void;
-  overrides?: SetupOverrides;
-  detectors?: EcosystemDetector[];
+  emit: Emit;
+  environment?: EnvironmentConfig;
+  overrides?: DraftOverrides;
+  baselineChecks: boolean;
 };
 
-function mergeChecks(detected: Check[], overrides: Check[] = []) {
-  const overridden = new Set(overrides.map((c) => c.name));
-  return [...detected.filter((c) => !overridden.has(c.name)), ...overrides];
+export type PreparedEnvironment = {
+  setup: SetupResult;
+  /** Commit to diff against for the agent's changes. */
+  gitBase: string;
+};
+
+async function headCommit(sandbox: Sandbox) {
+  const head = await sandbox.exec("git rev-parse HEAD");
+  return head.exitCode === 0 ? head.stdout.trim() : undefined;
 }
 
 export async function runSetup(
   sandbox: Sandbox,
   options: RunSetupOptions,
-): Promise<SetupResult> {
-  const emit = options.emit ?? (() => {});
-  const ts = () => new Date().toISOString();
-  emit({ type: "setup_started", jobId: options.runId, ts: ts() });
-
-  const repo = new RepoReader(sandbox);
-  let detection = null;
-  for (const detector of options.detectors ?? DETECTORS) {
-    detection = await detector.detect(repo);
-    if (detection) break;
+): Promise<PreparedEnvironment> {
+  const { runId, emit, environment } = options;
+  if (environment && options.overrides) {
+    throw new Error(
+      "Setup overrides can't be combined with a given environment config; edit the config instead.",
+    );
   }
+  emit({ type: "setup_started", jobId: runId, ts: new Date().toISOString() });
 
-  const notes = detection ? [...detection.notes] : [];
-  if (!detection) {
+  const commit = await headCommit(sandbox);
+  const draft = environment
+    ? null
+    : await draftEnvironment(sandbox, { overrides: options.overrides });
+  const stepsToRun: DraftStep[] = environment?.steps ?? draft!.steps;
+  const checks: Check[] = environment?.checks ?? draft!.checks;
+  const notes = [...(draft?.notes ?? [])];
+
+  const steps = await applySteps(sandbox, stepsToRun);
+  for (const step of steps.filter((s) => s.status === "failed")) {
     notes.push(
-      "No supported project type was detected (currently JavaScript/TypeScript with a package.json). Explore the repository to find how to install and test it.",
+      `Setup step "${step.name}" (${step.cwd}) failed: \`${step.command}\`. Full output: ${step.logPath}.`,
     );
   }
 
-  const overrides = options.overrides ?? {};
-  const plan: InstallPlan | null =
-    overrides.install === false
-      ? null
-      : overrides.install
-        ? { frozen: overrides.install, fallback: null }
-        : (detection?.install ?? null);
-  const install = await runInstall(sandbox, plan);
-  if (install.status === "failed") {
-    notes.push(
-      `Installing dependencies failed (${install.command}). Full output: ${install.logPath}.`,
-    );
-  }
+  const baseline = options.baselineChecks
+    ? await runChecks(sandbox, checks, "baseline")
+    : null;
+  // After the checks, so files they write are part of the baseline, not the agent's changes.
+  const gitBase = await createBaseline(sandbox);
 
-  const checks = mergeChecks(detection?.checks ?? [], overrides.checks);
-  const result: SetupResult = {
-    ecosystem: detection?.ecosystem ?? null,
-    packageManager: detection?.packageManager ?? null,
-    install,
-    checks,
+  const statuses = new Map((baseline ?? []).map((c) => [checkKey(c), c]));
+  const usable = checks.filter((check) => {
+    const result = statuses.get(checkKey(check));
+    if (!result || isUsable(result.status)) return true;
+    notes.push(
+      `Check "${check.name}" (${check.cwd}) removed: ${result.status === "broken" ? "the command could not run" : "it timed out"} (\`${check.command}\`).`,
+    );
+    return false;
+  });
+
+  const setup: SetupResult = {
+    config:
+      environment ?? buildConfig({ draft: draft!, steps, baseline, commit }),
+    steps,
+    baseline,
+    checks: usable,
+    health: steps.some((s) => s.status === "failed") ? "needs_attention" : "ok",
     notes,
   };
 
   emit({
     type: "setup_completed",
-    jobId: options.runId,
-    ts: ts(),
-    success: install.status !== "failed",
-    commands: {
-      ...(install.command ? { install: install.command } : {}),
-      ...Object.fromEntries(checks.map((c) => [c.name, c.command])),
-    },
+    jobId: runId,
+    ts: new Date().toISOString(),
+    success: setup.health === "ok",
+    steps: steps.map(({ name, status }) => ({ name, status })),
+    checks: checks.map((check) => ({
+      name: check.name,
+      cwd: check.cwd,
+      ...(statuses.get(checkKey(check))
+        ? { status: statuses.get(checkKey(check))!.status }
+        : {}),
+    })),
   });
-  return result;
+
+  return { setup, gitBase };
 }

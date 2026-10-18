@@ -17,7 +17,12 @@ describe("createLiveReporter", () => {
         jobId: "j",
         ts,
         success: true,
-        commands: { install: "npm ci", test: "npm run test" },
+        steps: [{ name: "install", status: "ok" }],
+        checks: [
+          { name: "lint", cwd: ".", status: "passing" },
+          { name: "test", cwd: "api", status: "failing" },
+          { name: "build", cwd: "." },
+        ],
       },
       { type: "stage_changed", jobId: "j", ts, stage: "agent" },
       { type: "text_delta", jobId: "j", ts, delta: "Reading " },
@@ -67,7 +72,8 @@ describe("createLiveReporter", () => {
 
     expect(lines).toEqual([
       "→ setup",
-      "    install ok · checks: test",
+      "    steps: install ✓",
+      "    checks: lint ✓  test (api) ✗ failing  build",
       "→ agent",
       "    💬 Reading the app.",
       "    ▶ read_file src/app.ts",
@@ -98,30 +104,51 @@ describe("formatSummary", () => {
   const result: JobResult = {
     status: "succeeded",
     agent,
-    verify: [
-      {
-        name: "lint",
-        command: "npm run lint",
-        cwd: ".",
-        passed: true,
-        timedOut: false,
-        exitCode: 0,
-        durationMs: 1,
-        logPath: "/l",
-      },
-      {
-        name: "test",
-        command: "npm run test",
-        cwd: ".",
-        passed: false,
-        timedOut: false,
-        exitCode: 1,
-        durationMs: 1,
-        logPath: "/t",
-        outputTail: "1 failing",
-      },
-    ],
-    checksPassed: false,
+    verify: {
+      checks: [
+        {
+          name: "lint",
+          command: "npm run lint",
+          cwd: ".",
+          status: "passing",
+          durationMs: 1,
+          logPath: "/l",
+          comparison: "passing",
+        },
+        {
+          name: "typecheck",
+          command: "npm run typecheck",
+          cwd: ".",
+          status: "passing",
+          durationMs: 1,
+          logPath: "/c",
+          comparison: "fixed",
+        },
+        {
+          name: "test",
+          command: "npm run test",
+          cwd: "api",
+          status: "failing",
+          durationMs: 1,
+          logPath: "/t",
+          outputTail: "1 failing",
+          comparison: "regressed",
+        },
+        {
+          name: "build",
+          command: "npm run build",
+          cwd: ".",
+          status: "failing",
+          durationMs: 1,
+          logPath: "/b",
+          outputTail: "old error",
+          comparison: "still-failing",
+        },
+      ],
+      passed: false,
+      fixed: 1,
+      regressions: 1,
+    },
     diff: {
       patch: "diff --git a/src/app.ts b/src/app.ts\n+route\n",
       truncated: false,
@@ -141,8 +168,8 @@ describe("formatSummary", () => {
         "",
         "Summary: Added GET /health.",
         "",
-        "Checks after the agent: lint ✓  test ✗",
-        "--- test (npm run test) ---",
+        "Checks: lint ✓  typecheck ✓ fixed  test (api) ✗ regressed  build ✗ still failing",
+        "--- test (api) (npm run test) ---",
         "1 failing",
         "",
         "Diff: 2 files changed (+3 −0)",
@@ -176,5 +203,46 @@ describe("exitCode", () => {
     expect(exitCode("failed")).toBe(1);
     expect(exitCode("incomplete")).toBe(2);
     expect(exitCode("cancelled")).toBe(130);
+  });
+});
+
+describe("formatSummary setup details", () => {
+  it("shows setup notes, a needs-attention warning and the saved environment", () => {
+    const summary = formatSummary(
+      {
+        status: "succeeded",
+        setup: {
+          config: {
+            version: 1,
+            steps: [],
+            checks: [],
+            meta: { source: "detected", createdAt: "", decisions: [] },
+          },
+          steps: [
+            {
+              name: "install",
+              cwd: ".",
+              command: "npm ci",
+              status: "failed",
+              durationMs: 1,
+              logPath: "/s",
+            },
+          ],
+          baseline: null,
+          checks: [],
+          health: "needs_attention",
+          notes: ['Setup step "install" (.) failed: `npm ci`.'],
+        },
+        durationMs: 1_000,
+      },
+      { environmentPath: "/tmp/env.json" },
+    );
+    expect(summary).toContain(
+      'Note: Setup step "install" (.) failed: `npm ci`.',
+    );
+    expect(summary).toContain(
+      "Environment needs attention: a setup step failed.",
+    );
+    expect(summary).toContain("Environment saved to /tmp/env.json");
   });
 });

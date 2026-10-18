@@ -1,5 +1,5 @@
 import type { PackageManager } from "@codegenie/shared";
-import type { InstallPlan } from "../../core/detector.js";
+import type { InstallPlan } from "../detector.js";
 import type { PackageJson } from "./package-json.js";
 
 const LOCKFILES: [file: string, manager: PackageManager][] = [

@@ -1,4 +1,4 @@
-import type { JobResult, JobStatus } from "@codegenie/runner";
+import type { CheckComparison, JobResult, JobStatus } from "@codegenie/runner";
 import type { JobEvent } from "@codegenie/shared";
 
 type Write = (line: string) => void;
@@ -9,6 +9,21 @@ const STAGE_LABEL: Record<string, string> = {
   setup: "setup",
   agent: "agent",
   verify: "verify",
+};
+
+const CHECK_MARK = {
+  passing: "✓",
+  failing: "✗ failing",
+  broken: "⚠ broken",
+  "timed-out": "⚠ timed out",
+} as const;
+
+const COMPARISON_LABEL: Record<CheckComparison, string> = {
+  passing: "✓",
+  failing: "✗",
+  fixed: "✓ fixed",
+  regressed: "✗ regressed",
+  "still-failing": "✗ still failing",
 };
 
 function oneLine(text: string, max = 160) {
@@ -46,12 +61,20 @@ export function createLiveReporter(write: Write) {
           write(`    ${event.sandboxId}`);
           break;
         case "setup_completed": {
-          const checks = Object.keys(event.commands).filter(
-            (k) => k !== "install",
-          );
-          write(
-            `    install ${event.success ? "ok" : "FAILED"} · checks: ${checks.join(", ") || "none"}`,
-          );
+          const steps = event.steps
+            .map((step) => `${step.name} ${step.status === "ok" ? "✓" : "✗"}`)
+            .join("  ");
+          const checks = event.checks
+            .map((check) => {
+              const name =
+                check.cwd === "." ? check.name : `${check.name} (${check.cwd})`;
+              return check.status
+                ? `${name} ${CHECK_MARK[check.status]}`
+                : name;
+            })
+            .join("  ");
+          write(`    steps: ${steps || "none"}`);
+          write(`    checks: ${checks || "none"}`);
           break;
         }
         case "tool_start":
@@ -88,7 +111,7 @@ function tokens(count: number) {
 
 export function formatSummary(
   result: JobResult,
-  options: { patchPath?: string } = {},
+  options: { patchPath?: string; environmentPath?: string } = {},
 ): string {
   const lines: string[] = [""];
   const icon =
@@ -121,18 +144,29 @@ export function formatSummary(
   if (agent?.summary) lines.push("", `Summary: ${agent.summary}`);
 
   for (const note of result.setup?.notes ?? []) lines.push(`Note: ${note}`);
+  if (result.setup?.health === "needs_attention") {
+    lines.push("Environment needs attention: a setup step failed.");
+  }
 
-  if (result.verify?.length) {
+  const verified = result.verify?.checks ?? [];
+  if (verified.length) {
+    const label = (c: { name: string; cwd: string }) =>
+      c.cwd === "." ? c.name : `${c.name} (${c.cwd})`;
     lines.push(
       "",
-      `Checks after the agent: ${result.verify.map((c) => `${c.name} ${c.passed ? "✓" : "✗"}`).join("  ")}`,
+      `Checks: ${verified.map((c) => `${label(c)} ${COMPARISON_LABEL[c.comparison]}`).join("  ")}`,
     );
-    for (const check of result.verify.filter((c) => !c.passed)) {
+    for (const check of verified.filter(
+      (c) => c.comparison === "regressed" || c.comparison === "failing",
+    )) {
       lines.push(
-        `--- ${check.name} (${check.command}) ---`,
+        `--- ${label(check)} (${check.command}) ---`,
         check.outputTail ?? "",
       );
     }
+  }
+  if (options.environmentPath) {
+    lines.push(`Environment saved to ${options.environmentPath}`);
   }
 
   const diff = result.diff;

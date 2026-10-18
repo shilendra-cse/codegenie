@@ -6,12 +6,13 @@ import {
   type ResolvedModel,
 } from "@codegenie/agent";
 import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
-import type { JobStage } from "@codegenie/shared";
-import type { JobResult, JobStageName } from "./job-result.js";
-import { collectDiff, createBaseline } from "../stages/changes/index.js";
+import type { EnvironmentConfig, JobStage } from "@codegenie/shared";
+import type { DraftOverrides } from "../environment/draft/draft.js";
+import { collectDiff } from "../stages/changes/index.js";
 import { checkoutRepo, type RepoSource } from "../stages/checkout/index.js";
-import { runSetup, type SetupOverrides } from "../stages/setup/index.js";
+import { runSetup } from "../stages/setup/index.js";
 import { runVerify } from "../stages/verify/index.js";
+import type { JobResult, JobStageName } from "./job-result.js";
 
 export type RunJobOptions = {
   runId: string;
@@ -19,7 +20,10 @@ export type RunJobOptions = {
   source: RepoSource;
   model: ResolvedModel;
   limits?: Partial<AgentLimits>;
-  setupOverrides?: SetupOverrides;
+  environment?: EnvironmentConfig;
+  setupOverrides?: DraftOverrides;
+  /** Run every check before the agent (default true). */
+  baselineChecks?: boolean;
   emit?: Emit;
   signal?: AbortSignal;
   keepSandbox?: boolean;
@@ -87,13 +91,14 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
     if (signal?.aborted) return finish("cancelled");
 
     enter("setup");
-    const setup = await runSetup(sandbox, {
+    const { setup, gitBase } = await runSetup(sandbox, {
       runId,
       emit,
+      environment: options.environment,
       overrides: options.setupOverrides,
+      baselineChecks: options.baselineChecks ?? true,
     });
     result.setup = setup;
-    const baseline = await createBaseline(sandbox);
     if (signal?.aborted) return finish("cancelled");
 
     enter("agent");
@@ -111,11 +116,9 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
     if (agent.status === "cancelled") return finish("cancelled");
 
     enter("verify");
-    result.verify = await runVerify(sandbox, setup.checks);
-    result.checksPassed = result.verify.length
-      ? result.verify.every((check) => check.passed)
-      : null;
-    result.diff = await collectDiff(sandbox, baseline);
+    // Before the checks run again, so files they write stay out of the diff.
+    result.diff = await collectDiff(sandbox, gitBase);
+    result.verify = await runVerify(sandbox, setup.checks, setup.baseline);
 
     return finish(agent.status);
   } catch (error) {

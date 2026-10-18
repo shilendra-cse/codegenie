@@ -1,7 +1,7 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentLimits } from "@codegenie/agent";
-import type { RepoSource, SetupOverrides } from "@codegenie/runner";
+import type { DraftOverrides, RepoSource } from "@codegenie/runner";
 import { CHECK_NAMES, type Check, type CheckName } from "@codegenie/shared";
 
 export class UsageError extends Error {}
@@ -12,7 +12,10 @@ export type CliOptions = {
   task: { text: string } | { file: string };
   model?: string;
   limits: Partial<AgentLimits>;
-  setupOverrides: SetupOverrides;
+  setupOverrides: DraftOverrides;
+  environmentPath?: string;
+  saveEnvironmentPath?: string;
+  baselineChecks: boolean;
   patchPath?: string;
   keep: boolean;
   json: boolean;
@@ -30,6 +33,9 @@ export const USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<text>
   --install <cmd>        install command instead of the detected one
   --no-install           skip installing dependencies
   --check <name=cmd>     override a check (lint, typecheck, test, build); repeatable
+  --environment <file>   replay this environment config instead of detecting one
+  --save-environment <file>  save the environment config this run used
+  --no-baseline-checks   don't run the checks before the agent
   --patch <file>         save the diff to a file
   --keep                 keep the sandbox for inspection
   --json                 print the result as JSON
@@ -82,6 +88,9 @@ export function parseCliArgs(
         "no-install": { type: "boolean", default: false },
         check: { type: "string", multiple: true },
         patch: { type: "string" },
+        environment: { type: "string" },
+        "save-environment": { type: "string" },
+        "no-baseline-checks": { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         help: { type: "boolean", default: false },
@@ -123,7 +132,16 @@ export function parseCliArgs(
   if (timeoutMinutes !== undefined)
     limits.maxWallTimeMs = timeoutMinutes * 60_000;
 
-  const setupOverrides: SetupOverrides = {};
+  if (
+    values.environment &&
+    (values.install || values["no-install"] || values.check?.length)
+  ) {
+    throw new UsageError(
+      "--install, --no-install and --check can't be combined with --environment; edit the config instead",
+    );
+  }
+
+  const setupOverrides: DraftOverrides = {};
   if (values["no-install"]) setupOverrides.install = false;
   else if (values.install) setupOverrides.install = values.install;
   if (values.check?.length)
@@ -138,6 +156,13 @@ export function parseCliArgs(
     model: values.model,
     limits,
     setupOverrides,
+    environmentPath: values.environment
+      ? path.resolve(cwd, values.environment)
+      : undefined,
+    saveEnvironmentPath: values["save-environment"]
+      ? path.resolve(cwd, values["save-environment"])
+      : undefined,
+    baselineChecks: !values["no-baseline-checks"],
     patchPath: values.patch ? path.resolve(cwd, values.patch) : undefined,
     keep: values.keep,
     json: values.json,

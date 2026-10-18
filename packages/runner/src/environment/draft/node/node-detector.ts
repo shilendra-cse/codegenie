@@ -1,4 +1,4 @@
-import type { EcosystemDetector } from "../../core/detector.js";
+import type { EcosystemDetector } from "../detector.js";
 import type { PackageJson } from "./package-json.js";
 import { detectPackageManager, installPlan } from "./package-manager.js";
 import { detectChecks } from "./scripts.js";

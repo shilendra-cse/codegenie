@@ -70,10 +70,17 @@ describe("runJob", () => {
       status: "succeeded",
       sandboxId: "fake-sandbox",
       checkout: { description: "https://github.com/acme/app.git" },
-      setup: { packageManager: "npm", install: { status: "ok" } },
+      setup: {
+        steps: [{ name: "install", command: "npm ci", status: "ok" }],
+        baseline: [{ name: "test", status: "passing" }],
+        health: "ok",
+      },
       agent: { status: "succeeded", summary: "Set a to 2." },
-      verify: [{ name: "test", passed: true }],
-      checksPassed: true,
+      verify: {
+        checks: [{ name: "test", comparison: "passing" }],
+        passed: true,
+        regressions: 0,
+      },
       diff: { files: [{ path: "src/app.js", added: 1, removed: 1 }] },
     });
     expect(sandbox.files.get("/workspace/src/app.js")).toBe(
@@ -130,6 +137,80 @@ describe("runJob", () => {
   it("reports failing checks without changing the agent's status", async () => {
     const { sandbox } = fakeSandbox("npm run test");
     const result = await runJob(options(sandbox));
-    expect(result).toMatchObject({ status: "succeeded", checksPassed: false });
+    expect(result).toMatchObject({
+      status: "succeeded",
+      verify: {
+        checks: [{ name: "test", comparison: "still-failing" }],
+        passed: false,
+        regressions: 0,
+      },
+    });
+  });
+
+  it("reports a regression the agent introduced", async () => {
+    const { sandbox } = fakeSandbox();
+    const base = sandbox.execHandler;
+    sandbox.execHandler = (command, opts) =>
+      command.includes("npm run test") &&
+      sandbox.files.get("/workspace/src/app.js")?.includes("a = 2")
+        ? { exitCode: 1, stdout: "expected 1, got 2" }
+        : base(command, opts);
+    const result = await runJob(options(sandbox));
+    expect(result.verify).toMatchObject({
+      checks: [
+        {
+          name: "test",
+          comparison: "regressed",
+          outputTail: "expected 1, got 2",
+        },
+      ],
+      passed: false,
+      regressions: 1,
+    });
+  });
+
+  it("replays a given environment config", async () => {
+    const { sandbox } = fakeSandbox();
+    const result = await runJob(
+      options(sandbox, {
+        environment: {
+          version: 1,
+          steps: [{ name: "install", cwd: ".", command: "pnpm install" }],
+          checks: [{ name: "lint", cwd: ".", command: "pnpm lint" }],
+          meta: { source: "user", createdAt: "", decisions: [] },
+        },
+      }),
+    );
+    expect(result.setup).toMatchObject({
+      steps: [{ command: "pnpm install", status: "ok" }],
+      checks: [{ name: "lint", command: "pnpm lint" }],
+      config: { meta: { source: "user" } },
+    });
+  });
+
+  it("collects the diff before verify runs the checks again", async () => {
+    const { sandbox } = fakeSandbox();
+    await runJob(options(sandbox));
+    const commands = sandbox.execCalls.map((c) => c.command);
+    const diff = commands.findIndex((c) => c.includes("--numstat"));
+    const verify = commands.findIndex((c) => c.includes("logs/verify-"));
+    expect(diff).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(diff);
+  });
+
+  it("refuses setup overrides together with a given config", async () => {
+    const { sandbox } = fakeSandbox();
+    const result = await runJob(
+      options(sandbox, {
+        environment: {
+          version: 1,
+          steps: [],
+          checks: [],
+          meta: { source: "user", createdAt: "", decisions: [] },
+        },
+        setupOverrides: { install: false },
+      }),
+    );
+    expect(result).toMatchObject({ status: "failed", failedStage: "setup" });
   });
 });
