@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import { createToolContext } from "../core/context.js";
-import { ToolError } from "../core/tool-error.js";
-import { readFile } from "../read-file/read-file.js";
+import { createToolContext } from "../../../tools/core/context.js";
+import { ToolError } from "../../../tools/core/tool-error.js";
+import { readFile } from "../../../tools/read-file/read-file.js";
 import { editFile } from "./edit-file.js";
 
 const file = 'import a from "a";\n\nexport function f() {\n  return 1;\n}\n';

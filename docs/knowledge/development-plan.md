@@ -42,8 +42,10 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [ ] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every job.
   - [x] **A.** Config type + schema; `apply` / `validate`; jobs replay the config (`--environment`, `--save-environment`); baseline check run + before/after comparison in verify (`--no-baseline-checks`); files written by the first check run are part of the baseline, and the diff is taken before verify; rules-only draft, auto-approved inside the job. Standalone setup comes with D.
   - [x] **B.** Multi-project draft rules (workspaces, independent sub-projects, orchestration-only root).
-  - [ ] **C.** Setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels.
-  - [ ] **D.** `EnvironmentStore` + CLI file store (last 5 versions); `pnpm agent:setup` (setup only, no task), `--show-environment`; health signals (needs attention); remove `--install` / `--check`.
+  - [ ] **C.** Setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>`.
+    - [x] **C1.** Setup agent and its tools on a loop shared with the task agent.
+    - [ ] **C2.** Onboarding pipeline, final check, channels, `agent:setup`.
+  - [ ] **D.** `EnvironmentStore` + CLI file store (last 5 versions); the store makes `agent:setup` save per repository and `agent:run` find the config by itself; `--show-environment`; health signals (needs attention); remove `--install` / `--check`.
 - [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
 
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)

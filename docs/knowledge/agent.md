@@ -1,8 +1,8 @@
 # Agent
 
-> Status: **Accepted** · Last updated: 2026-10-15 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
+> Status: **Accepted** · Last updated: 2026-10-18 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
 
-The agent is the part of CodeGenie that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@codegenie/agent`); the CLI and the worker call `runAgent()`.
+The agent is the part of CodeGenie that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@codegenie/agent`); the CLI and the worker call `runAgent()`. A second agent, the setup agent (section 9), shares the same loop.
 
 ## 1. How it fits
 
@@ -24,29 +24,36 @@ caller (CLI / worker)
 ```
 packages/agent/src/
 ├── index.ts                  public API (re-exports each module)
+│
+│   shared by both agents
 ├── loop/
-│   ├── run-agent.ts          the flow: segments → finished / failed / cancelled / limit / nudge
+│   ├── run-loop.ts           the flow for any agent: segments → finished / failed / cancelled / limit / nudge
 │   ├── run-segment.ts        one streamText call: events, infra-error abort, message snapshot
-│   ├── agent-result.ts       AgentStatus, AgentResult, finish_task summary lookup
+│   ├── agent-result.ts       AgentStatus, LoopResult, AgentResult, finish tool input lookup
 │   ├── compaction.ts         cache-friendly context compaction
 │   ├── events.ts             AI SDK stream parts → JobEvent
 │   ├── limits.ts             default limits and the messages the model sees
 │   └── errors.ts             infrastructure-error detection
+├── tools/
+│   ├── core/                 context, run-tool, tool-error, workspace-path, output-log
+│   └── list-files/ · read-file/ · search/ · bash/
+├── prompt/repository.ts      tree, package.json, README excerpt, AGENTS.md
 ├── model/
 │   ├── catalog.ts            the models the platform may run (edit this to add one)
 │   ├── types.ts              ModelSpec, ModelPricing
 │   ├── resolve-model.ts      "openai:<id>" → AI SDK model via the provider registry
 │   └── usage.ts              tokens (input / cached / output) → cost
-├── prompt/
-│   ├── system-prompt.ts      fixed rules
-│   └── repo-context.ts       tree, package.json, README excerpt, AGENTS.md, check commands
-├── tools/
-│   ├── index.ts              createTools(ctx)
-│   ├── core/                 context, run-tool, tool-error, workspace-path, output-log
-│   └── <tool>/               <tool>.ts · description.ts · tests (one folder per tool)
 ├── lib/                      truncate, shell-quote, lines
-└── testing/                  FakeSandbox, scripted fake model, Docker test helper
+├── testing/                  scripted fake model
+│
+│   one folder per agent: its run function, prompt and own tools
+├── task-agent/
+│   ├── run-agent.ts          runLoop with the task prompt, tools and finish_task
+│   ├── prompt/               system-prompt.ts (fixed rules) · repo-context.ts (repository + setup section)
+│   └── tools/                createTools() · edit-file/ · write-file/ · run-checks/ · finish-task/
+└── setup-agent/              section 9
 ```
+Each tool folder holds `<tool>.ts`, `description.ts` and its tests.
 
 Tests sit next to the code: `*.test.ts` need nothing, `*.integration.test.ts` need Docker.
 
@@ -140,9 +147,36 @@ To add a model: add a catalog entry with values from the provider's model and pr
 - **Loop tests** cover finishing, real tool execution, event order, the prompt sent, nudges, all three limits with forced wrap-up, cancellation, sandbox loss before and during the run, provider errors, and recovery from tool errors.
 - **Integration tests** run tools against a real `DockerSandbox`.
 
-## 9. Setup agent (planned)
+## 9. Setup agent
 
-A second agent in this package, `setup-agent/`, used only during environment onboarding: it makes a repository installable and checkable, asks the user multiple-choice questions when it can't decide, and returns a structured environment config. It reuses the loop, with its own prompt and tools (`try_environment`, `ask_user`, `finish_setup`, plus the read/search/bash tools). Limits: 40 steps, 10 minutes, $0.20, at most 5 questions. Design: [environment.md](./environment.md).
+Used only during environment onboarding ([environment.md](./environment.md)): it gets the setup the rules drafted and the results of trying it, makes the repository installable and checkable, asks the user when it can't decide, and returns the final steps and checks.
+
+```
+runSetupAgent({ sandbox, model, initial: { proposal, result, notes }, tryEnvironment, channel, limits })
+  → SetupAgentResult { status, proposal, notes, decisions, usage, … }
+```
+
+```
+packages/agent/src/setup-agent/
+├── run-setup-agent.ts   runLoop with the setup prompt, tools and finish_setup
+├── prompt.ts            rules + the brief (drafted setup, its results, the rules' notes)
+├── schema.ts            steps + checks input shared by try_environment and finish_setup
+├── format.ts            try results → text for the model
+├── context.ts           tryEnvironment, channel, questions asked, decisions
+└── tools/  try-environment/ · ask-user/ · finish-setup/
+```
+
+| Tool | What it does |
+|---|---|
+| `list_files`, `read_file`, `search`, `bash` | explore and try commands (the task agent's tools) |
+| `try_environment` | runs a whole setup through the runner's function and returns each status with the end of its output |
+| `ask_user` | a question with 2–4 options (first = recommended) through the `UserChannel`; free-text answers allowed; at most 5; each answer is recorded as a decision (`auto` when no one was asked) |
+| `finish_setup` | the final steps, checks and notes; ends the run |
+
+- No `edit_file` / `write_file`: the setup must work from a clean checkout, so the repository is never changed. The prompt also says anything installed by hand with `bash` is lost.
+- Failing checks: the agent decides whether the failure is in the code (kept as already failing) or in the environment (fixed, or the user is asked).
+- Limits: 40 steps, 20 minutes (installs alone can take minutes), $0.20.
+- The package doesn't depend on the runner: `tryEnvironment` and the channel are passed in.
 
 ## 10. Known limitations / TODO
 

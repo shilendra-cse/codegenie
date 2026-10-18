@@ -1,5 +1,5 @@
-export { runAgent, type RunAgentOptions } from "./run-agent.js";
-export type { AgentResult, AgentStatus } from "./agent-result.js";
+export { runLoop, type FinishTool, type RunLoopOptions } from "./run-loop.js";
+export type { AgentResult, AgentStatus, LoopResult } from "./agent-result.js";
 export {
   DEFAULT_LIMITS,
   type AgentLimits,

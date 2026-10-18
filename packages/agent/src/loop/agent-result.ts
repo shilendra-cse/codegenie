@@ -5,9 +5,11 @@ import type { RunState } from "./run-segment.js";
 
 export type AgentStatus = "succeeded" | "incomplete" | "failed" | "cancelled";
 
-export type AgentResult = {
+/** Outcome of one agent loop run, whatever the agent's finish tool is. */
+export type LoopResult = {
   status: AgentStatus;
-  summary: string | null;
+  /** Input of the finish tool call; undefined when it wasn't called. */
+  finishInput: unknown;
   error?: string;
   limitReached?: LimitReached;
   steps: number;
@@ -18,8 +20,12 @@ export type AgentResult = {
   messages: ModelMessage[];
 };
 
+export type AgentResult = Omit<LoopResult, "finishInput"> & {
+  summary: string | null;
+};
+
 export type ResultDetails = Partial<
-  Pick<AgentResult, "summary" | "error" | "limitReached">
+  Pick<LoopResult, "finishInput" | "error" | "limitReached">
 >;
 
 export function buildResult(
@@ -27,10 +33,10 @@ export function buildResult(
   run: { startedAt: number; modelId: string },
   status: AgentStatus,
   details: ResultDetails = {},
-): AgentResult {
+): LoopResult {
   return {
     status,
-    summary: details.summary ?? null,
+    finishInput: details.finishInput,
     error: details.error,
     limitReached: details.limitReached,
     steps: state.steps,
@@ -42,17 +48,19 @@ export function buildResult(
   };
 }
 
-export function findFinishSummary(messages: ModelMessage[]): string | null {
+export function findToolInput(
+  messages: ModelMessage[],
+  toolName: string,
+): unknown {
   for (const message of messages) {
     if (message.role !== "assistant" || typeof message.content === "string") {
       continue;
     }
     for (const part of message.content) {
-      if (part.type === "tool-call" && part.toolName === "finish_task") {
-        const summary = (part.input as { summary?: unknown }).summary;
-        return typeof summary === "string" ? summary : "";
+      if (part.type === "tool-call" && part.toolName === toolName) {
+        return part.input ?? {};
       }
     }
   }
-  return null;
+  return undefined;
 }

@@ -1,12 +1,15 @@
 import { SandboxFileError } from "@codegenie/sandbox";
 import { tool } from "ai";
 import { z } from "zod";
-import { ToolError } from "../core/tool-error.js";
-import { displayPath, resolveWorkspacePath } from "../core/workspace-path.js";
-import type { ToolContext } from "../core/context.js";
+import { ToolError } from "../../../tools/core/tool-error.js";
+import {
+  displayPath,
+  resolveWorkspacePath,
+} from "../../../tools/core/workspace-path.js";
+import type { ToolContext } from "../../../tools/core/context.js";
 import { writeFileDescription } from "./description.js";
-import { splitLines } from "../../lib/lines.js";
-import { runTool } from "../core/run-tool.js";
+import { splitLines } from "../../../lib/lines.js";
+import { runTool } from "../../../tools/core/run-tool.js";
 
 export const writeFileInput = z.object({
   path: z.string().describe("File to write, relative to /workspace"),

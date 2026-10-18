@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
-import { createToolContext } from "../core/context.js";
-import { readFile } from "../read-file/read-file.js";
+import { createToolContext } from "../../../tools/core/context.js";
+import { readFile } from "../../../tools/read-file/read-file.js";
 import { editFile } from "./edit-file.js";
 
 const sandbox = await dockerSandboxOrSkip("edit_file");
