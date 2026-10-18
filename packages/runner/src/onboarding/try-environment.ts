@@ -26,11 +26,13 @@ export function createTryEnvironment(sandbox: Sandbox, logPrefix = "try") {
       logPrefix: `${prefix}-step`,
       reuse: (step) => {
         const done = succeeded.get(stepKey(step));
-        return done && { ...done, name: step.name };
+        return done && { ...done, name: step.name, reused: true };
       },
     });
     for (const step of steps) {
-      if (step.status === "ok") succeeded.set(stepKey(step), step);
+      if (step.status === "ok" && !step.reused) {
+        succeeded.set(stepKey(step), step);
+      }
     }
     const checks = await runChecks(sandbox, setup.checks, `${prefix}-check`);
     return { steps, checks };

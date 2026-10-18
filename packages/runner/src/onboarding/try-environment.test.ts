@@ -25,9 +25,9 @@ describe("createTryEnvironment", () => {
       1,
     );
     expect(commands.filter((c) => c.includes("npm run lint"))).toHaveLength(2);
-    expect(second.steps.map((s) => [s.name, s.status])).toEqual([
-      ["install", "ok"],
-      ["generate", "ok"],
+    expect(second.steps.map((s) => [s.name, s.status, s.reused])).toEqual([
+      ["install", "ok", true],
+      ["generate", "ok", undefined],
     ]);
     expect(second.checks[0]!.logPath).toContain("try2-check-1-lint");
   });

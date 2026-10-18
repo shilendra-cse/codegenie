@@ -175,6 +175,8 @@ packages/agent/src/setup-agent/
 
 - No `edit_file` / `write_file`: the setup must work from a clean checkout, so the repository is never changed. The prompt also says anything installed by hand with `bash` is lost.
 - Failing checks: the agent decides whether the failure is in the code (kept as already failing) or in the environment (fixed, or the user is asked).
+- Installing packages the repository doesn't declare (e.g. a linter missing from `package.json`) is the user's decision: the agent asks, recommends leaving the check out, and pins exact versions if the user wants the install.
+- Try results list every status first and the output of failed steps and checks after, so the overview survives truncation; steps reused from an earlier try show "already done".
 - Limits: 40 steps, 20 minutes (installs alone can take minutes), $0.20.
 - The package doesn't depend on the runner: `tryEnvironment` and the channel are passed in.
 
