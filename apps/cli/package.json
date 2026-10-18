@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "setup": "tsx src/main.ts setup"
   },
   "dependencies": {
     "@codegenie/agent": "workspace:*",

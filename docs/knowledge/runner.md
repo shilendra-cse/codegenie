@@ -52,11 +52,24 @@ pnpm agent:run --repo https://github.com/org/repo.git --ref main --task-file tas
 - Configuration in `apps/cli/.env`: `OPENAI_API_KEY`, `AGENT_MODEL` (default `openai:gpt-6-luna`).
 - Options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--install` / `--no-install`, `--check name=cmd`, `--patch`, `--keep`, `--json`. See `--help`.
 - Environment: `--environment <file>` replays a saved config, `--save-environment <file>` writes the config this run used, `--no-baseline-checks` skips the check run before the agent. `--install`, `--no-install` and `--check` only apply to drafted configs.
-- Planned with environment onboarding: `pnpm agent:setup`, `--show-environment`; `--install`, `--no-install` and `--check` are removed in favor of the environment config ([environment.md](./environment.md)).
+- Planned with the environment store (part D): `agent:run` finds the saved config by itself, `--show-environment`; `--install`, `--no-install` and `--check` are removed in favor of the environment config ([environment.md](./environment.md)).
 - Relative paths resolve against the folder the command was run from.
 - Ctrl+C cancels cleanly (the sandbox is removed); a second Ctrl+C force-quits.
 - Exit codes: 0 succeeded, 2 incomplete, 1 failed, 130 cancelled.
 - Your local repository is never modified: the agent works on a copy.
+
+### `pnpm agent:setup` (onboarding)
+
+```bash
+pnpm agent:setup --repo ../BuyerBook --save env.json          # asks you when it can't decide
+pnpm agent:setup --repo https://github.com/org/repo --save env.json --yes   # recommended answers, saves
+pnpm agent:run   --repo ../BuyerBook --environment env.json --task "…"
+```
+
+- Options: `--ref`, `--model` (the setup agent's model), `--yes`. Questions show numbered options, the recommended one first, plus "Something else…" for your own answer.
+- Output: progress lines, the setup agent's tool calls (try results as ✓ / ✗ / ⚠ lines), the environment to approve (steps, checks with their final status, notes, your answers), then Save / Discard.
+- Exit codes: 0 saved or discarded, 1 failed, 130 cancelled.
+- The code: `apps/cli/src/commands/` (`run.ts`, `setup.ts`), `args/`, `channel/terminal.ts`; `main.ts` picks the command.
 
 ## 3. Setup
 
@@ -109,6 +122,29 @@ Checked against the eval repos (2026-10-18): DoDesk drafts `backend/` and `clien
 ### Non-interactive environment
 
 The sandbox image sets `CI=true` (test runners don't start in watch mode) and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`. This applies to every command, including the agent's own `bash` calls.
+
+### Onboarding: `runOnboarding()` (`onboarding/`)
+
+```
+sandbox + checkout → draft → try (install + checks)
+  → problems? (failed step, check not passing, no checks, nothing detected)
+      yes → setup agent (packages/agent) with a tryEnvironment that skips installs that already worked
+  → final check: the result in a fresh sandbox + checkout
+  → show the environment → ask Save / Discard → { status, config, final, agent, notes }
+```
+
+| File | Role |
+|---|---|
+| `run-onboarding.ts` | the flow above; destroys both sandboxes at the end |
+| `try-environment.ts` | apply + checks per attempt; reuses steps that already succeeded (same folder and command) |
+| `problems.ts` | what sends a setup to the agent |
+| `summary.ts` | the environment shown before saving |
+| `auto-channel.ts` | `--yes` and evals: always the recommended option, recorded as automatic |
+
+- When the agent doesn't finish, the drafted setup is used and a note says so.
+- Checks that are broken or time out in the final check are left out, and checks that behave differently there than in the agent's last try get a note.
+- `source` is `detected` when the agent didn't run, `ai` when it did; answers go into `meta.decisions`.
+- Saving is the caller's job (the CLI writes the file; the store comes with part D).
 
 ## 4. Deferred (not in the MVP)
 

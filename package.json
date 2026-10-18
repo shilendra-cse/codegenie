@@ -7,6 +7,7 @@
     "setup": "bash script/setup.sh",
     "migrate": "bash script/migrate.sh",
     "agent:run": "pnpm --filter @codegenie/cli start",
+    "agent:setup": "pnpm --filter @codegenie/cli run setup",
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
     "dev:worker": "pnpm --filter @codegenie/worker dev",

@@ -74,8 +74,10 @@ export type TryResult = {
 export type SetupQuestion = {
   question: string;
   why?: string;
-  /** 2–4 options; the first one is recommended. Answering with free text is always allowed. */
+  /** 2–4 options; the first one is recommended. */
   options: { label: string; detail?: string }[];
+  /** false when only the listed options make sense (e.g. Save / Discard). */
+  allowOther?: boolean;
 };
 
 /** `auto` marks answers picked without asking anyone (non-interactive runs). */

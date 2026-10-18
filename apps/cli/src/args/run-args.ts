@@ -3,8 +3,12 @@ import { parseArgs } from "node:util";
 import type { AgentLimits } from "@codegenie/agent";
 import type { DraftOverrides, RepoSource } from "@codegenie/runner";
 import { CHECK_NAMES, type Check, type CheckName } from "@codegenie/shared";
-
-export class UsageError extends Error {}
+import {
+  parseSource,
+  positiveNumber,
+  UsageError,
+  usageError,
+} from "./common.js";
 
 export type CliOptions = {
   help: false;
@@ -21,7 +25,7 @@ export type CliOptions = {
   json: boolean;
 };
 
-export const USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<text>" [options]
+export const RUN_USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<text>" [options]
 
   --repo <path|url>      local folder or public git URL (required)
   --ref <branch|tag>     branch or tag to clone (git URLs)
@@ -40,17 +44,6 @@ export const USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<text>
   --keep                 keep the sandbox for inspection
   --json                 print the result as JSON
   --help`;
-
-const GIT_URL = /^(https?:\/\/|ssh:\/\/|git@)/;
-
-function positiveNumber(flag: string, value: string | undefined) {
-  if (value === undefined) return undefined;
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) {
-    throw new UsageError(`${flag} must be a positive number`);
-  }
-  return number;
-}
 
 function parseCheck(spec: string): Check {
   const separator = spec.indexOf("=");
@@ -97,14 +90,11 @@ export function parseCliArgs(
       },
     }));
   } catch (error) {
-    throw new UsageError(
-      error instanceof Error ? error.message : String(error),
-    );
+    throw usageError(error);
   }
 
   if (values.help) return { help: true };
 
-  if (!values.repo) throw new UsageError("--repo is required");
   if (Boolean(values.task) === Boolean(values["task-file"])) {
     throw new UsageError("Pass exactly one of --task or --task-file");
   }
@@ -112,16 +102,7 @@ export function parseCliArgs(
     throw new UsageError("--install and --no-install can't be combined");
   }
 
-  const source: RepoSource = GIT_URL.test(values.repo)
-    ? {
-        type: "git",
-        url: values.repo,
-        ...(values.ref ? { ref: values.ref } : {}),
-      }
-    : { type: "local", path: path.resolve(cwd, values.repo) };
-  if (values.ref && source.type === "local") {
-    throw new UsageError("--ref only applies to git URLs");
-  }
+  const source: RepoSource = parseSource(values.repo, values.ref, cwd);
 
   const timeoutMinutes = positiveNumber("--timeout", values.timeout);
   const limits: Partial<AgentLimits> = {};

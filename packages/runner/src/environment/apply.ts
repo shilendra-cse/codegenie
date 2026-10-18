@@ -20,19 +20,31 @@ function errorTail(run: LoggedRun) {
   return lastLines(run.output + timedOut, ERROR_TAIL_LINES);
 }
 
+export type ApplyOptions = {
+  logPrefix?: string;
+  /** A result to use instead of running the step, e.g. when it already succeeded. */
+  reuse?: (step: DraftStep) => StepResult | undefined;
+};
+
 export async function applySteps(
   sandbox: Sandbox,
   steps: DraftStep[],
+  options: ApplyOptions = {},
 ): Promise<StepResult[]> {
   const results: StepResult[] = [];
   for (const [index, step] of steps.entries()) {
+    const reused = options.reuse?.(step);
+    if (reused) {
+      results.push(reused);
+      continue;
+    }
     const candidates = [step.command, ...(step.alternatives ?? [])];
     const started = Date.now();
     let last: { command: string; run: LoggedRun } | null = null;
 
     for (const [attempt, command] of candidates.entries()) {
       const run = await runLogged(sandbox, command, {
-        logName: `setup-${index + 1}-${slug(step.name)}${attempt ? `-alt${attempt}` : ""}`,
+        logName: `${options.logPrefix ?? "setup"}-${index + 1}-${slug(step.name)}${attempt ? `-alt${attempt}` : ""}`,
         timeoutMs: STEP_TIMEOUT_MS,
         cwd: step.cwd,
       });

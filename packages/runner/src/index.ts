@@ -10,3 +10,4 @@ export {
   type ComparedCheck,
   type VerifyResult,
 } from "./stages/verify/index.js";
+export * from "./onboarding/index.js";
