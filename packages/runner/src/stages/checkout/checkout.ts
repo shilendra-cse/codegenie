@@ -53,3 +53,8 @@ export async function checkoutRepo(
   await sandbox.copyInFiles(source.path, files);
   return { description: source.path, files: files.length };
 }
+
+export async function headCommit(sandbox: Sandbox) {
+  const head = await sandbox.exec("git rev-parse HEAD");
+  return head.exitCode === 0 ? head.stdout.trim() : undefined;
+}

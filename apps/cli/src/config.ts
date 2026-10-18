@@ -1,5 +1,6 @@
 import path from "node:path";
 import { config as loadDotenv } from "dotenv";
+import { resolveModel, type ResolvedModel } from "@codegenie/agent";
 import { z } from "zod";
 
 export const ENV_FILE = path.join(import.meta.dirname, "..", ".env");
@@ -31,4 +32,10 @@ export function parseConfig(
     throw new ConfigError(parsed.error.issues.map((i) => i.message).join("\n"));
   }
   return { model: parsed.data.AGENT_MODEL };
+}
+
+/** Reads apps/cli/.env and resolves the model to use (the flag wins over AGENT_MODEL). */
+export function loadModel(override: string | undefined): ResolvedModel {
+  loadEnvFile();
+  return resolveModel(override ?? parseConfig(process.env).model);
 }

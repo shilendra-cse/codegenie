@@ -15,6 +15,7 @@ import {
   type DraftStep,
 } from "../../environment/draft/draft.js";
 import { createBaseline } from "../changes/index.js";
+import { headCommit } from "../checkout/index.js";
 
 export type RunSetupOptions = {
   runId: string;
@@ -29,11 +30,6 @@ export type PreparedEnvironment = {
   /** Commit to diff against for the agent's changes. */
   gitBase: string;
 };
-
-async function headCommit(sandbox: Sandbox) {
-  const head = await sandbox.exec("git rev-parse HEAD");
-  return head.exitCode === 0 ? head.stdout.trim() : undefined;
-}
 
 export async function runSetup(
   sandbox: Sandbox,
@@ -80,7 +76,14 @@ export async function runSetup(
 
   const setup: SetupResult = {
     config:
-      environment ?? buildConfig({ draft: draft!, steps, baseline, commit }),
+      environment ??
+      buildConfig({
+        steps,
+        checks,
+        results: baseline,
+        source: draft!.overridden ? "mixed" : "detected",
+        commit,
+      }),
     steps,
     baseline,
     checks: usable,

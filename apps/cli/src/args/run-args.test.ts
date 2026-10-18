@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseCliArgs, UsageError } from "./args.js";
+import { UsageError } from "./common.js";
+import { parseCliArgs } from "./run-args.js";
 
 const parse = (...argv: string[]) => parseCliArgs(argv, "/home/me/code");
 

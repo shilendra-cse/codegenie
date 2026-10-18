@@ -1,6 +1,6 @@
 # Environment
 
-> Status: **In progress** (parts A and B built: config, replay, baseline, before/after, rules-only draft for single and multi-project repos) · Last updated: 2026-10-18 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
+> Status: **In progress** (parts A–C built: config, replay, baseline, before/after, multi-project draft rules, setup agent and onboarding with `pnpm agent:setup`) · Last updated: 2026-10-18 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
 
 Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task job.
 
@@ -231,6 +231,8 @@ Lifecycle: onboarding inserts a new active version (the previous one becomes sup
 
 ## 6. CLI
 
+Now (part C): `pnpm agent:setup --repo … --save env.json [--yes]`, then `pnpm agent:run … --environment env.json`. With part D:
+
 ```bash
 pnpm agent:setup --repo ../DoDesk             # onboarding conversation → saves a config
 pnpm agent:setup --repo ../DoDesk --yes       # non-interactive: recommended answers, auto-approve
@@ -276,7 +278,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 |---|---|---|
 | A ✅ | config type + schema; `apply` / `validate`; jobs replay the config; baseline + before/after; rules-only draft, auto-approved | jobs run from an explicit config |
 | B ✅ | multi-project draft rules | correct drafts for DoDesk and BuyerBook |
-| C | C1 ✅ setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup` | the guided conversation works |
+| C ✅ | C1 setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>` | the guided conversation works |
 | D | `EnvironmentStore` + CLI file store (versions); `agent:setup` and flags; health signals | complete onboarding in the CLI |
 | Phase 2 | DB migration + `DbEnvironmentStore` | product storage |
 | Phase 4 | `EventChannel`, question cards, config panel, needs-attention banner | onboarding on the website |

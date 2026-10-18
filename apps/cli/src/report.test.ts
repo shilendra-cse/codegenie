@@ -2,7 +2,14 @@ import type { AgentResult } from "@codegenie/agent";
 import type { JobResult } from "@codegenie/runner";
 import type { JobEvent } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
-import { createLiveReporter, exitCode, formatSummary } from "./report.js";
+import type { OnboardingResult } from "@codegenie/runner";
+import {
+  createLiveReporter,
+  exitCode,
+  formatSetupSummary,
+  formatSummary,
+  setupExitCode,
+} from "./report.js";
 
 const ts = "2026-10-16T00:00:00.000Z";
 
@@ -247,5 +254,81 @@ describe("formatSummary setup details", () => {
       "Environment needs attention: a setup step failed.",
     );
     expect(summary).toContain("Environment saved to /tmp/env.json");
+  });
+});
+
+describe("setup output", () => {
+  const usage = {
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    costUsd: 0.0123,
+  };
+  const result = (overrides: Partial<OnboardingResult>): OnboardingResult => ({
+    status: "approved",
+    agent: null,
+    notes: [],
+    durationMs: 125_000,
+    ...overrides,
+  });
+
+  it("shows try_environment results while the setup agent works", () => {
+    const lines: string[] = [];
+    createLiveReporter((l) => lines.push(l)).onEvent({
+      type: "tool_end",
+      jobId: "j",
+      ts: "",
+      toolCallId: "c",
+      toolName: "try_environment",
+      output:
+        "Steps:\n✓ install: npm ci (3.0s)\n\nChecks:\n⚠ broken (the command could not run) lint: npm run lint (0.1s)\n    sh: eslint: not found",
+    });
+    expect(lines).toEqual([
+      "      ✓ install: npm ci (3.0s)",
+      "      ⚠ broken (the command could not run) lint: npm run lint (0.1s)",
+    ]);
+  });
+
+  it("summarizes a saved setup with the agent's cost", () => {
+    expect(
+      formatSetupSummary(
+        result({
+          agent: {
+            status: "succeeded",
+            steps: 6,
+            usage,
+            durationMs: 1,
+            model: "m",
+            compactions: 0,
+            notes: [],
+            decisions: [],
+          },
+        }),
+        "/tmp/env.json",
+      ),
+    ).toBe(
+      "\n✓ approved in 2m 5s · setup agent: 6 steps · $0.0123\nEnvironment saved to /tmp/env.json",
+    );
+  });
+
+  it("says when nothing was saved, and why setup failed", () => {
+    expect(formatSetupSummary(result({ status: "discarded" }), null)).toContain(
+      "Nothing was saved.",
+    );
+    expect(
+      formatSetupSummary(
+        result({ status: "failed", error: "git clone failed" }),
+        null,
+      ),
+    ).toContain("Error: git clone failed");
+  });
+
+  it.each([
+    ["approved", 0],
+    ["discarded", 0],
+    ["failed", 1],
+    ["cancelled", 130],
+  ] as const)("exits %s with %i", (status, code) => {
+    expect(setupExitCode(status)).toBe(code);
   });
 });

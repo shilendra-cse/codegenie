@@ -1,4 +1,10 @@
-import type { CheckComparison, JobResult, JobStatus } from "@codegenie/runner";
+import type {
+  CheckComparison,
+  JobResult,
+  JobStatus,
+  OnboardingResult,
+  OnboardingStatus,
+} from "@codegenie/runner";
 import type { JobEvent } from "@codegenie/shared";
 
 type Write = (line: string) => void;
@@ -89,9 +95,12 @@ export function createLiveReporter(write: Write) {
           const output = String(event.output ?? "");
           if (output.startsWith("Error:")) {
             write(`      ✗ ${oneLine(output, 140)}`);
-          } else if (event.toolName === "run_checks") {
+          } else if (
+            event.toolName === "run_checks" ||
+            event.toolName === "try_environment"
+          ) {
             for (const line of output.split("\n")) {
-              if (/^[✓✗] /.test(line)) write(`      ${line}`);
+              if (/^[✓✗⚠] /.test(line)) write(`      ${line}`);
             }
           }
           break;
@@ -208,4 +217,41 @@ export function exitCode(status: JobStatus) {
     case "failed":
       return 1;
   }
+}
+
+const ONBOARDING_ICON: Record<OnboardingStatus, string> = {
+  approved: "✓",
+  discarded: "○",
+  failed: "✗",
+  cancelled: "✗",
+};
+
+export function formatSetupSummary(
+  result: OnboardingResult,
+  savePath: string | null,
+): string {
+  const stats = [`in ${seconds(result.durationMs)}`];
+  if (result.agent) {
+    stats.push(
+      `setup agent: ${result.agent.steps} steps`,
+      `$${result.agent.usage.costUsd.toFixed(4)}`,
+    );
+  }
+  const lines = [
+    "",
+    `${ONBOARDING_ICON[result.status]} ${result.status} ${stats.join(" · ")}`,
+  ];
+  if (result.error) lines.push(`Error: ${result.error}`);
+  if (result.agent?.error) lines.push(`Setup agent: ${result.agent.error}`);
+  if (savePath) lines.push(`Environment saved to ${savePath}`);
+  if (result.status === "discarded") lines.push("Nothing was saved.");
+  return lines.join("\n");
+}
+
+export function setupExitCode(status: OnboardingStatus) {
+  return status === "approved" || status === "discarded"
+    ? 0
+    : status === "cancelled"
+      ? 130
+      : 1;
 }
