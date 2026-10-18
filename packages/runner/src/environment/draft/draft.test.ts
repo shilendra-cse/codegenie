@@ -29,6 +29,32 @@ describe("draftEnvironment", () => {
     });
   });
 
+  it("installs each project in its folder and collects all checks", async () => {
+    const draft = await draftEnvironment(
+      new FakeSandbox({
+        "api/package.json": JSON.stringify({ scripts: { test: "vitest" } }),
+        "api/package-lock.json": "{}",
+        "web/package.json": JSON.stringify({ scripts: { lint: "eslint ." } }),
+      }),
+    );
+    expect(draft.steps).toEqual([
+      {
+        name: "install",
+        cwd: "api",
+        command: "npm ci",
+        alternatives: ["npm install"],
+      },
+      { name: "install", cwd: "web", command: "npm install" },
+    ]);
+    expect(draft.checks).toEqual([
+      { name: "test", command: "npm run test", cwd: "api" },
+      { name: "lint", command: "npm run lint", cwd: "web" },
+    ]);
+    expect(draft.notes[0]).toBe(
+      "JavaScript/TypeScript projects: api (npm), web (npm).",
+    );
+  });
+
   it("explains when nothing is detected", async () => {
     const draft = await draftEnvironment(new FakeSandbox({ "main.go": "" }));
     expect(draft).toMatchObject({ steps: [], checks: [], overridden: false });

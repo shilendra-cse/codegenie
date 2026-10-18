@@ -6,11 +6,17 @@ export type InstallPlan = {
   fallback: string | null;
 };
 
-export type Detection = {
-  ecosystem: EcosystemId;
+export type Project = {
+  /** Where dependencies are installed; its checks may run in other folders (workspace packages). */
+  cwd: string;
   packageManager: PackageManager | null;
   install: InstallPlan | null;
   checks: Check[];
+};
+
+export type Detection = {
+  ecosystem: EcosystemId;
+  projects: Project[];
   notes: string[];
 };
 

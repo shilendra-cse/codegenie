@@ -41,7 +41,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running the full job via the runner (`runJob`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
 - [ ] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every job.
   - [x] **A.** Config type + schema; `apply` / `validate`; jobs replay the config (`--environment`, `--save-environment`); baseline check run + before/after comparison in verify (`--no-baseline-checks`); files written by the first check run are part of the baseline, and the diff is taken before verify; rules-only draft, auto-approved inside the job. Standalone setup comes with D.
-  - [ ] **B.** Multi-project draft rules (workspaces, independent sub-projects, orchestration-only root).
+  - [x] **B.** Multi-project draft rules (workspaces, independent sub-projects, orchestration-only root).
   - [ ] **C.** Setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels.
   - [ ] **D.** `EnvironmentStore` + CLI file store (last 5 versions); `pnpm agent:setup` (setup only, no task), `--show-environment`; health signals (needs attention); remove `--install` / `--check`.
 - [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.

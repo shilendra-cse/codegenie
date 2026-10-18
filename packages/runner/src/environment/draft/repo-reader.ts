@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   SandboxFileError,
   WORKSPACE_DIR,
@@ -9,19 +10,38 @@ export type JsonRead<T> =
   | { status: "missing" }
   | { status: "invalid"; error: string };
 
+export type DirEntry = { name: string; isDirectory: boolean };
+
 export class RepoReader {
-  private rootNames: Promise<Set<string>> | null = null;
+  private dirs = new Map<string, Promise<DirEntry[]>>();
 
   constructor(private readonly sandbox: Sandbox) {}
 
-  async hasRootEntry(name: string) {
-    this.rootNames ??= this.sandbox
-      .listFiles(WORKSPACE_DIR, { maxDepth: 1 })
-      .then(
+  /** Entries directly inside a repository folder ("." is the root); empty if it doesn't exist. */
+  entries(dir = "."): Promise<DirEntry[]> {
+    const key = path.posix.normalize(dir);
+    let cached = this.dirs.get(key);
+    if (!cached) {
+      const abs = path.posix.join(WORKSPACE_DIR, key);
+      cached = this.sandbox.listFiles(abs, { maxDepth: 1 }).then(
         (entries) =>
-          new Set(entries.map((e) => e.path.slice(WORKSPACE_DIR.length + 1))),
+          entries.map((e) => ({
+            name: e.path.slice(abs.length + 1),
+            isDirectory: e.isDirectory,
+          })),
+        (error: unknown) => {
+          if (error instanceof SandboxFileError) return [];
+          throw error;
+        },
       );
-    return (await this.rootNames).has(name);
+      this.dirs.set(key, cached);
+    }
+    return cached;
+  }
+
+  async has(filePath: string) {
+    const entries = await this.entries(path.posix.dirname(filePath));
+    return entries.some((e) => e.name === path.posix.basename(filePath));
   }
 
   async readText(path: string): Promise<string | null> {

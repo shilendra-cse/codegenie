@@ -17,7 +17,10 @@ describe("createLiveReporter", () => {
         jobId: "j",
         ts,
         success: true,
-        steps: [{ name: "install", status: "ok" }],
+        steps: [
+          { name: "install", cwd: ".", status: "ok" },
+          { name: "install", cwd: "api", status: "failed" },
+        ],
         checks: [
           { name: "lint", cwd: ".", status: "passing" },
           { name: "test", cwd: "api", status: "failing" },
@@ -72,7 +75,7 @@ describe("createLiveReporter", () => {
 
     expect(lines).toEqual([
       "→ setup",
-      "    steps: install ✓",
+      "    steps: install ✓  install (api) ✗",
       "    checks: lint ✓  test (api) ✗ failing  build",
       "→ agent",
       "    💬 Reading the app.",

@@ -87,7 +87,7 @@ describe("runSetup", () => {
     ]);
     expect(events[1]).toMatchObject({
       success: true,
-      steps: [{ name: "install", status: "ok" }],
+      steps: [{ name: "install", cwd: ".", status: "ok" }],
       checks: [
         { name: "lint", cwd: ".", status: "passing" },
         { name: "test", cwd: ".", status: "failing" },
