@@ -201,6 +201,8 @@ Using "npm run test" for backend. Re-running… ✓ 6/6 pass.
 | passing | failing | **regressed** |
 | failing | failing | still failing (pre-existing) |
 
+Known limitation: the comparison is pass/fail per check, so a check that was already failing can't show new problems. If the agent adds lint or type errors in a repository whose lint already fails, the check just stays "still failing". In BuyerBook five of six checks fail before any change, so verify catches little there. Options for later: compare error counts, or run the check on the changed files only. Decide after the evals.
+
 ### 4.1 Health
 
 Jobs flag the config as **needs attention** (without stopping) when:

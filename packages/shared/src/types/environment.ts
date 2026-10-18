@@ -35,6 +35,8 @@ export type EnvironmentConfig = {
 
 export type StepResult = SetupStep & {
   status: StepStatus;
+  /** Not run again: it already succeeded earlier in the same sandbox. */
+  reused?: boolean;
   durationMs: number;
   logPath: string;
   errorTail?: string;

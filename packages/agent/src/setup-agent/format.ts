@@ -24,28 +24,44 @@ const CHECK_LABEL: Record<CheckResult["status"], string> = {
   "timed-out": "⚠ timed out",
 };
 
-function formatStep(step: StepResult) {
-  const line = `${step.status === "ok" ? "✓" : "✗ FAILED"} ${where(step)}: ${step.command} (${seconds(step.durationMs)})`;
-  if (step.status === "ok") return line;
-  return `${line}, full log: ${step.logPath}\n${indent(step.errorTail ?? "(no output)")}`;
+function stepLine(step: StepResult) {
+  const mark = step.status === "ok" ? "✓" : "✗ FAILED";
+  const time = step.reused ? "already done" : seconds(step.durationMs);
+  return `${mark} ${where(step)}: ${step.command} (${time})`;
 }
 
-function formatCheck(check: CheckResult) {
-  const line = `${CHECK_LABEL[check.status]} ${where(check)}: ${check.command} (${seconds(check.durationMs)})`;
-  if (check.status === "passing") return line;
-  return `${line}, full log: ${check.logPath}\n${indent(check.outputTail ?? "(no output)")}`;
+function checkLine(check: CheckResult) {
+  return `${CHECK_LABEL[check.status]} ${where(check)}: ${check.command} (${seconds(check.durationMs)})`;
 }
 
 export function formatProposal(proposal: EnvironmentProposal) {
   return JSON.stringify(proposal, null, 2);
 }
 
+/** Every status first, then the output of what didn't work, so the overview is never cut off. */
 export function formatTryResult(result: TryResult) {
-  return [
+  const lines = [
     "Steps:",
-    ...(result.steps.length ? result.steps.map(formatStep) : ["(none)"]),
+    ...(result.steps.length ? result.steps.map(stepLine) : ["(none)"]),
     "",
     "Checks:",
-    ...(result.checks.length ? result.checks.map(formatCheck) : ["(none)"]),
-  ].join("\n");
+    ...(result.checks.length ? result.checks.map(checkLine) : ["(none)"]),
+  ];
+  const failedSteps = result.steps.filter((s) => s.status === "failed");
+  const failedChecks = result.checks.filter((c) => c.status !== "passing");
+  for (const step of failedSteps) {
+    lines.push(
+      "",
+      `--- ${where(step)} (full log: ${step.logPath}) ---`,
+      indent(step.errorTail ?? "(no output)"),
+    );
+  }
+  for (const check of failedChecks) {
+    lines.push(
+      "",
+      `--- ${where(check)} (full log: ${check.logPath}) ---`,
+      indent(check.outputTail ?? "(no output)"),
+    );
+  }
+  return lines.join("\n");
 }
