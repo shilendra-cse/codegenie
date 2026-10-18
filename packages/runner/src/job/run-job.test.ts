@@ -10,7 +10,7 @@ const repo = {
   "src/app.js": "export const a = 1;\n",
 };
 
-function fakeSandbox(failOn?: string, artifacts = "") {
+function fakeSandbox(failOn?: string) {
   const sandbox = new FakeSandbox(repo);
   let destroyed = 0;
   sandbox.destroy = async () => {
@@ -20,7 +20,6 @@ function fakeSandbox(failOn?: string, artifacts = "") {
     if (failOn && command.includes(failOn))
       return { exitCode: 1, stderr: "boom" };
     if (command.includes("git rev-parse HEAD")) return { stdout: "base123\n" };
-    if (command.includes("--name-only")) return { stdout: artifacts };
     if (command.includes("--numstat")) return { stdout: "1\t1\tsrc/app.js\n" };
     if (command.includes("--no-color"))
       return { stdout: "diff --git a/src/app.js\n" };
@@ -189,15 +188,14 @@ describe("runJob", () => {
     });
   });
 
-  it("leaves files written by the checks out of the diff", async () => {
-    const { sandbox } = fakeSandbox(undefined, "coverage/index.html\0");
+  it("collects the diff before verify runs the checks again", async () => {
+    const { sandbox } = fakeSandbox();
     await runJob(options(sandbox));
-    const numstat = sandbox.execCalls.find((c) =>
-      c.command.includes("--numstat"),
-    );
-    expect(numstat!.command).toContain(
-      "':(exclude,literal)coverage/index.html'",
-    );
+    const commands = sandbox.execCalls.map((c) => c.command);
+    const diff = commands.findIndex((c) => c.includes("--numstat"));
+    const verify = commands.findIndex((c) => c.includes("logs/verify-"));
+    expect(diff).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(diff);
   });
 
   it("refuses setup overrides together with a given config", async () => {

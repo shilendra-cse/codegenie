@@ -14,7 +14,7 @@ import {
   type DraftOverrides,
   type DraftStep,
 } from "../../environment/draft/draft.js";
-import { changedPaths, createBaseline } from "../changes/index.js";
+import { createBaseline } from "../changes/index.js";
 
 export type RunSetupOptions = {
   runId: string;
@@ -28,8 +28,6 @@ export type PreparedEnvironment = {
   setup: SetupResult;
   /** Commit to diff against for the agent's changes. */
   gitBase: string;
-  /** Files written by running the checks; never part of the agent's changes. */
-  checkArtifacts: string[];
 };
 
 async function headCommit(sandbox: Sandbox) {
@@ -64,14 +62,11 @@ export async function runSetup(
     );
   }
 
-  // Taken before the checks run, so files they write can be told apart from the agent's changes.
-  const gitBase = await createBaseline(sandbox);
   const baseline = options.baselineChecks
     ? await runChecks(sandbox, checks, "baseline")
     : null;
-  const checkArtifacts = baseline?.length
-    ? await changedPaths(sandbox, gitBase)
-    : [];
+  // After the checks, so files they write are part of the baseline, not the agent's changes.
+  const gitBase = await createBaseline(sandbox);
 
   const statuses = new Map((baseline ?? []).map((c) => [checkKey(c), c]));
   const usable = checks.filter((check) => {
@@ -108,5 +103,5 @@ export async function runSetup(
     })),
   });
 
-  return { setup, gitBase, checkArtifacts };
+  return { setup, gitBase };
 }

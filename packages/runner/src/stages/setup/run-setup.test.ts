@@ -17,8 +17,6 @@ function sandbox(handler: (command: string) => object = () => ({})) {
       return { stdout: "c0ffee\n" };
     }
     if (command.includes("git rev-parse HEAD")) return { stdout: "base1\n" };
-    if (command.includes("--name-only"))
-      return { stdout: "coverage/out.json\0" };
     return handler(command);
   };
   return fake;
@@ -50,10 +48,9 @@ describe("runSetup", () => {
             : {},
     );
     const { result, events } = run(fake);
-    const { setup, gitBase, checkArtifacts } = await result;
+    const { setup, gitBase } = await result;
 
     expect(gitBase).toBe("base1");
-    expect(checkArtifacts).toEqual(["coverage/out.json"]);
     expect(setup.steps).toMatchObject([
       { command: "npm install", status: "ok" },
     ]);
@@ -99,6 +96,18 @@ describe("runSetup", () => {
     });
   });
 
+  it("takes the baseline commit after the checks, so their files belong to the baseline", async () => {
+    const fake = sandbox();
+    await run(fake).result;
+    const commands = fake.execCalls.map((c) => c.command);
+    const lastCheck = commands
+      .map((c) => c.includes("npm run "))
+      .lastIndexOf(true);
+    const commit = commands.findIndex((c) => c.includes("codegenie: baseline"));
+    expect(lastCheck).toBeGreaterThan(-1);
+    expect(commit).toBeGreaterThan(lastCheck);
+  });
+
   it("replays a given config without detecting anything", async () => {
     const environment: EnvironmentConfig = {
       version: 1,
@@ -121,12 +130,11 @@ describe("runSetup", () => {
   });
 
   it("skips the baseline when asked and keeps every check", async () => {
-    const { setup, checkArtifacts } = await run(sandbox(), {
+    const { setup } = await run(sandbox(), {
       baselineChecks: false,
     }).result;
     expect(setup.baseline).toBeNull();
     expect(setup.checks.map((c) => c.name)).toEqual(["lint", "test", "build"]);
-    expect(checkArtifacts).toEqual([]);
   });
 
   it("flags the environment when a step fails", async () => {

@@ -91,7 +91,7 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
     if (signal?.aborted) return finish("cancelled");
 
     enter("setup");
-    const { setup, gitBase, checkArtifacts } = await runSetup(sandbox, {
+    const { setup, gitBase } = await runSetup(sandbox, {
       runId,
       emit,
       environment: options.environment,
@@ -116,8 +116,9 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
     if (agent.status === "cancelled") return finish("cancelled");
 
     enter("verify");
+    // Before the checks run again, so files they write stay out of the diff.
+    result.diff = await collectDiff(sandbox, gitBase);
     result.verify = await runVerify(sandbox, setup.checks, setup.baseline);
-    result.diff = await collectDiff(sandbox, gitBase, checkArtifacts);
 
     return finish(agent.status);
   } catch (error) {

@@ -17,10 +17,10 @@ sandbox → checkout → setup → baseline → agent → verify → diff → (d
 | sandbox | Create a fresh sandbox | built |
 | checkout | Git URL: shallow clone (public repos). Local folder: copy tracked and untracked-but-not-ignored files, so `node_modules`, build output and `.env` stay out | built |
 | setup | Replay the given environment config, or draft one from the repository (rules) and apply it; failed steps flag the environment as needing attention ([environment.md](./environment.md)) | built |
-| baseline | Commit the state after setup, then run every check once: passing / failing / broken / timed-out. Broken and timed-out checks are dropped; files the checks write are excluded from the diff | built |
+| baseline | Run every check once (passing / failing / broken / timed-out; broken and timed-out are dropped), then commit the state, so files the checks wrote belong to the baseline | built |
 | agent | `runAgent()` with the setup result | built |
+| diff | Patch and per-file changes against the baseline, taken before verify so the final check run can't add files. Known gap: files the agent's own `run_checks` writes outside `.gitignore` show up in the diff | built |
 | verify | Run the checks again and compare with the baseline: passing / fixed / regressed / still failing | built |
-| diff | Patch and per-file changes against the baseline | built |
 | deliver | Commit, push, open the PR | planned (needs the GitHub App) |
 | cleanup | Destroy the sandbox, always (unless asked to keep it) | built |
 
@@ -67,9 +67,9 @@ packages/runner/src/
 ├── job/                 runJob(): runs the stages in order
 ├── stages/              one folder per stage, in run order
 │   ├── checkout/
-│   ├── setup/           run-setup.ts: apply steps, baseline commit, baseline checks, check artifacts
+│   ├── setup/           run-setup.ts: apply steps, baseline checks, then the baseline commit
 │   ├── verify/          rerun checks; compare.ts: passing / fixed / regressed / still failing
-│   └── changes/         baseline commit + diff (check artifacts excluded)
+│   └── changes/         baseline commit + diff (taken before verify reruns the checks)
 └── environment/         config building blocks, independent of jobs (reused by onboarding)
     ├── config.ts        schema: parseEnvironmentConfig()
     ├── build-config.ts  draft + results → EnvironmentConfig
