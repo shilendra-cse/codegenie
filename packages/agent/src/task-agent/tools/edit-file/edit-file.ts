@@ -1,11 +1,14 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { ToolError } from "../core/tool-error.js";
-import { displayPath, resolveWorkspacePath } from "../core/workspace-path.js";
-import type { ToolContext } from "../core/context.js";
+import { ToolError } from "../../../tools/core/tool-error.js";
+import {
+  displayPath,
+  resolveWorkspacePath,
+} from "../../../tools/core/workspace-path.js";
+import type { ToolContext } from "../../../tools/core/context.js";
 import { editFileDescription } from "./description.js";
-import { numberLines, splitLines } from "../../lib/lines.js";
-import { runTool } from "../core/run-tool.js";
+import { numberLines, splitLines } from "../../../lib/lines.js";
+import { runTool } from "../../../tools/core/run-tool.js";
 
 const SNIPPET_CONTEXT = 2;
 

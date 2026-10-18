@@ -1,14 +1,10 @@
-import type { SetupResult } from "@codegenie/shared";
+import type { ToolSet } from "ai";
 import { UsageTracker } from "../model/usage.js";
 import type { ResolvedModel } from "../model/resolve-model.js";
-import { buildRepoContext } from "../prompt/repo-context.js";
-import { buildSystemPrompt } from "../prompt/system-prompt.js";
-import type { ToolContext } from "../tools/core/context.js";
-import { createTools } from "../tools/index.js";
 import {
   buildResult,
-  type AgentResult,
   type AgentStatus,
+  type LoopResult,
   type ResultDetails,
 } from "./agent-result.js";
 import { Compactor } from "./compaction.js";
@@ -30,27 +26,33 @@ const MAX_NUDGES = 2;
 const WRAP_UP_TIMEOUT_MS = 2 * 60_000;
 const TOOL_SCHEMA_CHARS = 4_000;
 
-const NUDGE =
-  "You stopped without calling finish_task. Continue working on the task, or call finish_task if it is complete.";
+export type FinishTool = {
+  name: string;
+  /** Sent when the model stops without calling the finish tool. */
+  nudge: string;
+  /** Sent after the limit description when a limit is reached. */
+  wrapUp: string;
+};
 
-export type RunAgentOptions = {
+export type RunLoopOptions = {
   runId: string;
-  task: string;
-  ctx: ToolContext;
   model: ResolvedModel;
+  /** Built before the first model call; a sandbox error here fails the run. */
+  system: () => Promise<string>;
+  firstMessage: string;
+  tools: ToolSet;
+  finish: FinishTool;
   limits?: Partial<AgentLimits>;
-  setup?: SetupResult;
   emit?: Emit;
   signal?: AbortSignal;
 };
 
-export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
-  const { runId, task, ctx, model } = options;
+export async function runLoop(options: RunLoopOptions): Promise<LoopResult> {
+  const { runId, model, tools, finish } = options;
   const limits: AgentLimits = { ...DEFAULT_LIMITS, ...options.limits };
   const run = { startedAt: Date.now(), modelId: model.spec.id };
-  const tools = createTools(ctx);
   const newState = (fixedChars: number): RunState => ({
-    messages: [{ role: "user", content: task }],
+    messages: [{ role: "user", content: options.firstMessage }],
     steps: 0,
     usage: new UsageTracker(model.spec.pricing),
     compactor: new Compactor({
@@ -61,7 +63,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
 
   let system: string;
   try {
-    system = buildSystemPrompt(await buildRepoContext(ctx, options.setup));
+    system = await options.system();
   } catch (error) {
     if (!isInfrastructureError(error)) throw error;
     return buildResult(newState(0), run, "failed", {
@@ -82,6 +84,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     model,
     system,
     tools,
+    finishTool: finish.name,
     emit: options.emit ?? (() => {}),
     maxCostUsd: limits.maxCostUsd,
     infraAbort: new AbortController(),
@@ -100,8 +103,8 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
       costLimit: true,
     });
 
-    if (outcome.finishSummary !== null) {
-      return result("succeeded", { summary: outcome.finishSummary });
+    if (outcome.finishInput !== undefined) {
+      return result("succeeded", { finishInput: outcome.finishInput });
     }
     if (outcome.infraError) {
       return result("failed", {
@@ -128,17 +131,17 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
 
     if (nudges >= MAX_NUDGES) {
       return result("failed", {
-        error: "The agent stopped without calling finish_task.",
+        error: `The agent stopped without calling ${finish.name}.`,
       });
     }
     nudges += 1;
-    state.messages.push({ role: "user", content: NUDGE });
+    state.messages.push({ role: "user", content: finish.nudge });
   }
 
-  async function wrapUp(limit: LimitReached): Promise<AgentResult> {
+  async function wrapUp(limit: LimitReached): Promise<LoopResult> {
     state.messages.push({
       role: "user",
-      content: `${describeLimit(limit, limits)} Stop working now and call finish_task with a summary of what you completed, what is left undone, and the state of the checks.`,
+      content: `${describeLimit(limit, limits)} ${finish.wrapUp}`,
     });
     const outcome = await runSegment(state, env, {
       maxSteps: 1,
@@ -146,16 +149,16 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
         env.infraAbort.signal,
         AbortSignal.timeout(WRAP_UP_TIMEOUT_MS),
       ),
-      toolChoice: { type: "tool", toolName: "finish_task" },
+      toolChoice: { type: "tool", toolName: finish.name },
       costLimit: false,
     });
     if (userSignal?.aborted) return result("cancelled");
     return result("incomplete", {
       limitReached: limit,
-      summary: outcome.finishSummary,
+      finishInput: outcome.finishInput,
       error:
-        outcome.finishSummary === null
-          ? `Stopped at the ${limit} limit before a summary was written.`
+        outcome.finishInput === undefined
+          ? `Stopped at the ${limit} limit before ${finish.name} was called.`
           : undefined,
     });
   }

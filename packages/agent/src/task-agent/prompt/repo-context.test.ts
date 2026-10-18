@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import { createToolContext } from "../tools/core/context.js";
+import { createToolContext } from "../../tools/core/context.js";
 import { buildRepoContext } from "./repo-context.js";
 
 describe("buildRepoContext", () => {

@@ -60,6 +60,32 @@ export type SetupResult = {
   notes: string[];
 };
 
+/** Steps and checks without metadata: what the setup agent tries and proposes. */
+export type EnvironmentProposal = {
+  steps: SetupStep[];
+  checks: Check[];
+};
+
+export type TryResult = {
+  steps: StepResult[];
+  checks: CheckResult[];
+};
+
+export type SetupQuestion = {
+  question: string;
+  why?: string;
+  /** 2–4 options; the first one is recommended. Answering with free text is always allowed. */
+  options: { label: string; detail?: string }[];
+};
+
+/** `auto` marks answers picked without asking anyone (non-interactive runs). */
+export type SetupAnswer = { option: number; auto?: boolean } | { other: string };
+
+export interface UserChannel {
+  ask(question: SetupQuestion): Promise<SetupAnswer>;
+  info(message: string): void;
+}
+
 export function checkKey(check: Pick<Check, "name" | "cwd">) {
   return `${check.name}@${check.cwd}`;
 }

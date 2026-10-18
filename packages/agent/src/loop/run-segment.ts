@@ -5,11 +5,11 @@ import {
   type ModelMessage,
   type StopCondition,
   type ToolChoice,
+  type ToolSet,
 } from "ai";
 import type { ResolvedModel } from "../model/resolve-model.js";
 import type { UsageTracker } from "../model/usage.js";
-import type { AgentTools } from "../tools/index.js";
-import { findFinishSummary } from "./agent-result.js";
+import { findToolInput } from "./agent-result.js";
 import type { Compactor } from "./compaction.js";
 import { isInfrastructureError } from "./errors.js";
 import { toJobEvent, type Emit } from "./events.js";
@@ -27,7 +27,9 @@ export type RunEnvironment = {
   runId: string;
   model: ResolvedModel;
   system: string;
-  tools: AgentTools;
+  tools: ToolSet;
+  /** The tool whose call ends the run; its input is the run's answer. */
+  finishTool: string;
   emit: Emit;
   maxCostUsd: number;
   infraAbort: AbortController;
@@ -36,12 +38,13 @@ export type RunEnvironment = {
 export type SegmentParams = {
   maxSteps: number;
   signal: AbortSignal;
-  toolChoice?: ToolChoice<AgentTools>;
+  toolChoice?: ToolChoice<ToolSet>;
   costLimit: boolean;
 };
 
 export type SegmentOutcome = {
-  finishSummary: string | null;
+  /** Input of the finish tool call; undefined when it wasn't called. */
+  finishInput: unknown;
   infraError?: unknown;
   modelError?: unknown;
 };
@@ -51,11 +54,11 @@ export async function runSegment(
   env: RunEnvironment,
   params: SegmentParams,
 ): Promise<SegmentOutcome> {
-  const outcome: SegmentOutcome = { finishSummary: null };
+  const outcome: SegmentOutcome = { finishInput: undefined };
   let completed: ModelMessage[] = [];
 
-  const stopWhen: StopCondition<AgentTools>[] = [
-    hasToolCall("finish_task"),
+  const stopWhen: StopCondition<ToolSet>[] = [
+    hasToolCall(env.finishTool),
     stepCountIs(params.maxSteps),
   ];
   if (params.costLimit) {
@@ -94,6 +97,6 @@ export async function runSegment(
   }
 
   state.messages.push(...completed);
-  outcome.finishSummary = findFinishSummary(completed);
+  outcome.finishInput = findToolInput(completed, env.finishTool);
   return outcome;
 }

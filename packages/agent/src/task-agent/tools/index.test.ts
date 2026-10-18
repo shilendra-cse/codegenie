@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import { createToolContext, createTools } from "./index.js";
+import { createToolContext } from "../../tools/core/context.js";
+import { createTools } from "./index.js";
 
 describe("createTools", () => {
   it("exposes the eight tools", () => {

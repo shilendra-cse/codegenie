@@ -65,6 +65,11 @@ export type {
   CheckResult,
   EnvironmentHealth,
   SetupResult,
+  EnvironmentProposal,
+  TryResult,
+  SetupQuestion,
+  SetupAnswer,
+  UserChannel,
 } from "./types/environment.js";
 
 export { checkKey } from "./types/environment.js";

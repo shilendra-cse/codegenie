@@ -132,7 +132,7 @@ Every step and check is run and classified:
 | `ask_user(question)` | asks the user through the channel; returns the chosen option or free text |
 | `finish_setup(config, notes)` | structured final answer; ends the agent |
 
-- Limits: 40 steps, 10 minutes, $0.20, at most 5 questions. Its cost is reported with the onboarding result.
+- Limits: 40 steps, 20 minutes (one DoDesk install already takes ~1.5 minutes), $0.20, at most 5 questions. Its cost is reported with the onboarding result.
 - The agent package does not depend on the runner: `validate` and `channel` are passed in.
 
 ### 3.4 Questions
@@ -276,7 +276,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 |---|---|---|
 | A ✅ | config type + schema; `apply` / `validate`; jobs replay the config; baseline + before/after; rules-only draft, auto-approved | jobs run from an explicit config |
 | B ✅ | multi-project draft rules | correct drafts for DoDesk and BuyerBook |
-| C | setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels | the guided conversation works |
+| C | C1 ✅ setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup` | the guided conversation works |
 | D | `EnvironmentStore` + CLI file store (versions); `agent:setup` and flags; health signals | complete onboarding in the CLI |
 | Phase 2 | DB migration + `DbEnvironmentStore` | product storage |
 | Phase 4 | `EventChannel`, question cards, config panel, needs-attention banner | onboarding on the website |

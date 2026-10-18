@@ -1,11 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { wrapWithLog } from "../core/output-log.js";
-import { truncateForModel } from "../../lib/truncate.js";
+import { wrapWithLog } from "../../../tools/core/output-log.js";
+import { truncateForModel } from "../../../lib/truncate.js";
 import { CHECK_NAMES, type Check } from "@codegenie/shared";
-import type { ToolContext } from "../core/context.js";
+import type { ToolContext } from "../../../tools/core/context.js";
 import { runChecksDescription } from "./description.js";
-import { runTool } from "../core/run-tool.js";
+import { runTool } from "../../../tools/core/run-tool.js";
 
 const CHECK_TIMEOUT_MS = 10 * 60_000;
 const FAILURE_OUTPUT_CHARS = 6_000;
