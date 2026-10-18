@@ -12,12 +12,25 @@ describe("RepoReader", () => {
       }),
     );
 
-  it("knows which files and folders are in the root", async () => {
+  it("knows which files and folders exist, in the root and in folders", async () => {
     const reader = repo();
-    expect(await reader.hasRootEntry("package.json")).toBe(true);
-    expect(await reader.hasRootEntry("src")).toBe(true);
-    expect(await reader.hasRootEntry("app.ts")).toBe(false);
-    expect(await reader.hasRootEntry("pnpm-lock.yaml")).toBe(false);
+    expect(await reader.has("package.json")).toBe(true);
+    expect(await reader.has("src")).toBe(true);
+    expect(await reader.has("src/app.ts")).toBe(true);
+    expect(await reader.has("app.ts")).toBe(false);
+    expect(await reader.has("pnpm-lock.yaml")).toBe(false);
+  });
+
+  it("lists a folder's entries, empty when it doesn't exist", async () => {
+    const reader = repo();
+    expect(await reader.entries()).toContainEqual({
+      name: "src",
+      isDirectory: true,
+    });
+    expect(await reader.entries("src")).toEqual([
+      { name: "app.ts", isDirectory: false },
+    ]);
+    expect(await reader.entries("missing")).toEqual([]);
   });
 
   it("reads text, returning null for missing files", async () => {

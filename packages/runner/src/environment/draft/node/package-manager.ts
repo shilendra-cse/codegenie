@@ -21,11 +21,11 @@ export type ManagerDetection = {
 
 export async function detectPackageManager(
   pkg: PackageJson,
-  hasRootEntry: (name: string) => Promise<boolean>,
+  has: (file: string) => Promise<boolean>,
 ): Promise<ManagerDetection> {
   let lockfileManager: PackageManager | null = null;
   for (const [file, manager] of LOCKFILES) {
-    if (await hasRootEntry(file)) {
+    if (await has(file)) {
       lockfileManager = manager;
       break;
     }

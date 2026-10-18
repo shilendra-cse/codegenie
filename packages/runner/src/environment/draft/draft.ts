@@ -1,6 +1,6 @@
 import type { Sandbox } from "@codegenie/sandbox";
 import { checkKey, type Check, type SetupStep } from "@codegenie/shared";
-import type { EcosystemDetector } from "./detector.js";
+import type { Detection, EcosystemDetector } from "./detector.js";
 import { RepoReader } from "./repo-reader.js";
 import { DETECTORS } from "./detectors.js";
 
@@ -23,6 +23,24 @@ export type DraftOverrides = {
 
 const ECOSYSTEM_LABEL = { node: "JavaScript/TypeScript" } as const;
 
+function summary(detection: Detection) {
+  const label = ECOSYSTEM_LABEL[detection.ecosystem];
+  const [first, ...rest] = detection.projects;
+  if (!first) return [];
+  if (rest.length === 0 && first.cwd === ".") {
+    return [
+      `${label} project${first.packageManager ? ` using ${first.packageManager}` : ""}.`,
+    ];
+  }
+  const list = detection.projects
+    .map(
+      (p) =>
+        `${p.cwd === "." ? "root" : p.cwd}${p.packageManager ? ` (${p.packageManager})` : ""}`,
+    )
+    .join(", ");
+  return [`${label} projects: ${list}.`];
+}
+
 function mergeChecks(detected: Check[], overrides: Check[] = []) {
   const overridden = new Set(overrides.map(checkKey));
   return [
@@ -44,10 +62,7 @@ export async function draftEnvironment(
 
   const notes: string[] = [];
   if (detection) {
-    notes.push(
-      `${ECOSYSTEM_LABEL[detection.ecosystem]} project${detection.packageManager ? ` using ${detection.packageManager}` : ""}.`,
-      ...detection.notes,
-    );
+    notes.push(...summary(detection), ...detection.notes);
   } else {
     notes.push(
       "No supported project type was detected (currently JavaScript/TypeScript with a package.json). Explore the repository to find how to install and test it.",
@@ -58,21 +73,27 @@ export async function draftEnvironment(
   let steps: DraftStep[] = [];
   if (overrides.install) {
     steps = [{ name: "install", cwd: ".", command: overrides.install }];
-  } else if (overrides.install !== false && detection?.install) {
-    const { frozen, fallback } = detection.install;
-    steps = [
-      {
-        name: "install",
-        cwd: ".",
-        command: frozen,
-        ...(fallback ? { alternatives: [fallback] } : {}),
-      },
-    ];
+  } else if (overrides.install !== false) {
+    steps = (detection?.projects ?? []).flatMap(({ cwd, install }) =>
+      install
+        ? [
+            {
+              name: "install",
+              cwd,
+              command: install.frozen,
+              ...(install.fallback ? { alternatives: [install.fallback] } : {}),
+            },
+          ]
+        : [],
+    );
   }
 
   return {
     steps,
-    checks: mergeChecks(detection?.checks ?? [], overrides.checks),
+    checks: mergeChecks(
+      detection?.projects.flatMap((p) => p.checks) ?? [],
+      overrides.checks,
+    ),
     notes,
     overridden: overrides.install !== undefined || Boolean(overrides.checks),
   };

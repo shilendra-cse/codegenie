@@ -199,7 +199,7 @@ export type JobEventSetupStarted = JobEventBase & {
 export type JobEventSetupCompleted = JobEventBase & {
   type: "setup_completed";
   success: boolean;
-  steps: { name: string; status: StepStatus }[];
+  steps: { name: string; cwd: string; status: StepStatus }[];
   checks: { name: string; cwd: string; status?: CheckStatus }[];
 };
 

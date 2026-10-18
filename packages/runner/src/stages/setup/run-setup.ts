@@ -93,7 +93,7 @@ export async function runSetup(
     jobId: runId,
     ts: new Date().toISOString(),
     success: setup.health === "ok",
-    steps: steps.map(({ name, status }) => ({ name, status })),
+    steps: steps.map(({ name, cwd, status }) => ({ name, cwd, status })),
     checks: checks.map((check) => ({
       name: check.name,
       cwd: check.cwd,

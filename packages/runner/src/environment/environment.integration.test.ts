@@ -62,6 +62,42 @@ describe.skipIf(!probe)("environment against DockerSandbox", () => {
     ]);
   });
 
+  it("installs and checks each sub-project in its own folder", async () => {
+    const sandbox = await sandboxWith({
+      "package.json": JSON.stringify({
+        scripts: { test: "npm test --prefix api" },
+        devDependencies: { concurrently: "^9" },
+      }),
+      "api/package.json": JSON.stringify({
+        name: "api",
+        type: "module",
+        dependencies: { "is-number": "7.0.0" },
+        scripts: { test: "node --test" },
+      }),
+      "api/test/basic.test.js":
+        'import { test } from "node:test";\nimport isNumber from "is-number";\ntest("works", () => { if (!isNumber(5)) throw new Error("no"); });\n',
+      "web/package.json": JSON.stringify({
+        name: "web",
+        scripts: { build: "node -e \"require('fs').mkdirSync('dist')\"" },
+      }),
+    });
+
+    const draft = await draftEnvironment(sandbox);
+    const steps = await applySteps(sandbox, draft.steps);
+    expect(steps.map((s) => [s.cwd, s.status])).toEqual([
+      ["api", "ok"],
+      ["web", "ok"],
+    ]);
+    expect((await sandbox.exec("ls api/node_modules")).stdout).toContain(
+      "is-number",
+    );
+    const checks = await runChecks(sandbox, draft.checks, "baseline");
+    expect(checks.map((c) => [c.name, c.cwd, c.status])).toEqual([
+      ["test", "api", "passing"],
+      ["build", "web", "passing"],
+    ]);
+  });
+
   it("classifies a missing script as broken", async () => {
     const sandbox = await sandboxWith({
       "package.json": JSON.stringify({ name: "x", scripts: {} }),

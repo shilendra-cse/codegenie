@@ -1,6 +1,6 @@
 # Runner
 
-> Status: **In progress** (everything except deliver built) · Last updated: 2026-10-17 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
+> Status: **In progress** (everything except deliver built) · Last updated: 2026-10-18 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
 The runner executes a coding job end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
 
@@ -90,7 +90,21 @@ The `packageManager` field wins (corepack installs that exact version), then the
 | `bun.lock` / `bun.lockb` | bun | not installed (bun is not in the sandbox) | – |
 | no lockfile | npm (or the field) | plain install | – |
 
-Checks from `package.json` scripts, run as `<pm> run <script>`: `lint`; `typecheck` / `type-check` / `tsc` / `check-types` (or `tsc --noEmit` for TypeScript projects without one); `test` (ignoring npm's placeholder); `build`. Only the repository root is considered until multi-project rules land (environment part B).
+Checks from `package.json` scripts, run as `<pm> run <script>`: `lint`; `typecheck` / `type-check` / `tsc` / `check-types` (or `tsc --noEmit` for TypeScript projects without one); `test` (ignoring npm's placeholder); `build`. Checks run in their own folder, so the same check can appear once per project (`test (backend)`, `test (client)`).
+
+### Repos with several projects (`draft/node/projects.ts`)
+
+| Shape | Recognized by | Install | Checks |
+|---|---|---|---|
+| Single project | root `package.json` only | root | root scripts |
+| Workspaces | `pnpm-workspace.yaml`, or `workspaces` in the root `package.json` | once, at the root | root scripts; if there are none, each workspace package's scripts in its folder |
+| Separate projects | no root `package.json`; first-level folders have one | each folder | each folder's scripts |
+| Root only runs tools | the root depends only on tools such as `concurrently`, `turbo`, `husky`, `prettier` | each folder; the root is skipped | each folder's scripts |
+| Real root + folders | the root has real dependencies, and folders have their own `package.json` | root and each folder | both |
+
+Each project's package manager comes from its own lockfile, then its own `packageManager` field, then the root's field, then npm. Limits: folders one level deep, at most 8 projects (a note says which were kept), workspace patterns `dir` and `dir/*` only (others get a note; `!` exclusions are ignored). `node_modules` and dot folders are skipped.
+
+Checked against the eval repos (2026-10-18): DoDesk drafts `backend/` and `client/` (all 8 checks pass); BuyerBook drafts `frontend/` and `server/` (pre-existing lint and type errors show as failing; `server` lint is broken because eslint isn't installed there, so it is dropped).
 
 ### Non-interactive environment
 

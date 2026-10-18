@@ -14,13 +14,14 @@ export function detectChecks(
   pkg: PackageJson,
   manager: PackageManager,
   hasTsconfig: boolean,
+  cwd = ".",
 ): Check[] {
   const scripts = pkg.scripts ?? {};
   const run = (script: string) => `${manager} run ${script}`;
   const checks: Check[] = [];
 
   if (scripts.lint) {
-    checks.push({ name: "lint", command: run("lint"), cwd: "." });
+    checks.push({ name: "lint", command: run("lint"), cwd });
   }
 
   const typecheckScript = TYPECHECK_SCRIPTS.find((s) => scripts[s]);
@@ -28,21 +29,21 @@ export function detectChecks(
     pkg.dependencies?.typescript ?? pkg.devDependencies?.typescript,
   );
   if (typecheckScript) {
-    checks.push({ name: "typecheck", command: run(typecheckScript), cwd: "." });
+    checks.push({ name: "typecheck", command: run(typecheckScript), cwd });
   } else if (hasTsconfig && hasTypescript && manager !== "bun") {
     checks.push({
       name: "typecheck",
       command: `${EXEC[manager]} tsc --noEmit`,
-      cwd: ".",
+      cwd,
     });
   }
 
   if (scripts.test && !NPM_PLACEHOLDER_TEST.test(scripts.test)) {
-    checks.push({ name: "test", command: run("test"), cwd: "." });
+    checks.push({ name: "test", command: run("test"), cwd });
   }
 
   if (scripts.build) {
-    checks.push({ name: "build", command: run("build"), cwd: "." });
+    checks.push({ name: "build", command: run("build"), cwd });
   }
 
   return checks;

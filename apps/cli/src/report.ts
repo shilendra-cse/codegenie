@@ -18,6 +18,9 @@ const CHECK_MARK = {
   "timed-out": "⚠ timed out",
 } as const;
 
+const labelled = (item: { name: string; cwd: string }) =>
+  item.cwd === "." ? item.name : `${item.name} (${item.cwd})`;
+
 const COMPARISON_LABEL: Record<CheckComparison, string> = {
   passing: "✓",
   failing: "✗",
@@ -62,16 +65,16 @@ export function createLiveReporter(write: Write) {
           break;
         case "setup_completed": {
           const steps = event.steps
-            .map((step) => `${step.name} ${step.status === "ok" ? "✓" : "✗"}`)
+            .map(
+              (step) => `${labelled(step)} ${step.status === "ok" ? "✓" : "✗"}`,
+            )
             .join("  ");
           const checks = event.checks
-            .map((check) => {
-              const name =
-                check.cwd === "." ? check.name : `${check.name} (${check.cwd})`;
-              return check.status
-                ? `${name} ${CHECK_MARK[check.status]}`
-                : name;
-            })
+            .map((check) =>
+              check.status
+                ? `${labelled(check)} ${CHECK_MARK[check.status]}`
+                : labelled(check),
+            )
             .join("  ");
           write(`    steps: ${steps || "none"}`);
           write(`    checks: ${checks || "none"}`);
@@ -150,17 +153,15 @@ export function formatSummary(
 
   const verified = result.verify?.checks ?? [];
   if (verified.length) {
-    const label = (c: { name: string; cwd: string }) =>
-      c.cwd === "." ? c.name : `${c.name} (${c.cwd})`;
     lines.push(
       "",
-      `Checks: ${verified.map((c) => `${label(c)} ${COMPARISON_LABEL[c.comparison]}`).join("  ")}`,
+      `Checks: ${verified.map((c) => `${labelled(c)} ${COMPARISON_LABEL[c.comparison]}`).join("  ")}`,
     );
     for (const check of verified.filter(
       (c) => c.comparison === "regressed" || c.comparison === "failing",
     )) {
       lines.push(
-        `--- ${label(check)} (${check.command}) ---`,
+        `--- ${labelled(check)} (${check.command}) ---`,
         check.outputTail ?? "",
       );
     }

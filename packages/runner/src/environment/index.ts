@@ -12,6 +12,7 @@ export type {
   Detection,
   EcosystemDetector,
   InstallPlan,
+  Project,
 } from "./draft/detector.js";
 export { RepoReader } from "./draft/repo-reader.js";
 export { DETECTORS } from "./draft/detectors.js";
