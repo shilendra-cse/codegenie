@@ -290,7 +290,10 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 - [ ] Config committed in the user's repository (`.codegenie/environment.json`, checked before the database)
 - [ ] Services in the sandbox (e.g. PostgreSQL for tests)
 - [ ] Environment variables and secrets (onboarding offers "skip" or "dummy value" options meanwhile)
-- [ ] Snapshots after setup for faster jobs, plus a maintenance step on resume
+- [ ] Snapshots after setup for faster jobs, plus a maintenance step on resume. Measured in the baseline eval run ([evals.md](./evals.md)): DoDesk tasks took 6–10 minutes for only 7–15 agent steps, most of it clone + `npm ci` in two projects (client ~80 s), baseline checks (client build ~45 s) and the same checks again in verify. Options, largest gain first:
+  - start jobs from a sandbox snapshot taken after setup (keyed by environment version + lockfiles), so the install is skipped;
+  - reuse the saved environment's check results as the baseline when the commit hasn't changed, instead of running the checks again;
+  - keep `build` out of the baseline for slow builds (it rarely differs before the agent's changes).
 - [ ] Non-JavaScript ecosystems (new draft detectors)
 
 ## 10. References

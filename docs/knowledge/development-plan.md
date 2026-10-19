@@ -106,7 +106,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · live previews · BYO API key / billing · team projects · more languages.
+PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · faster jobs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk job, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
 
 ## 3. Ways of working
 
@@ -141,5 +141,6 @@ PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan ap
 | Agent unreliable on unfamiliar repos | Eval set from Phase 1; setup detection + `AGENTS.md`; iterate on tools/prompt against measured scores |
 | LLM cost from open signup | Per-job and per-user limits, global spend cap, GitHub-only sign-in |
 | Environment setup failures | Restrict MVP to JS/TS without external services; surface setup errors to the agent |
+| Slow jobs (setup dominates) | Measured: 6–10 min per DoDesk job, mostly installs and checks. Post-MVP: setup snapshots and reused baselines ([environment.md](./environment.md)); meanwhile `--no-baseline-checks` |
 | Sandbox leaks (cost) | Destroy in `finally`, auto-stop, reaper |
 | Scope creep | Requirements doc is the scope; anything else goes to Phase 6+ |

@@ -146,4 +146,5 @@ What it shows:
 
 - [ ] Harder tasks: vaguer, ticket-like descriptions; features across several files; bugs that need investigation; manually graded BuyerBook tasks.
 - [ ] `--repeat 3` runs to see whether results are stable.
+- [ ] Faster tasks once jobs get faster (setup snapshots, reused baselines; see the "Not in the MVP" list in [environment.md](./environment.md)): the eval run time is mostly setup.
 - [ ] Rerun after every change to the agent's prompt, tools or model, and compare with the baseline above.
