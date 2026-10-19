@@ -200,7 +200,7 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 
 Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced by one clean initial migration** generated from the new schema. Local databases must be reset (`pnpm --filter @codegenie/server docker:reset`, then `pnpm migrate`). From then on, migrations are additive and generated with `drizzle-kit generate`.
 
-Pending (with the worker, Phase 2): add `project_environments` and `jobs.environment_id`, and drop `projects.setup_config`. Until then the CLI stores environment configs in local files ([environment.md](./environment.md)).
+The schema, client and migrations move from `apps/server/src/db/` to `packages/db` (Phase 2, branch 1), shared by the server and the worker ([architecture.md](./architecture.md)). Pending after that (branch 2): add `project_environments` and `jobs.environment_id`, and drop `projects.setup_config`. Until then the CLI stores environment configs in local files ([environment.md](./environment.md)).
 
 ## 6. Post-MVP
 

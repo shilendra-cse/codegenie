@@ -95,7 +95,7 @@ wait_for "Postgres" compose exec -T postgres pg_isready -U codegenie_user -d cod
 wait_for "Redis" compose exec -T redis redis-cli ping
 
 log "Running database migrations"
-pnpm --filter @codegenie/server db:migrate
+pnpm --filter @codegenie/db migrate
 
 cat <<'EOF'
 

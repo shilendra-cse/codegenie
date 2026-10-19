@@ -61,13 +61,22 @@ packages/
   runner/     runs a job end to end: checkout → setup → agent → verify → deliver (no AI logic)
   agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools
   sandbox/    Sandbox interface + DockerSandbox (+ DaytonaSandbox)
+  db/         Postgres schema, client and migrations (Drizzle), shared by server and worker
+  terminal/   terminal output for the CLI and evals
   shared/     types shared across apps and packages (API, events, setup)
 docs/
   api/        OpenAPI spec
   knowledge/  architecture, design and feature docs
 ```
 
-Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; apps → runner. The old `apps/agent` REPL is replaced by `apps/cli`. Details: [runner.md](./runner.md), [agent.md](./agent.md), [sandbox.md](./sandbox.md).
+Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `db → shared`; apps → runner, db. Apps never import from other apps.
+
+**`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates jobs and writes events), so the schema lives in one shared package instead of inside one app:
+- data access only: schema, client, migrations, and query helpers both apps need (e.g. `DbEnvironmentStore`); business rules stay in the apps;
+- queries only one app needs stay in that app;
+- migrations run from one place (the deploy step, `pnpm migrate`), never on app startup;
+- the connection is created by each app (`createDb(url)` with its own config), never on import.
+A schema change can mean redeploying both apps; that comes from sharing the database, not from the package. The old `apps/agent` REPL is replaced by `apps/cli`. Details: [runner.md](./runner.md), [agent.md](./agent.md), [sandbox.md](./sandbox.md).
 
 ---
 
@@ -84,7 +93,7 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/j
 - Writes rows and enqueues; does no long-running work.
 
 ### apps/worker
-Consumes `run-job` from BullMQ and runs the pipeline in §5. Configurable concurrency. Also runs a periodic **reaper** that fails stalled jobs and deletes orphaned sandboxes.
+Consumes BullMQ jobs and runs the pipeline in §5: `run-job` (a task's job) and `onboard-project` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Configurable concurrency; cancellation through a Redis message aborts the job and removes its sandbox. Also runs a periodic **reaper** that fails stalled jobs and deletes orphaned sandboxes. Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
 
 ### packages/agent
 Details: **[agent.md](./agent.md)**.

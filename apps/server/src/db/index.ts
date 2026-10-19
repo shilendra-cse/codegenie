@@ -1,7 +1,4 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { pool } from "./pool.js";
-import * as schema from "./schema.js";
+import { createDb } from "@codegenie/db";
+import { config } from "@/config/index.js";
 
-export { pool } from "./pool.js";
-
-export const db = drizzle({ client: pool, schema: schema });
+export const { db, pool } = createDb(config.database.url);

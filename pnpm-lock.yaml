@@ -118,6 +118,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@codegenie/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@codegenie/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -188,9 +191,6 @@ importers:
       '@types/pg':
         specifier: ^8.15.5
         version: 8.15.5
-      drizzle-kit:
-        specifier: ^0.31.4
-        version: 0.31.5
       eslint:
         specifier: ^9.37.0
         version: 9.37.0(jiti@2.6.1)
@@ -337,6 +337,49 @@ importers:
       '@types/node':
         specifier: ^24.5.2
         version: 24.7.0
+      eslint:
+        specifier: ^9.37.0
+        version: 9.37.0(jiti@2.6.1)
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@9.37.0(jiti@2.6.1))
+      eslint-plugin-prettier:
+        specifier: ^5.5.5
+        version: 5.5.5(eslint-config-prettier@10.1.8(eslint@9.37.0(jiti@2.6.1)))(eslint@9.37.0(jiti@2.6.1))(prettier@3.8.3)
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.59.3
+        version: 8.59.3(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)
+
+  packages/db:
+    dependencies:
+      drizzle-orm:
+        specifier: ^0.44.5
+        version: 0.44.6(@opentelemetry/api@1.9.0)(@types/pg@8.15.5)(kysely@0.28.17)(pg@8.16.3)
+      pg:
+        specifier: ^8.16.3
+        version: 8.16.3
+    devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@9.37.0(jiti@2.6.1))
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.7.0
+      '@types/pg':
+        specifier: ^8.15.5
+        version: 8.15.5
+      dotenv:
+        specifier: ^17.2.2
+        version: 17.2.3
+      drizzle-kit:
+        specifier: ^0.31.4
+        version: 0.31.5
       eslint:
         specifier: ^9.37.0
         version: 9.37.0(jiti@2.6.1)

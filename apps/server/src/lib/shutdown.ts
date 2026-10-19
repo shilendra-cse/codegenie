@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import { pool } from "@/db/pool.js";
+import { pool } from "@/db/index.js";
 import { logger } from "./logger.js";
 import { redis } from "./redis.js";
 

@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { account } from "@/db/schema";
+import { account } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
 import { and, eq } from "drizzle-orm";
 import { Octokit } from "@octokit/rest";
