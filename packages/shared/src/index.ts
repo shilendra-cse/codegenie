@@ -1,7 +1,6 @@
 export type {
   InstallationAccountType,
   GithubInstallation,
-  ProjectSetupConfig,
   Project,
   CreateProjectRequest,
   TaskSource,

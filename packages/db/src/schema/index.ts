@@ -1,6 +1,7 @@
 export * from "./auth-schema";
 export * from "./github-installations-schema";
 export * from "./projects-schema";
+export * from "./project-environments-schema";
 export * from "./tasks-schema";
 export * from "./jobs-schema";
 export * from "./messages-schema";

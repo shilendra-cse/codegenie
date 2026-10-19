@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { projectEnvironments } from "./project-environments-schema";
 import { tasks } from "./tasks-schema";
 
 export const jobTriggerEnum = pgEnum("job_trigger", [
@@ -48,6 +49,10 @@ export const jobs = pgTable(
     status: jobStatusEnum("status").notNull().default("queued"),
     stage: jobStageEnum("stage"),
     sandboxId: text("sandbox_id"),
+    environmentId: uuid("environment_id").references(
+      () => projectEnvironments.id,
+      { onDelete: "set null" },
+    ),
     model: text("model").notNull(),
     commitSha: text("commit_sha"),
     checksPassed: boolean("checks_passed"),
