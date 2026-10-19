@@ -67,9 +67,9 @@ Decisions:
 
 Branches, each built in small batches (see Ways of working):
 
-- [ ] **1. `refactor/db-package`** — move only, no behavior change.
-  1. `packages/db`: Drizzle schema, client, migrations, `drizzle.config` moved from `apps/server/src/db/`.
-  2. `apps/server` imports `@codegenie/db`; `db:generate` / `migrate` scripts run from the package.
+- [x] **1. `refactor/db-package`** — move only, no behavior change.
+  1. `packages/db`: Drizzle schema, migrations, `drizzle.config` and `createDb(url)` moved from `apps/server/src/db/`; the server imports `@codegenie/db`; db scripts run from the package. (Planned as two batches; one, since a half-moved schema doesn't compile.)
+  2. Docs.
 - [ ] **2. `feat/db-environments`** — environments in Postgres, the same `EnvironmentStore` as the CLI's file store, keyed by project id ([database.md](./database.md)).
   1. Schema + migration: `project_environments`, `jobs.environment_id`, drop `projects.setup_config` if present.
   2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests against Postgres in Docker (skipped without it).
@@ -96,6 +96,7 @@ Branches, each built in small batches (see Ways of working):
 
 **Done when:** a script-enqueued job runs in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill.
 **Needs:** Daytona account (branch 4).
+**Known issue:** production builds of the server and worker don't run yet (`tsc` keeps the `@/…` path aliases, which plain Node can't resolve; development runs through `tsx`). Fixed with the deploy work in Phase 5.
 
 ### Phase 3 — GitHub App & delivery
 **Goal:** real PRs on real repos using only installation tokens. *(U1, U2, U6 backend)*
@@ -128,6 +129,7 @@ Branches, each built in small batches (see Ways of working):
 - [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` job on the same branch/PR. *(U8)*
 - [ ] Quotas: 1 concurrent job/user, 10 jobs/user/day, global daily spend cap with clear rejection message.
 - [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with job id.
+- [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
 - [ ] Deploy: Vercel (web), Railway (api, worker, Postgres, Redis), prod GitHub App, custom domain, per-service secrets, migrations as release step.
 - [ ] Re-run eval against production config.
 

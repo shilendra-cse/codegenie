@@ -17,6 +17,7 @@ packages/
   runner/     Runs a job end to end: sandbox, checkout, setup, agent, verify
   agent/      The AI agent: model, prompt, tools, loop
   sandbox/    Isolated environments (Docker)
+  db/         Postgres schema, client and migrations, shared by server and worker
   terminal/   Terminal output shared by the CLI and evals (colors, layout, spinners)
   shared/     Types shared across apps and packages
 docs/
@@ -67,6 +68,7 @@ Sign in at http://localhost:3000/signin.
 | Command | What it does |
 |---|---|
 | `pnpm migrate` | Apply database migrations |
+| `pnpm --filter @codegenie/db generate` | Write a migration after a schema change (`packages/db/src/schema/`) |
 | `pnpm lint` | Lint all packages |
 | `pnpm typecheck` | Type-check all packages |
 | `pnpm test` | Run all tests (Vitest) |
