@@ -65,6 +65,8 @@ export type {
   StepResult,
   CheckResult,
   EnvironmentHealth,
+  StoredEnvironment,
+  EnvironmentStore,
   SetupResult,
   EnvironmentProposal,
   TryResult,

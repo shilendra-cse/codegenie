@@ -39,14 +39,14 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Agent loop: native SDK tool messages, model catalog (platform-controlled), step/time/cost limits with forced wrap-up, stop only on `finish_task`, `AbortSignal` cancellation, cache-friendly context compaction ([agent.md](./agent.md)).
 - [x] Environment setup in `packages/runner` (setup stage): pluggable ecosystem detection (Node), package manager, frozen-then-fallback install, lint/typecheck/test/build checks; result passed to the agent's prompt and `run_checks`; `AGENTS.md` read into the prompt ([runner.md](./runner.md)). `.codegenie.yml` deferred.
 - [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running the full job via the runner (`runJob`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
-- [ ] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every job.
+- [x] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every job.
   - [x] **A.** Config type + schema; `apply` / `validate`; jobs replay the config (`--environment`, `--save-environment`); baseline check run + before/after comparison in verify (`--no-baseline-checks`); files written by the first check run are part of the baseline, and the diff is taken before verify; rules-only draft, auto-approved inside the job. Standalone setup comes with D.
   - [x] **B.** Multi-project draft rules (workspaces, independent sub-projects, orchestration-only root).
   - [x] **C.** Setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>`.
     - [x] **C1.** Setup agent and its tools on a loop shared with the task agent.
     - [x] **C2.** Onboarding pipeline, final check, channels, `agent:setup`.
-  - [ ] **D.** `EnvironmentStore` + CLI file store (last 5 versions); the store makes `agent:setup` save per repository and `agent:run` find the config by itself; `--show-environment`; health signals (needs attention); remove `--install` / `--check`.
-- [ ] **Eval set** ([evals.md](./evals.md)): ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
+  - [x] **D.** `EnvironmentStore` + CLI file store (last 5 versions, repo keys); `agent:setup` saves per repository and `--show`s it; `agent:run` loads it and stops without one; health signals (failed step, uncovered project folder); `--install` / `--no-install` / `--check` / `--save-environment` removed.
+- [x] **Eval set** ([evals.md](./evals.md)): ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
   - [x] **E1.** Harness (`apps/evals`: tasks, hidden-tests / checks / manual graders, report), fixture repos `ts-lib` and `http-api` with 3 tasks.
   - [x] **E2.** DoDesk (5) and BuyerBook (2) tasks at pinned commits, each with a reference solution; 10 tasks in total.
   - [x] First full run with the real model: 10 of 10 solved, $0.0214, 25m ([evals.md](./evals.md)). Next: harder tasks, `--repeat` runs.
@@ -112,6 +112,8 @@ PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan ap
 
 - **Branches & PRs:** `main` is always deployable. One branch per change (`feat/…`, `fix/…`, `chore/…`), merged via PR with CI green.
 - **Commits:** conventional style (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`).
+- **Small batches:** a branch is built as a series of small commits, each one meaningful change that is easy to review: e.g. types, then core logic with its tests, then wiring, then docs. Every commit leaves type-check, lint and tests passing. Splits follow meaning, not a size rule: a batch is usually a few hundred lines or less, but a change that only makes sense whole stays whole. Moves and refactors get their own commit, never mixed into a feature commit.
+- **Batch flow:** the proposal for a branch lists its planned batches. Each batch is built, explained and reviewed, then committed, before the next one starts; review fixes go into the same batch. The PR description covers the whole branch.
 - **Tracking:** each phase's checklist above is the backlog; tick items as PRs merge.
 - **Docs:** design changes update the relevant file in `docs/knowledge/` in the same PR.
 - **Definition of done (per item):** code + tests where meaningful + type-check/lint pass + docs updated if behavior or design changed.

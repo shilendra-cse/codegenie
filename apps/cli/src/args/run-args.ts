@@ -1,8 +1,7 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentLimits } from "@codegenie/agent";
-import type { DraftOverrides, RepoSource } from "@codegenie/runner";
-import { CHECK_NAMES, type Check, type CheckName } from "@codegenie/shared";
+import type { RepoSource } from "@codegenie/runner";
 import {
   parseSource,
   positiveNumber,
@@ -16,9 +15,8 @@ export type CliOptions = {
   task: { text: string } | { file: string };
   model?: string;
   limits: Partial<AgentLimits>;
-  setupOverrides: DraftOverrides;
+  /** Replays this file instead of the repository's saved environment. */
   environmentPath?: string;
-  saveEnvironmentPath?: string;
   baselineChecks: boolean;
   patchPath?: string;
   keep: boolean;
@@ -27,6 +25,8 @@ export type CliOptions = {
 
 export const RUN_USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<text>" [options]
 
+The repository must be set up first: pnpm agent:setup --repo <path|git url>
+
   --repo <path|url>      local folder or public git URL (required)
   --ref <branch|tag>     branch or tag to clone (git URLs)
   --task <text>          the task, or --task-file <file>
@@ -34,31 +34,12 @@ export const RUN_USAGE = `Usage: pnpm agent:run --repo <path|git url> --task "<t
   --max-steps <n>        default 150
   --max-cost <usd>       default 2
   --timeout <minutes>    default 30
-  --install <cmd>        install command instead of the detected one
-  --no-install           skip installing dependencies
-  --check <name=cmd>     override a check (lint, typecheck, test, build); repeatable
-  --environment <file>   replay this environment config instead of detecting one
-  --save-environment <file>  save the environment config this run used
+  --environment <file>   use this environment config instead of the saved one
   --no-baseline-checks   don't run the checks before the agent
   --patch <file>         save the diff to a file
   --keep                 keep the sandbox for inspection
   --json                 print the result as JSON
   --help`;
-
-function parseCheck(spec: string): Check {
-  const separator = spec.indexOf("=");
-  const name = spec.slice(0, separator);
-  const command = spec.slice(separator + 1).trim();
-  if (separator < 1 || !command) {
-    throw new UsageError(`--check expects name=command, got "${spec}"`);
-  }
-  if (!CHECK_NAMES.includes(name as CheckName)) {
-    throw new UsageError(
-      `--check name must be one of: ${CHECK_NAMES.join(", ")}`,
-    );
-  }
-  return { name: name as CheckName, command, cwd: "." };
-}
 
 export function parseCliArgs(
   argv: string[],
@@ -77,12 +58,8 @@ export function parseCliArgs(
         "max-steps": { type: "string" },
         "max-cost": { type: "string" },
         timeout: { type: "string" },
-        install: { type: "string" },
-        "no-install": { type: "boolean", default: false },
-        check: { type: "string", multiple: true },
         patch: { type: "string" },
         environment: { type: "string" },
-        "save-environment": { type: "string" },
         "no-baseline-checks": { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
@@ -98,9 +75,6 @@ export function parseCliArgs(
   if (Boolean(values.task) === Boolean(values["task-file"])) {
     throw new UsageError("Pass exactly one of --task or --task-file");
   }
-  if (values.install && values["no-install"]) {
-    throw new UsageError("--install and --no-install can't be combined");
-  }
 
   const source: RepoSource = parseSource(values.repo, values.ref, cwd);
 
@@ -113,21 +87,6 @@ export function parseCliArgs(
   if (timeoutMinutes !== undefined)
     limits.maxWallTimeMs = timeoutMinutes * 60_000;
 
-  if (
-    values.environment &&
-    (values.install || values["no-install"] || values.check?.length)
-  ) {
-    throw new UsageError(
-      "--install, --no-install and --check can't be combined with --environment; edit the config instead",
-    );
-  }
-
-  const setupOverrides: DraftOverrides = {};
-  if (values["no-install"]) setupOverrides.install = false;
-  else if (values.install) setupOverrides.install = values.install;
-  if (values.check?.length)
-    setupOverrides.checks = values.check.map(parseCheck);
-
   return {
     help: false,
     source,
@@ -136,12 +95,8 @@ export function parseCliArgs(
       : { file: path.resolve(cwd, values["task-file"]!) },
     model: values.model,
     limits,
-    setupOverrides,
     environmentPath: values.environment
       ? path.resolve(cwd, values.environment)
-      : undefined,
-    saveEnvironmentPath: values["save-environment"]
-      ? path.resolve(cwd, values["save-environment"])
       : undefined,
     baselineChecks: !values["no-baseline-checks"],
     patchPath: values.patch ? path.resolve(cwd, values.patch) : undefined,

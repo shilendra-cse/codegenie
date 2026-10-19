@@ -5,17 +5,18 @@ import { parseSetupArgs } from "./setup-args.js";
 const parse = (...argv: string[]) => parseSetupArgs(argv, "/home/me/code");
 
 describe("parseSetupArgs", () => {
-  it("parses a local repo and where to save", () => {
-    expect(parse("--repo", "../todo-api", "--save", "env.json")).toEqual({
+  it("only needs the repository", () => {
+    expect(parse("--repo", "../todo-api")).toEqual({
       help: false,
       source: { type: "local", path: "/home/me/todo-api" },
-      savePath: "/home/me/code/env.json",
+      savePath: undefined,
       model: undefined,
       yes: false,
+      show: false,
     });
   });
 
-  it("parses a git URL with a ref, a model and --yes", () => {
+  it("parses a git URL with a ref, a copy to save, a model and --yes", () => {
     expect(
       parse(
         "--",
@@ -24,7 +25,7 @@ describe("parseSetupArgs", () => {
         "--ref",
         "dev",
         "--save",
-        "/tmp/env.json",
+        "env.json",
         "--model",
         "openai:gpt-6-luna",
         "--yes",
@@ -35,10 +36,15 @@ describe("parseSetupArgs", () => {
         url: "https://github.com/acme/app.git",
         ref: "dev",
       },
-      savePath: "/tmp/env.json",
+      savePath: "/home/me/code/env.json",
       model: "openai:gpt-6-luna",
       yes: true,
+      show: false,
     });
+  });
+
+  it("shows the saved environment", () => {
+    expect(parse("--repo", ".", "--show")).toMatchObject({ show: true });
   });
 
   it("returns help", () => {
@@ -46,10 +52,13 @@ describe("parseSetupArgs", () => {
   });
 
   it.each([
-    [["--save", "env.json"], /--repo is required/],
-    [["--repo", "."], /--save is required/],
-    [["--repo", ".", "--save", "e.json", "--ref", "dev"], /--ref only applies/],
-    [["--repo", ".", "--save", "e.json", "--task", "x"], /Unknown option/],
+    [["--show"], /--repo is required/],
+    [["--repo", ".", "--ref", "dev"], /--ref only applies/],
+    [["--repo", ".", "--task", "x"], /Unknown option/],
+    [
+      ["--repo", ".", "--show", "--yes"],
+      /--show only shows the saved environment/,
+    ],
   ])("rejects %j", (argv, message) => {
     expect(() => parse(...argv)).toThrow(UsageError);
     expect(() => parse(...argv)).toThrow(message);

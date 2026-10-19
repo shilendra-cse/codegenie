@@ -8,6 +8,9 @@ import { terminalChannel } from "../channel/terminal.js";
 import { loadModel } from "../config.js";
 import { createLiveJob } from "../live-job.js";
 import { formatSetupSummary, setupExitCode } from "../report.js";
+import { FileEnvironmentStore } from "../store/file-store.js";
+import { repoKey } from "../store/repo-key.js";
+import { describeSaved } from "../store/saved-environment.js";
 import { err, out } from "./output.js";
 
 export async function setupCommand(
@@ -27,6 +30,38 @@ export async function setupCommand(
     return 0;
   }
 
+  if (options.source.type === "local") {
+    const info = await stat(options.source.path).catch(() => null);
+    if (!info?.isDirectory()) {
+      err(`Not a folder: ${options.source.path}`);
+      return 1;
+    }
+  }
+  const style = styleFor(process.stdout);
+  const store = new FileEnvironmentStore();
+  const key = await repoKey(options.source);
+
+  if (options.show) {
+    let shown;
+    try {
+      shown = describeSaved(
+        style,
+        key,
+        await store.list(key),
+        store.fileFor(key),
+      );
+    } catch (error) {
+      err(error instanceof Error ? error.message : String(error));
+      return 1;
+    }
+    if (!shown) {
+      err(`No environment saved for ${key} yet.`);
+      return 1;
+    }
+    out(shown);
+    return 0;
+  }
+
   let model;
   try {
     model = loadModel(options.model);
@@ -34,13 +69,6 @@ export async function setupCommand(
     if (!(error instanceof Error)) throw error;
     err(error.message);
     return 1;
-  }
-  if (options.source.type === "local") {
-    const info = await stat(options.source.path).catch(() => null);
-    if (!info?.isDirectory()) {
-      err(`Not a folder: ${options.source.path}`);
-      return 1;
-    }
   }
 
   const controller = new AbortController();
@@ -50,7 +78,6 @@ export async function setupCommand(
     controller.abort();
   });
 
-  const style = styleFor(process.stdout);
   const live = createLiveJob(process.stdout, style);
   const info = (message: string) => showProgress(live, style, message);
   const channel = options.yes
@@ -85,13 +112,24 @@ export async function setupCommand(
     channel.close();
   });
 
-  let saved: string | null = null;
+  let saved = null;
   if (result.status === "approved" && result.config) {
-    await writeFile(
-      options.savePath,
-      `${JSON.stringify(result.config, null, 2)}\n`,
+    const stored = await store.save(
+      key,
+      result.config,
+      result.config.meta.source,
     );
-    saved = options.savePath;
+    if (options.savePath) {
+      await writeFile(
+        options.savePath,
+        `${JSON.stringify(result.config, null, 2)}\n`,
+      );
+    }
+    saved = {
+      version: stored.version,
+      file: store.fileFor(key),
+      copy: options.savePath,
+    };
   }
   out(formatSetupSummary(result, saved, style));
   return setupExitCode(result.status);

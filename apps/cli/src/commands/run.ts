@@ -2,9 +2,17 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { parseEnvironmentConfig, runJob } from "@codegenie/runner";
 import { UsageError } from "../args/common.js";
 import { parseCliArgs, RUN_USAGE } from "../args/run-args.js";
-import { loadModel } from "../config.js";
+import type { StoredEnvironment } from "@codegenie/shared";
 import { intro, line, oneLine, styleFor } from "@codegenie/terminal";
+import { loadModel } from "../config.js";
 import { createLiveJob } from "../live-job.js";
+import { FileEnvironmentStore } from "../store/file-store.js";
+import { repoKey } from "../store/repo-key.js";
+import {
+  healthWarning,
+  missingEnvironment,
+  versionLine,
+} from "../store/saved-environment.js";
 import { exitCode, formatSummary } from "../report.js";
 import { err, out } from "./output.js";
 
@@ -22,15 +30,7 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     return 0;
   }
 
-  let model;
-  try {
-    model = loadModel(options.model);
-  } catch (error) {
-    if (!(error instanceof Error)) throw error;
-    err(error.message);
-    return 1;
-  }
-
+  const style = styleFor(process.stdout);
   if (options.source.type === "local") {
     const info = await stat(options.source.path).catch(() => null);
     if (!info?.isDirectory()) {
@@ -38,8 +38,25 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
       return 1;
     }
   }
+
+  // A task needs the repository's environment: the saved one, or an explicit file.
+  const store = new FileEnvironmentStore();
+  const key = await repoKey(options.source);
   let environment;
-  if (options.environmentPath) {
+  let stored: StoredEnvironment | null = null;
+  if (!options.environmentPath) {
+    try {
+      stored = await store.load(key);
+    } catch (error) {
+      err(error instanceof Error ? error.message : String(error));
+      return 1;
+    }
+    if (!stored) {
+      err(missingEnvironment(style, key, options.source));
+      return 1;
+    }
+    environment = stored.config;
+  } else {
     try {
       environment = parseEnvironmentConfig(
         JSON.parse(await readFile(options.environmentPath, "utf8")),
@@ -50,6 +67,15 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
       );
       return 1;
     }
+  }
+
+  let model;
+  try {
+    model = loadModel(options.model);
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
+    err(error.message);
+    return 1;
   }
 
   const task =
@@ -64,7 +90,6 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     controller.abort();
   });
 
-  const style = styleFor(process.stdout);
   const live = options.json ? null : createLiveJob(process.stdout, style);
   if (live) {
     const where =
@@ -77,6 +102,13 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
         `CodeGenie ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
       ),
       line(style, `Task: ${oneLine(task, 300)}`),
+      line(
+        style,
+        style.dim(
+          `Environment: ${stored ? versionLine(stored) : options.environmentPath}`,
+        ),
+      ),
+      ...(stored ? healthWarning(style, stored) : []),
       line(style),
     );
     live.live.start();
@@ -89,9 +121,6 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     model,
     limits: options.limits,
     environment,
-    setupOverrides: Object.keys(options.setupOverrides).length
-      ? options.setupOverrides
-      : undefined,
     baselineChecks: options.baselineChecks,
     emit: (event) => live?.onEvent(event),
     signal: controller.signal,
@@ -102,11 +131,8 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
   if (options.patchPath && result.diff) {
     await writeFile(options.patchPath, result.diff.patch);
   }
-  if (options.saveEnvironmentPath && result.setup) {
-    await writeFile(
-      options.saveEnvironmentPath,
-      `${JSON.stringify(result.setup.config, null, 2)}\n`,
-    );
+  if (stored && result.setup?.health === "needs_attention") {
+    await store.markHealth(key, "needs_attention", result.setup.healthReasons);
   }
 
   if (options.json) {
@@ -123,7 +149,6 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
       formatSummary(result, {
         style,
         patchPath: options.patchPath,
-        environmentPath: options.saveEnvironmentPath,
       }),
     );
     if (options.keep && result.sandboxId) {

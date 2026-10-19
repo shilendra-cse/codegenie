@@ -12,9 +12,7 @@ describe("parseCliArgs", () => {
       task: { text: "Add /health" },
       model: undefined,
       limits: {},
-      setupOverrides: {},
       environmentPath: undefined,
-      saveEnvironmentPath: undefined,
       baselineChecks: true,
       patchPath: undefined,
       keep: false,
@@ -22,7 +20,7 @@ describe("parseCliArgs", () => {
     });
   });
 
-  it("parses environment options", () => {
+  it("takes an explicit environment file and skipping the baseline", () => {
     expect(
       parse(
         "--repo",
@@ -31,13 +29,10 @@ describe("parseCliArgs", () => {
         "x",
         "--environment",
         "env.json",
-        "--save-environment",
-        "out/env.json",
         "--no-baseline-checks",
       ),
     ).toMatchObject({
       environmentPath: "/home/me/code/env.json",
-      saveEnvironmentPath: "/home/me/code/out/env.json",
       baselineChecks: false,
     });
   });
@@ -62,9 +57,10 @@ describe("parseCliArgs", () => {
     });
   });
 
-  it("parses limits, overrides and output options", () => {
+  it("parses limits and output options, after a leading -- from pnpm", () => {
     expect(
       parse(
+        "--",
         "--repo",
         ".",
         "--task-file",
@@ -77,12 +73,6 @@ describe("parseCliArgs", () => {
         "0.5",
         "--timeout",
         "10",
-        "--install",
-        "npm install --legacy-peer-deps",
-        "--check",
-        "test=npm run test:unit",
-        "--check",
-        "lint=npm run lint -- --quiet",
         "--patch",
         "out.patch",
         "--keep",
@@ -94,26 +84,12 @@ describe("parseCliArgs", () => {
       task: { file: "/home/me/code/task.md" },
       model: "openai:gpt-6-luna",
       limits: { maxSteps: 40, maxCostUsd: 0.5, maxWallTimeMs: 600_000 },
-      setupOverrides: {
-        install: "npm install --legacy-peer-deps",
-        checks: [
-          { name: "test", command: "npm run test:unit", cwd: "." },
-          { name: "lint", command: "npm run lint -- --quiet", cwd: "." },
-        ],
-      },
       environmentPath: undefined,
-      saveEnvironmentPath: undefined,
       baselineChecks: true,
       patchPath: "/home/me/code/out.patch",
       keep: true,
       json: true,
     });
-  });
-
-  it("supports skipping the install and a leading -- from pnpm", () => {
-    expect(
-      parse("--", "--repo", ".", "--task", "x", "--no-install"),
-    ).toMatchObject({ setupOverrides: { install: false } });
   });
 
   it("returns help without requiring other flags", () => {
@@ -129,34 +105,25 @@ describe("parseCliArgs", () => {
       /--max-cost must be a positive number/,
     ],
     [
-      ["--repo", ".", "--task", "x", "--check", "deploy=x"],
-      /--check name must be one of/,
-    ],
-    [
-      ["--repo", ".", "--task", "x", "--check", "test"],
-      /--check expects name=command/,
-    ],
-    [
-      ["--repo", ".", "--task", "x", "--install", "a", "--no-install"],
-      /can't be combined/,
-    ],
-    [
       ["--repo", ".", "--ref", "main", "--task", "x"],
       /--ref only applies to git URLs/,
     ],
     [["--repo", ".", "--task", "x", "--bogus"], /Unknown option/],
     [
-      [
-        "--repo",
-        ".",
-        "--task",
-        "x",
-        "--environment",
-        "e.json",
-        "--check",
-        "test=x",
-      ],
-      /can't be combined with --environment/,
+      ["--repo", ".", "--task", "x", "--install", "npm i"],
+      /Unknown option '--install'/,
+    ],
+    [
+      ["--repo", ".", "--task", "x", "--no-install"],
+      /Unknown option '--no-install'/,
+    ],
+    [
+      ["--repo", ".", "--task", "x", "--check", "test=x"],
+      /Unknown option '--check'/,
+    ],
+    [
+      ["--repo", ".", "--task", "x", "--save-environment", "e.json"],
+      /Unknown option/,
     ],
   ])("rejects %j", (argv, message) => {
     expect(() => parse(...argv)).toThrow(UsageError);

@@ -25,7 +25,6 @@ describe("draftEnvironment", () => {
         { name: "test", command: "npm run test", cwd: "." },
       ],
       notes: ["JavaScript/TypeScript project using npm."],
-      overridden: false,
     });
   });
 
@@ -57,31 +56,7 @@ describe("draftEnvironment", () => {
 
   it("explains when nothing is detected", async () => {
     const draft = await draftEnvironment(new FakeSandbox({ "main.go": "" }));
-    expect(draft).toMatchObject({ steps: [], checks: [], overridden: false });
+    expect(draft).toMatchObject({ steps: [], checks: [] });
     expect(draft.notes[0]).toMatch(/No supported project type was detected/);
-  });
-
-  it("applies install and check overrides", async () => {
-    const draft = await draftEnvironment(new FakeSandbox(nodeRepo), {
-      overrides: {
-        install: "npm install --legacy-peer-deps",
-        checks: [{ name: "test", command: "npm run test:unit", cwd: "." }],
-      },
-    });
-    expect(draft.steps).toEqual([
-      { name: "install", cwd: ".", command: "npm install --legacy-peer-deps" },
-    ]);
-    expect(draft.checks).toEqual([
-      { name: "lint", command: "npm run lint", cwd: "." },
-      { name: "test", command: "npm run test:unit", cwd: "." },
-    ]);
-    expect(draft.overridden).toBe(true);
-  });
-
-  it("can skip installing", async () => {
-    const draft = await draftEnvironment(new FakeSandbox(nodeRepo), {
-      overrides: { install: false },
-    });
-    expect(draft.steps).toEqual([]);
   });
 });

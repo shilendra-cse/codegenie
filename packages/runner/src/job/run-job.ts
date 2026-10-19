@@ -7,7 +7,6 @@ import {
 } from "@codegenie/agent";
 import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
 import type { EnvironmentConfig, JobStage } from "@codegenie/shared";
-import type { DraftOverrides } from "../environment/draft/draft.js";
 import { collectDiff } from "../stages/changes/index.js";
 import { checkoutRepo, type RepoSource } from "../stages/checkout/index.js";
 import { runSetup } from "../stages/setup/index.js";
@@ -21,7 +20,6 @@ export type RunJobOptions = {
   model: ResolvedModel;
   limits?: Partial<AgentLimits>;
   environment?: EnvironmentConfig;
-  setupOverrides?: DraftOverrides;
   /** Run every check before the agent (default true). */
   baselineChecks?: boolean;
   emit?: Emit;
@@ -98,7 +96,6 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
       runId,
       emit,
       environment: options.environment,
-      overrides: options.setupOverrides,
       baselineChecks: options.baselineChecks ?? true,
     });
     result.setup = setup;

@@ -50,7 +50,7 @@ function tokens(count: number) {
 
 export function formatSummary(
   result: JobResult,
-  options: { style: Style; patchPath?: string; environmentPath?: string },
+  options: { style: Style; patchPath?: string },
 ): string {
   const { style } = options;
   const lines = ["", section(style, "Result")];
@@ -67,7 +67,10 @@ export function formatSummary(
   for (const note of result.setup?.notes ?? [])
     add(`${style.dim("Note:")} ${note}`);
   if (result.setup?.health === "needs_attention") {
-    add(style.warn("⚠ Environment needs attention: a setup step failed."));
+    add(style.warn("⚠ The environment needs attention:"));
+    for (const reason of result.setup.healthReasons)
+      add(style.warn(`  - ${reason}`));
+    add(style.dim("  Run pnpm agent:setup again to update it."));
   }
 
   const verified = result.verify?.checks ?? [];
@@ -84,8 +87,6 @@ export function formatSummary(
         add(style.dim(output));
     }
   }
-  if (options.environmentPath)
-    add(`Environment saved to ${options.environmentPath}`);
 
   const diff = result.diff;
   if (diff) {
@@ -153,9 +154,17 @@ function onboardingMark(style: Style, status: OnboardingStatus) {
   }
 }
 
+export type SavedSetup = {
+  version: number;
+  /** Where the store keeps it. */
+  file: string;
+  /** The extra copy asked for with --save. */
+  copy?: string;
+};
+
 export function formatSetupSummary(
   result: OnboardingResult,
-  savePath: string | null,
+  saved: SavedSetup | null,
   style: Style,
 ): string {
   const lines = [line(style)];
@@ -164,7 +173,15 @@ export function formatSetupSummary(
   if (result.agent?.error) {
     lines.push(line(style, style.fail(`Setup agent: ${result.agent.error}`)));
   }
-  if (savePath) lines.push(line(style, `Environment saved to ${savePath}`));
+  if (saved) {
+    lines.push(
+      line(
+        style,
+        `Saved as version ${saved.version} ${style.dim(`· ${saved.file}`)}`,
+      ),
+    );
+    if (saved.copy) lines.push(line(style, `Copy written to ${saved.copy}`));
+  }
   if (result.status === "discarded")
     lines.push(line(style, "Nothing was saved."));
 

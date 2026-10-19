@@ -1,6 +1,6 @@
 # Environment
 
-> Status: **In progress** (parts A–C built: config, replay, baseline, before/after, multi-project draft rules, setup agent and onboarding with `pnpm agent:setup`) · Last updated: 2026-10-18 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
+> Status: **Built** (parts A–D) · Last updated: 2026-10-18 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
 
 Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task job.
 
@@ -208,42 +208,46 @@ Known limitation: the comparison is pass/fail per check, so a check that was alr
 Jobs flag the config as **needs attention** (without stopping) when:
 
 - a setup step failed, or
-- a folder with a `package.json` appears that the config doesn't cover (a hint).
+- a folder with a `package.json` appears that the config doesn't cover (`uncoveredProjects`: the multi-project rules run on the checkout; workspace packages don't count, since the root installs them).
 
 The fix is to rerun onboarding, which starts from the current config and only works on what's broken, producing a new version.
 
 ## 5. Storage
 
-All storage goes through one interface, so the runner doesn't know where configs live:
+All storage goes through one interface (`@codegenie/shared`), so the runner doesn't know where configs live:
 
 ```ts
 interface EnvironmentStore {
-  load(repoKey: string): Promise<StoredEnvironment | null>;   // the active version
-  save(repoKey: string, config: EnvironmentConfig, source: EnvironmentSource): Promise<StoredEnvironment>;
-  markHealth(repoKey: string, health: "ok" | "needs_attention", reason?: string): Promise<void>;
+  load(repoKey): Promise<StoredEnvironment | null>;   // the active (latest) version
+  list(repoKey): Promise<StoredEnvironment[]>;        // kept versions, newest first
+  save(repoKey, config, source): Promise<StoredEnvironment>;   // new active version, health ok
+  markHealth(repoKey, "ok" | "needs_attention", reasons?): Promise<void>;   // on the active version
 }
+// StoredEnvironment: { repoKey, version, source, savedAt, config, health: { status, reasons, at? } }
 ```
 
 | Where | Store | Notes |
 |---|---|---|
-| Product (worker + website) | **Database**, `project_environments` ([database.md](./database.md)) | versions, one active per project, health, `jobs.environment_id` records which version each job used |
-| CLI (now) | File store: `~/.codegenie/environments/<repo-key>.json` | keeps the last 5 versions; repo key = git remote URL, or the folder path without a remote |
+| Product (worker + website) | **Database**, `project_environments` ([database.md](./database.md)) | versions, one active per project, health, `jobs.environment_id` records which version each job used (phase 2) |
+| CLI (built) | `FileEnvironmentStore` (`apps/cli/src/store/`): `~/.codegenie/environments/<repo-key>.json`, or under `$CODEGENIE_HOME` | the last 5 versions in one file, numbered on; written through a temporary file; configs validated on load |
 
-Lifecycle: onboarding inserts a new active version (the previous one becomes superseded); user edits create a new version with `source: user`; rollback reactivates an older version.
+**Repo key** (`repo-key.ts`): git URLs become host/path, lowercased, without protocol, user or `.git` (`github.com/acme/app`), so every URL form of a repository matches. A local folder uses its `origin` remote when it is the repository's top level, so a clone and its URL share one environment; otherwise (no remote, or a folder inside another repository) it is `local:<absolute path>`.
+
+Lifecycle: onboarding saves a new active version (health ok); a job marks the active version as needing attention; rollback to an older version comes with the website (phase 4).
 
 ## 6. CLI
 
-Now (part C): `pnpm agent:setup --repo … --save env.json [--yes]`, then `pnpm agent:run … --environment env.json`. With part D:
-
 ```bash
-pnpm agent:setup --repo ../DoDesk             # onboarding conversation → saves a config
-pnpm agent:setup --repo ../DoDesk --yes       # non-interactive: recommended answers, auto-approve
-pnpm agent:run   --repo ../DoDesk --task "…"  # uses the saved config (runs onboarding first if none)
-pnpm agent:run   … --show-environment         # which config version is used, and where it is stored
-pnpm agent:run   … --no-baseline-checks
+pnpm agent:setup --repo ../DoDesk             # onboarding conversation → saved as the next version
+pnpm agent:setup --repo ../DoDesk --yes       # non-interactive: recommended answers, saved
+pnpm agent:setup --repo ../DoDesk --show      # active version, health, steps, checks, answers, file
+pnpm agent:run   --repo ../DoDesk --task "…"  # uses the saved environment
 ```
 
-The `--install`, `--no-install` and `--check` flags are removed: changes go through onboarding or by editing the config.
+- A task needs a set-up repository: without a saved environment `agent:run` stops and prints the `agent:setup` command (a task is only given after setup, as in the product).
+- `agent:setup --save <file>` also writes a copy; `agent:run --environment <file>` uses a file instead of the saved environment, e.g. to try a hand-edited config.
+- `agent:run`'s header names the version in use and warns, with the reasons, when it needs attention.
+- `--install`, `--no-install`, `--check` and `--save-environment` were removed: setup changes go through `agent:setup` or by editing the config.
 
 ## 7. Code layout
 
@@ -281,7 +285,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 | A ✅ | config type + schema; `apply` / `validate`; jobs replay the config; baseline + before/after; rules-only draft, auto-approved | jobs run from an explicit config |
 | B ✅ | multi-project draft rules | correct drafts for DoDesk and BuyerBook |
 | C ✅ | C1 setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>` | the guided conversation works |
-| D | `EnvironmentStore` + CLI file store (versions); `agent:setup` and flags; health signals | complete onboarding in the CLI |
+| D ✅ | `EnvironmentStore` + CLI file store (versions); `agent:setup` saves and `--show`s, `agent:run` loads; health signals | complete onboarding in the CLI |
 | Phase 2 | DB migration + `DbEnvironmentStore` | product storage |
 | Phase 4 | `EventChannel`, question cards, config panel, needs-attention banner | onboarding on the website |
 

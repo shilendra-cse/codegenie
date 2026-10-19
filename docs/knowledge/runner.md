@@ -40,36 +40,26 @@ packages/runner/src/
 └── lib/                  run-logged (command + full log), shell-quote
 ```
 
-## 2. CLI: `pnpm agent:run`
+## 2. CLI: `pnpm agent:setup` and `pnpm agent:run`
 
-`apps/cli` runs a job from the terminal and prints live progress, the summary, check results and the diff.
+`apps/cli` sets repositories up and runs jobs from the terminal, with live progress, the summary, check results and the diff.
 
 ```bash
-pnpm agent:run --repo ../my-project --task "Add a /health endpoint with a test"
-pnpm agent:run --repo https://github.com/org/repo.git --ref main --task-file task.md --patch out.patch
+pnpm agent:setup --repo ../my-project                      # once per repository (asks when it can't decide)
+pnpm agent:setup --repo ../my-project --show               # the saved environment
+pnpm agent:run   --repo ../my-project --task "Add a /health endpoint with a test"
+pnpm agent:run   --repo https://github.com/org/repo.git --ref main --task-file task.md --patch out.patch
 ```
 
 - Configuration in `apps/cli/.env`: `OPENAI_API_KEY`, `AGENT_MODEL` (default `openai:gpt-6-luna`).
-- Options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--install` / `--no-install`, `--check name=cmd`, `--patch`, `--keep`, `--json`. See `--help`.
-- Environment: `--environment <file>` replays a saved config, `--save-environment <file>` writes the config this run used, `--no-baseline-checks` skips the check run before the agent. `--install`, `--no-install` and `--check` only apply to drafted configs.
-- Planned with the environment store (part D): `agent:run` finds the saved config by itself, `--show-environment`; `--install`, `--no-install` and `--check` are removed in favor of the environment config ([environment.md](./environment.md)).
+- Environments are saved per repository in `~/.codegenie/environments/` (last 5 versions; [environment.md](./environment.md)). `agent:run` stops with the `agent:setup` command when a repository has none, and marks the active version as needing attention when setup reports a problem.
+- `agent:run` options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--environment <file>` (use a file instead of the saved environment), `--no-baseline-checks`, `--patch`, `--keep`, `--json`.
+- `agent:setup` options: `--ref`, `--model` (the setup agent's model), `--yes` (recommended answers), `--save <file>` (also write a copy), `--show`.
 - Relative paths resolve against the folder the command was run from.
-- Ctrl+C cancels cleanly (the sandbox is removed); a second Ctrl+C force-quits.
-- Exit codes: 0 succeeded, 2 incomplete, 1 failed, 130 cancelled.
+- Ctrl+C cancels cleanly (sandboxes are removed); a second Ctrl+C force-quits.
+- Exit codes: `agent:run` 0 succeeded, 2 incomplete, 1 failed (or no environment), 130 cancelled; `agent:setup` 0 saved or discarded, 1 failed, 130 cancelled.
 - Your local repository is never modified: the agent works on a copy.
-
-### `pnpm agent:setup` (onboarding)
-
-```bash
-pnpm agent:setup --repo ../BuyerBook --save env.json          # asks you when it can't decide
-pnpm agent:setup --repo https://github.com/org/repo --save env.json --yes   # recommended answers, saves
-pnpm agent:run   --repo ../BuyerBook --environment env.json --task "…"
-```
-
-- Options: `--ref`, `--model` (the setup agent's model), `--yes`. Questions show numbered options, the recommended one first, plus "Something else…" for your own answer.
-- Output: progress lines, the setup agent's tool calls (try results as ✓ / ✗ / ⚠ lines), the environment to approve (steps, checks with their final status, notes, your answers), then Save / Discard.
-- Exit codes: 0 saved or discarded, 1 failed, 130 cancelled.
-- The code: `apps/cli/src/commands/` (`run.ts`, `setup.ts`), `args/`, `channel/terminal.ts`; `main.ts` picks the command.
+- The code: `apps/cli/src/commands/` (`run.ts`, `setup.ts`), `args/`, `store/` (file store, repo key, saved-environment output), `channel/` (questions); `main.ts` picks the command.
 
 ### Terminal UI (`packages/terminal`)
 

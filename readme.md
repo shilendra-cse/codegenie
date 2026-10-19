@@ -53,8 +53,9 @@ Run the agent on a repository:
 
 ```bash
 pnpm sandbox:build-image   # once, and after sandbox image changes
-pnpm agent:setup --repo ../my-project --save ../my-project-env.json   # once per repository
-pnpm agent:run --repo ../my-project --environment ../my-project-env.json --task "Add a /health endpoint with a test"
+pnpm agent:setup --repo ../my-project      # once per repository; saved in ~/.codegenie
+pnpm agent:setup --repo ../my-project --show
+pnpm agent:run --repo ../my-project --task "Add a /health endpoint with a test"
 pnpm agent:run --help      # all options
 pnpm eval                  # run the eval tasks (real model runs; costs money)
 ```

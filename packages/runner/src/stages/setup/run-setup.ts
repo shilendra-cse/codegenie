@@ -7,11 +7,11 @@ import {
   type SetupResult,
 } from "@codegenie/shared";
 import { applySteps } from "../../environment/apply.js";
+import { uncoveredProjects } from "../../environment/health.js";
 import { buildConfig } from "../../environment/build-config.js";
 import { isUsable, runChecks } from "../../environment/checks.js";
 import {
   draftEnvironment,
-  type DraftOverrides,
   type DraftStep,
 } from "../../environment/draft/draft.js";
 import { createBaseline } from "../changes/index.js";
@@ -21,7 +21,6 @@ export type RunSetupOptions = {
   runId: string;
   emit: Emit;
   environment?: EnvironmentConfig;
-  overrides?: DraftOverrides;
   baselineChecks: boolean;
 };
 
@@ -36,17 +35,10 @@ export async function runSetup(
   options: RunSetupOptions,
 ): Promise<PreparedEnvironment> {
   const { runId, emit, environment } = options;
-  if (environment && options.overrides) {
-    throw new Error(
-      "Setup overrides can't be combined with a given environment config; edit the config instead.",
-    );
-  }
   emit({ type: "setup_started", jobId: runId, ts: new Date().toISOString() });
 
   const commit = await headCommit(sandbox);
-  const draft = environment
-    ? null
-    : await draftEnvironment(sandbox, { overrides: options.overrides });
+  const draft = environment ? null : await draftEnvironment(sandbox);
   const stepsToRun: DraftStep[] = environment?.steps ?? draft!.steps;
   const checks: Check[] = environment?.checks ?? draft!.checks;
   const notes = [...(draft?.notes ?? [])];
@@ -74,6 +66,17 @@ export async function runSetup(
     return false;
   });
 
+  const healthReasons = steps
+    .filter((s) => s.status === "failed")
+    .map((s) => `Setup step "${s.name}" (${s.cwd}) failed: \`${s.command}\`.`);
+  if (environment) {
+    for (const dir of await uncoveredProjects(sandbox, environment)) {
+      healthReasons.push(
+        `${dir === "." ? "The repository root" : `${dir}/`} has its own package.json but isn't covered by the environment.`,
+      );
+    }
+  }
+
   const setup: SetupResult = {
     config:
       environment ??
@@ -81,13 +84,14 @@ export async function runSetup(
         steps,
         checks,
         results: baseline,
-        source: draft!.overridden ? "mixed" : "detected",
+        source: "detected",
         commit,
       }),
     steps,
     baseline,
     checks: usable,
-    health: steps.some((s) => s.status === "failed") ? "needs_attention" : "ok",
+    health: healthReasons.length ? "needs_attention" : "ok",
+    healthReasons,
     notes,
   };
 

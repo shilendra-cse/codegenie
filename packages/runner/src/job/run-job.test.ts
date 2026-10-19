@@ -229,20 +229,4 @@ describe("runJob", () => {
     expect(diff).toBeGreaterThan(-1);
     expect(verify).toBeGreaterThan(diff);
   });
-
-  it("refuses setup overrides together with a given config", async () => {
-    const { sandbox } = fakeSandbox();
-    const result = await runJob(
-      options(sandbox, {
-        environment: {
-          version: 1,
-          steps: [],
-          checks: [],
-          meta: { source: "user", createdAt: "", decisions: [] },
-        },
-        setupOverrides: { install: false },
-      }),
-    );
-    expect(result).toMatchObject({ status: "failed", failedStage: "setup" });
-  });
 });
