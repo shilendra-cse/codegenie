@@ -172,7 +172,7 @@ Live stream source and audit log.
 | `payload` | jsonb, default `{}` | |
 | `created_at` | timestamptz | |
 
-Primary key: **(`job_id`, `seq`)**. A job has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE job_id = $1 AND seq > $lastEventId`. `text_delta` events are streamed live but **not** persisted.
+Primary key: **(`job_id`, `seq`)**. A job has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE job_id = $1 AND seq > $lastEventId`. `text_delta` and `agent_step` events are streamed live but **not** persisted.
 
 ### `webhook_deliveries`
 Idempotency for GitHub webhooks (GitHub retries deliveries).

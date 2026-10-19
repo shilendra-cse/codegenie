@@ -14,9 +14,11 @@
     "setup": "tsx src/main.ts setup"
   },
   "dependencies": {
+    "@clack/prompts": "^1.8.1",
     "@codegenie/agent": "workspace:*",
     "@codegenie/runner": "workspace:*",
     "@codegenie/shared": "workspace:*",
+    "@codegenie/terminal": "workspace:*",
     "dotenv": "^17.2.2",
     "zod": "^4.4.3"
   },

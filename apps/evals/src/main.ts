@@ -3,8 +3,10 @@ import path from "node:path";
 import { parseEvalArgs, USAGE, UsageError } from "./args.js";
 import { loadModel } from "./config.js";
 import { RESULTS_DIR } from "./paths.js";
+import { cost, duration, intro, outro, styleFor } from "@codegenie/terminal";
 import { formatReport } from "./report.js";
-import { runEvals } from "./run/run-evals.js";
+import { EvalProgress } from "./run/progress.js";
+import { attemptName, runEvals } from "./run/run-evals.js";
 import { loadTasks } from "./suite/tasks.js";
 
 const out = (line: string) => process.stdout.write(`${line}\n`);
@@ -40,10 +42,25 @@ async function main(): Promise<number> {
     startedAt.toISOString().replace(/[:.]/g, "-").slice(0, 19),
   );
   await mkdir(resultsDir, { recursive: true });
+  const style = styleFor(process.stdout);
   out(
-    `CodeGenie evals · ${model.spec.id} · ${tasks.length} task${tasks.length === 1 ? "" : "s"}${options.repeat > 1 ? ` × ${options.repeat}` : ""}\n`,
+    `${intro(style, `CodeGenie evals · ${model.spec.id} · ${tasks.length} task${tasks.length === 1 ? "" : "s"}${options.repeat > 1 ? ` × ${options.repeat}` : ""}`)}\n`,
   );
 
+  const names = tasks.flatMap((task) =>
+    Array.from({ length: options.repeat }, (_, i) =>
+      attemptName(task, i + 1, options.repeat),
+    ),
+  );
+  const progress = new EvalProgress(process.stdout, {
+    total: names.length,
+    nameWidth: Math.max(
+      ...names.map((n) => n.length),
+      ...tasks.map((t) => t.repo.name.length),
+    ),
+    style,
+  });
+  progress.start();
   const results = await runEvals({
     tasks,
     model,
@@ -51,8 +68,8 @@ async function main(): Promise<number> {
     concurrency: options.concurrency,
     refreshEnvironments: options.onboard,
     resultsDir,
-    log: out,
-  });
+    progress,
+  }).finally(() => progress.stop());
 
   const report = formatReport(results, {
     model: model.spec.id,
@@ -65,7 +82,16 @@ async function main(): Promise<number> {
     `${JSON.stringify(results, null, 2)}\n`,
   );
   await writeFile(path.join(resultsDir, "report.md"), `${report}\n`);
-  out(`\n${report}\n\nSaved to ${path.relative(process.cwd(), resultsDir)}/`);
+  const solved = results.filter((r) => r.solved === true).length;
+  const review = results.filter((r) => r.solved === null).length;
+  const spent = results.reduce((sum, r) => sum + (r.agent?.costUsd ?? 0), 0);
+  const where = path.relative(process.cwd(), resultsDir);
+  out(
+    `\n${outro(style, `${style.bold(`Solved ${solved} of ${results.length - review}`)}${review ? ` (${review} to review)` : ""} · ${cost(spent)} · ${duration(Date.now() - startedAt.getTime())}`)}`,
+  );
+  out(
+    `  ${style.dim(`Report: ${where}/report.md · logs and diffs in ${where}/`)}`,
+  );
   return 0;
 }
 

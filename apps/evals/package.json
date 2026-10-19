@@ -17,6 +17,7 @@
     "@codegenie/runner": "workspace:*",
     "@codegenie/sandbox": "workspace:*",
     "@codegenie/shared": "workspace:*",
+    "@codegenie/terminal": "workspace:*",
     "dotenv": "^17.2.2",
     "zod": "^4.4.3"
   },

@@ -68,7 +68,9 @@ describe("runAgent", () => {
 
     expect(result.status).toBe("succeeded");
     expect(sandbox.files.get("/workspace/src/app.ts")).toBe("const a = 2;\n");
-    expect(events.map((e) => e.type)).toEqual([
+    expect(
+      events.filter((e) => e.type !== "agent_step").map((e) => e.type),
+    ).toEqual([
       "text_delta",
       "tool_start",
       "tool_end",
@@ -77,6 +79,10 @@ describe("runAgent", () => {
       "tool_start",
       "tool_end",
     ]);
+    expect(
+      events.flatMap((e) => (e.type === "agent_step" ? [e.steps] : [])),
+    ).toEqual([1, 2, 3]);
+    expect(events.at(-1)).toMatchObject({ type: "agent_step", steps: 3 });
     const [start, end] = events.filter((e) => e.type !== "text_delta");
     expect(start).toMatchObject({
       toolName: "read_file",

@@ -17,6 +17,7 @@ packages/
   runner/     Runs a job end to end: sandbox, checkout, setup, agent, verify
   agent/      The AI agent: model, prompt, tools, loop
   sandbox/    Isolated environments (Docker)
+  terminal/   Terminal output shared by the CLI and evals (colors, layout, spinners)
   shared/     Types shared across apps and packages
 docs/
   api/        OpenAPI spec

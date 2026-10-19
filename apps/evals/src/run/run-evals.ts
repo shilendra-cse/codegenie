@@ -1,8 +1,12 @@
+import { createWriteStream } from "node:fs";
+import path from "node:path";
 import type { ResolvedModel } from "@codegenie/agent";
 import type { EnvironmentConfig } from "@codegenie/shared";
+import { createJobReporter, plain } from "@codegenie/terminal";
 import { ensureEnvironment } from "../suite/environments.js";
 import type { EvalTask } from "../suite/tasks.js";
-import { runTask, type TaskResult } from "./run-task.js";
+import type { EvalProgress } from "./progress.js";
+import { artifactName, runTask, type TaskResult } from "./run-task.js";
 
 export type RunEvalsOptions = {
   tasks: EvalTask[];
@@ -11,25 +15,71 @@ export type RunEvalsOptions = {
   concurrency: number;
   refreshEnvironments: boolean;
   resultsDir: string;
-  log: (message: string) => void;
+  progress: EvalProgress;
 };
+
+/** Name shown for an attempt: the task id, numbered when tasks repeat. */
+export const attemptName = (task: EvalTask, attempt: number, repeat: number) =>
+  repeat > 1 ? `${task.id} #${attempt}` : task.id;
+
+async function runLogged(
+  task: EvalTask,
+  attempt: number,
+  options: RunEvalsOptions,
+  environment: EnvironmentConfig | undefined,
+): Promise<TaskResult> {
+  const name = attemptName(task, attempt, options.repeat);
+  const logFile = path.join(
+    options.resultsDir,
+    `${artifactName(task.id, attempt)}.log`,
+  );
+  const log = createWriteStream(logFile);
+  const reporter = createJobReporter((line) => log.write(`${line}\n`), plain);
+  log.write(`${name}\nTask: ${task.task}\n\n`);
+  options.progress.taskStarted(name, logFile);
+
+  try {
+    const result = await runTask(task, {
+      attempt,
+      model: options.model,
+      environment,
+      resultsDir: options.resultsDir,
+      emit: (event) => {
+        reporter.onEvent(event);
+        options.progress.taskEvent(name, event);
+      },
+    });
+    reporter.flush();
+    log.write(
+      `\nSolved: ${result.solved === null ? "needs review" : result.solved ? "yes" : "no"}\n${result.grade.detail}\n`,
+    );
+    options.progress.taskFinished(name, result);
+    return result;
+  } finally {
+    await new Promise((resolve) => log.end(resolve));
+  }
+}
 
 export async function runEvals(
   options: RunEvalsOptions,
 ): Promise<TaskResult[]> {
-  const { tasks, log } = options;
+  const { tasks, progress } = options;
 
   // One onboarding per repository, before any task runs.
   const environments = new Map<string, EnvironmentConfig>();
   for (const task of tasks) {
     if (environments.has(task.repo.name)) continue;
+    let finish: (() => void) | null = null;
     environments.set(
       task.repo.name,
       await ensureEnvironment(task.repo, {
         model: options.model,
         refresh: options.refreshEnvironments,
-        log,
-      }),
+        log: (message) => {
+          progress.info(message);
+          finish ??= progress.activity(task.repo.name, "onboarding");
+        },
+      }).finally(() => finish?.()),
     );
   }
 
@@ -45,17 +95,11 @@ export async function runEvals(
     while (next < queue.length) {
       const index = next++;
       const { task, attempt } = queue[index]!;
-      const name = options.repeat > 1 ? `${task.id} #${attempt}` : task.id;
-      log(`▶ ${name}`);
-      const result = await runTask(task, {
+      results[index] = await runLogged(
+        task,
         attempt,
-        model: options.model,
-        environment: environments.get(task.repo.name),
-        resultsDir: options.resultsDir,
-      });
-      results[index] = result;
-      log(
-        `${result.solved === null ? "?" : result.solved ? "✓" : "✗"} ${name} (${Math.round(result.durationMs / 1000)}s, $${(result.agent?.costUsd ?? 0).toFixed(4)})`,
+        options,
+        environments.get(task.repo.name),
       );
     }
   };

@@ -2,13 +2,12 @@ import { stat, writeFile } from "node:fs/promises";
 import { autoChannel, runOnboarding } from "@codegenie/runner";
 import { UsageError } from "../args/common.js";
 import { parseSetupArgs, SETUP_USAGE } from "../args/setup-args.js";
+import { intro, line, styleFor, type Style } from "@codegenie/terminal";
+import { promptChannel } from "../channel/prompt.js";
 import { terminalChannel } from "../channel/terminal.js";
 import { loadModel } from "../config.js";
-import {
-  createLiveReporter,
-  formatSetupSummary,
-  setupExitCode,
-} from "../report.js";
+import { createLiveJob } from "../live-job.js";
+import { formatSetupSummary, setupExitCode } from "../report.js";
 import { err, out } from "./output.js";
 
 export async function setupCommand(
@@ -51,13 +50,28 @@ export async function setupCommand(
     controller.abort();
   });
 
+  const style = styleFor(process.stdout);
+  const live = createLiveJob(process.stdout, style);
+  const info = (message: string) => showProgress(live, style, message);
   const channel = options.yes
-    ? { ...autoChannel(out), close: () => {} }
-    : terminalChannel(process.stdin, process.stdout);
-  const live = createLiveReporter(out);
+    ? { ...autoChannel(info), close: () => {} }
+    : process.stdin.isTTY && live.live.interactive
+      ? promptChannel({
+          pause: () => live.live.stop(),
+          resume: () => live.live.start(),
+          info,
+        })
+      : { ...terminalChannel(process.stdin, process.stdout), info };
   const where =
     options.source.type === "local" ? options.source.path : options.source.url;
-  out(`CodeGenie setup · ${model.spec.id} · ${where}\n`);
+  live.print(
+    intro(
+      style,
+      `CodeGenie setup ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
+    ),
+    line(style),
+  );
+  live.live.start();
 
   const result = await runOnboarding({
     runId: `setup-${Date.now().toString(36)}`,
@@ -67,7 +81,7 @@ export async function setupCommand(
     emit: (event) => live.onEvent(event),
     signal: controller.signal,
   }).finally(() => {
-    live.flush();
+    live.stop();
     channel.close();
   });
 
@@ -79,6 +93,36 @@ export async function setupCommand(
     );
     saved = options.savePath;
   }
-  out(formatSetupSummary(result, saved));
+  out(formatSetupSummary(result, saved, style));
   return setupExitCode(result.status);
+}
+
+const MARK = /^(\s*)([✓✗⚠])/;
+
+/** Onboarding's progress messages: shown in the gutter, the latest one beside the spinner. */
+function showProgress(
+  live: ReturnType<typeof createLiveJob>,
+  style: Style,
+  message: string,
+) {
+  const lines = message.split("\n");
+  const first = lines.find((l) => l.trim()) ?? "";
+  live.setActivity(first.replace(/[:…]$/, ""));
+  live.print(
+    ...lines.map((text) =>
+      line(
+        style,
+        text.replace(
+          MARK,
+          (_, indent: string, mark: string) =>
+            indent +
+            (mark === "✓"
+              ? style.ok(mark)
+              : mark === "✗"
+                ? style.fail(mark)
+                : style.warn(mark)),
+        ),
+      ),
+    ),
+  );
 }

@@ -3,7 +3,9 @@ import { parseEnvironmentConfig, runJob } from "@codegenie/runner";
 import { UsageError } from "../args/common.js";
 import { parseCliArgs, RUN_USAGE } from "../args/run-args.js";
 import { loadModel } from "../config.js";
-import { createLiveReporter, exitCode, formatSummary } from "../report.js";
+import { intro, line, oneLine, styleFor } from "@codegenie/terminal";
+import { createLiveJob } from "../live-job.js";
+import { exitCode, formatSummary } from "../report.js";
 import { err, out } from "./output.js";
 
 export async function runCommand(argv: string[], cwd: string): Promise<number> {
@@ -62,14 +64,22 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     controller.abort();
   });
 
-  const live = options.json ? null : createLiveReporter(out);
+  const style = styleFor(process.stdout);
+  const live = options.json ? null : createLiveJob(process.stdout, style);
   if (live) {
     const where =
       options.source.type === "local"
         ? options.source.path
         : options.source.url;
-    out(`CodeGenie · ${model.spec.id} · ${where}`);
-    out(`Task: ${task.trim()}\n`);
+    live.print(
+      intro(
+        style,
+        `CodeGenie ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
+      ),
+      line(style, `Task: ${oneLine(task, 300)}`),
+      line(style),
+    );
+    live.live.start();
   }
 
   const result = await runJob({
@@ -87,7 +97,7 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     signal: controller.signal,
     keepSandbox: options.keep,
   });
-  live?.flush();
+  live?.stop();
 
   if (options.patchPath && result.diff) {
     await writeFile(options.patchPath, result.diff.patch);
@@ -111,13 +121,14 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
   } else {
     out(
       formatSummary(result, {
+        style,
         patchPath: options.patchPath,
         environmentPath: options.saveEnvironmentPath,
       }),
     );
     if (options.keep && result.sandboxId) {
       out(
-        `\nSandbox kept: docker exec -it ${result.sandboxId} bash  (remove with pnpm sandbox:clean)`,
+        `\n${style.dim(`Sandbox kept: docker exec -it ${result.sandboxId} bash  (remove with pnpm sandbox:clean)`)}`,
       );
     }
   }

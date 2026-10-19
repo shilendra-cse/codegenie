@@ -104,5 +104,23 @@ The runner gained one option for this: `afterCheckout` (in `runJob` and `runOnbo
 
 ## 5. Next
 
+### Progress while running
+
+- **In a terminal**, a live view: one line per running task, redrawn in place (spinner, stage, steps and cost while the agent works, time), finished tasks listed above it, totals below:
+  ```
+  ✓ ts-lib/paginate-bug           1m 35s  $0.0041
+  ✗ http-api/health               2m 10s  $0.0062  hidden tests failed
+  ◒ dodesk/comment-author-only    agent · 12 steps · $0.0030 · 2:41
+  ◓ dodesk/due-date-validation    setup · 0:52
+
+  3 of 10 done · 2 running · $0.0133 · 6:40
+  ```
+- **Elsewhere** (pipes, CI): a line per stage change, and every 30 seconds while a task runs a line with its stage, steps, cost and time.
+- **A full log per task** in `results/<time>/<repo>--<task>-<attempt>.log`: the same detail as `agent:run` (tool calls, check results, the agent's notes) plus the grade; its path is printed when the task starts, so `tail -f` follows one task.
+- Code: `src/run/progress.ts` (`EvalProgress`), on `packages/terminal`.
+- Later, `--verbose`: the full agent output in the terminal (implies `--concurrency 1`).
+
+### Then
+
 - [ ] First full run with the real model; read the results together.
 - [ ] More tasks where the results show gaps (e.g. multi-file features, UI changes graded manually).

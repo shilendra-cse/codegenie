@@ -81,6 +81,13 @@ export async function runSegment(
       state.steps += 1;
       state.usage.add(step.usage);
       completed = step.response.messages;
+      env.emit({
+        type: "agent_step",
+        jobId: env.runId,
+        ts: new Date().toISOString(),
+        steps: state.steps,
+        costUsd: state.usage.costUsd,
+      });
     },
   });
 

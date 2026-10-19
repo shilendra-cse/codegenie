@@ -24,6 +24,7 @@ export type {
   JobEventBase,
   JobEventStageChanged,
   JobEventSandboxCreated,
+  JobEventAgentStep,
   JobEventSetupStarted,
   JobEventSetupCompleted,
   JobEventToolStart,

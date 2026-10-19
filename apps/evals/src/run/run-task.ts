@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ResolvedModel } from "@codegenie/agent";
+import type { Emit, ResolvedModel } from "@codegenie/agent";
 import { runJob, type JobResult } from "@codegenie/runner";
 import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
 import type { EnvironmentConfig } from "@codegenie/shared";
@@ -43,6 +43,11 @@ async function applyPatch(sandbox: Sandbox, task: EvalTask) {
   }
 }
 
+/** Base name for a task attempt's files in the results folder. */
+export function artifactName(taskId: string, attempt: number) {
+  return `${taskId.replace("/", "--")}-${attempt}`;
+}
+
 export function solvedFrom(result: Grade, job: JobResult): boolean | null {
   if (result.passed === null) return null;
   return result.passed && (job.verify?.regressions ?? 0) === 0;
@@ -55,6 +60,7 @@ export async function runTask(
     model: ResolvedModel;
     environment?: EnvironmentConfig;
     resultsDir: string;
+    emit?: Emit;
     createSandbox?: () => Promise<Sandbox>;
   },
 ): Promise<TaskResult> {
@@ -68,6 +74,7 @@ export async function runTask(
     source: repoSource(task.repo),
     model: options.model,
     environment: options.environment,
+    emit: options.emit,
     limits: {
       ...(task.limits?.maxSteps ? { maxSteps: task.limits.maxSteps } : {}),
       ...(task.limits?.maxCostUsd
@@ -98,7 +105,7 @@ export async function runTask(
   if (job.diff?.patch) {
     diffFile = path.join(
       options.resultsDir,
-      `${task.id.replace("/", "--")}-${options.attempt}.patch`,
+      `${artifactName(task.id, options.attempt)}.patch`,
     );
     await writeFile(diffFile, job.diff.patch);
   }
