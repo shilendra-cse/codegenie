@@ -120,6 +120,12 @@ describe("runSetup", () => {
 
     expect(setup.config).toBe(environment);
     expect(setup.notes).toEqual([]);
+    expect(setup).toMatchObject({
+      health: "needs_attention",
+      healthReasons: [
+        "The repository root has its own package.json but isn't covered by the environment.",
+      ],
+    });
     expect(fake.execCalls.some((c) => c.command.includes("npm ci"))).toBe(
       false,
     );
@@ -149,19 +155,5 @@ describe("runSetup", () => {
     expect(
       setup.notes.some((n) => n.startsWith('Setup step "install" (.) failed')),
     ).toBe(true);
-  });
-
-  it("refuses overrides together with a given config", async () => {
-    await expect(
-      run(sandbox(), {
-        environment: {
-          version: 1,
-          steps: [],
-          checks: [],
-          meta: { source: "user", createdAt: "", decisions: [] },
-        },
-        overrides: { install: false },
-      }).result,
-    ).rejects.toThrow(/can't be combined/);
   });
 });

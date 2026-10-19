@@ -51,6 +51,37 @@ export type CheckResult = Check & {
 
 export type EnvironmentHealth = "ok" | "needs_attention";
 
+/** A saved environment version for one repository. */
+export type StoredEnvironment = {
+  /** Normalized repository identity, e.g. "github.com/acme/app". */
+  repoKey: string;
+  /** Increases with every save; the latest is the active one. */
+  version: number;
+  source: EnvironmentSource;
+  savedAt: string;
+  config: EnvironmentConfig;
+  health: { status: EnvironmentHealth; reasons: string[]; at?: string };
+};
+
+/** Where environments live: a file per repository for the CLI, the database for the product. */
+export interface EnvironmentStore {
+  /** The active version, or null when the repository hasn't been set up. */
+  load(repoKey: string): Promise<StoredEnvironment | null>;
+  /** All kept versions, newest first. */
+  list(repoKey: string): Promise<StoredEnvironment[]>;
+  /** Saves a new active version; its health starts as ok. */
+  save(
+    repoKey: string,
+    config: EnvironmentConfig,
+    source: EnvironmentSource,
+  ): Promise<StoredEnvironment>;
+  markHealth(
+    repoKey: string,
+    status: EnvironmentHealth,
+    reasons?: string[],
+  ): Promise<void>;
+}
+
 export type SetupResult = {
   config: EnvironmentConfig;
   steps: StepResult[];
@@ -59,6 +90,8 @@ export type SetupResult = {
   /** Checks the agent and verify use: broken and timed-out ones removed. */
   checks: Check[];
   health: EnvironmentHealth;
+  /** Why the environment needs attention; empty when it's ok. */
+  healthReasons: string[];
   notes: string[];
 };
 

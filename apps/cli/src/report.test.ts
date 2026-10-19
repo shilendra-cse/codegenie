@@ -145,7 +145,7 @@ describe("exitCode", () => {
 });
 
 describe("formatSummary setup details", () => {
-  it("shows setup notes, a needs-attention warning and the saved environment", () => {
+  it("shows setup notes and why the environment needs attention", () => {
     const summary = formatSummary(
       {
         status: "succeeded",
@@ -169,19 +169,27 @@ describe("formatSummary setup details", () => {
           baseline: null,
           checks: [],
           health: "needs_attention",
+          healthReasons: [
+            'Setup step "install" (.) failed: `npm ci`.',
+            "admin/ has its own package.json but isn't covered by the environment.",
+          ],
           notes: ['Setup step "install" (.) failed: `npm ci`.'],
         },
         durationMs: 1_000,
       },
-      { style: plain, environmentPath: "/tmp/env.json" },
+      { style: plain },
     );
     expect(summary).toContain(
       '│ Note: Setup step "install" (.) failed: `npm ci`.',
     );
     expect(summary).toContain(
-      "│ ⚠ Environment needs attention: a setup step failed.",
+      [
+        "│ ⚠ The environment needs attention:",
+        '│   - Setup step "install" (.) failed: `npm ci`.',
+        "│   - admin/ has its own package.json but isn't covered by the environment.",
+        "│   Run pnpm agent:setup again to update it.",
+      ].join("\n"),
     );
-    expect(summary).toContain("│ Environment saved to /tmp/env.json");
   });
 });
 
@@ -215,11 +223,20 @@ describe("setup output", () => {
             decisions: [],
           },
         }),
-        "/tmp/env.json",
+        {
+          version: 3,
+          file: "/home/me/.codegenie/environments/x.json",
+          copy: "/tmp/env.json",
+        },
         plain,
       ),
     ).toBe(
-      "│\n│ Environment saved to /tmp/env.json\n└ ✓ approved · setup agent: 6 steps · $0.0123 · 2m 5s",
+      [
+        "│",
+        "│ Saved as version 3 · /home/me/.codegenie/environments/x.json",
+        "│ Copy written to /tmp/env.json",
+        "└ ✓ approved · setup agent: 6 steps · $0.0123 · 2m 5s",
+      ].join("\n"),
     );
   });
 

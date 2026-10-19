@@ -115,6 +115,7 @@ describe("buildRepoContext", () => {
       ],
       checks: ctx.checks,
       health: "needs_attention",
+      healthReasons: [],
       notes: ['Setup step "install" (web) failed: `npm install`.'],
     });
     expect(context).toContain(
