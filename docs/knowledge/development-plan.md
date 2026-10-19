@@ -112,6 +112,8 @@ PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan ap
 
 - **Branches & PRs:** `main` is always deployable. One branch per change (`feat/…`, `fix/…`, `chore/…`), merged via PR with CI green.
 - **Commits:** conventional style (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`).
+- **Small batches:** a branch is built as a series of small commits, each one meaningful change that is easy to review: e.g. types, then core logic with its tests, then wiring, then docs. Every commit leaves type-check, lint and tests passing. Splits follow meaning, not a size rule: a batch is usually a few hundred lines or less, but a change that only makes sense whole stays whole. Moves and refactors get their own commit, never mixed into a feature commit.
+- **Batch flow:** the proposal for a branch lists its planned batches. Each batch is built, explained and reviewed, then committed, before the next one starts; review fixes go into the same batch. The PR description covers the whole branch.
 - **Tracking:** each phase's checklist above is the backlog; tick items as PRs merge.
 - **Docs:** design changes update the relevant file in `docs/knowledge/` in the same PR.
 - **Definition of done (per item):** code + tests where meaningful + type-check/lint pass + docs updated if behavior or design changed.
