@@ -28,6 +28,8 @@ export type RunJobOptions = {
   signal?: AbortSignal;
   keepSandbox?: boolean;
   createSandbox?: () => Promise<Sandbox>;
+  /** Runs right after checkout, before setup (e.g. evals pin a commit or plant a bug). */
+  afterCheckout?: (sandbox: Sandbox) => Promise<void>;
 };
 
 const EVENT_STAGE: Record<JobStageName, JobStage> = {
@@ -88,6 +90,7 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
 
     enter("checkout");
     result.checkout = await checkoutRepo(sandbox, options.source);
+    await options.afterCheckout?.(sandbox);
     if (signal?.aborted) return finish("cancelled");
 
     enter("setup");

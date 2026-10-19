@@ -11,7 +11,8 @@ apps/
   web/        Next.js UI
   server/     Express API (auth, projects, tasks, live job events)
   worker/     Job runner for queued tasks
-  cli/        Run a job from the terminal (pnpm agent:run)
+  cli/        Run a job from the terminal (pnpm agent:setup, pnpm agent:run)
+  evals/      Eval tasks and the harness that grades the agent (pnpm eval)
 packages/
   runner/     Runs a job end to end: sandbox, checkout, setup, agent, verify
   agent/      The AI agent: model, prompt, tools, loop
@@ -51,8 +52,10 @@ Run the agent on a repository:
 
 ```bash
 pnpm sandbox:build-image   # once, and after sandbox image changes
-pnpm agent:run --repo ../my-project --task "Add a /health endpoint with a test"
+pnpm agent:setup --repo ../my-project --save ../my-project-env.json   # once per repository
+pnpm agent:run --repo ../my-project --environment ../my-project-env.json --task "Add a /health endpoint with a test"
 pnpm agent:run --help      # all options
+pnpm eval                  # run the eval tasks (real model runs; costs money)
 ```
 
 Sign in at http://localhost:3000/signin.
@@ -75,7 +78,7 @@ API docs are served at http://localhost:3001/api/docs while the server is runnin
 - [Architecture](docs/knowledge/architecture.md)
 - [Database](docs/knowledge/database.md)
 - [Development plan](docs/knowledge/development-plan.md)
-- [Runner](docs/knowledge/runner.md), [Environment](docs/knowledge/environment.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md)
+- [Runner](docs/knowledge/runner.md), [Environment](docs/knowledge/environment.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md), [Evals](docs/knowledge/evals.md)
 
 ## License
 

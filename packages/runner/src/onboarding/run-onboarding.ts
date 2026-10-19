@@ -36,6 +36,8 @@ export type RunOnboardingOptions = {
   emit?: Emit;
   signal?: AbortSignal;
   createSandbox?: () => Promise<Sandbox>;
+  /** Runs right after each checkout (e.g. evals pin a commit). */
+  afterCheckout?: (sandbox: Sandbox) => Promise<void>;
 };
 
 export type OnboardingStatus =
@@ -91,6 +93,7 @@ export async function runOnboarding(
     const sandbox = await createSandbox();
     sandboxes.push(sandbox);
     await checkoutRepo(sandbox, source);
+    await options.afterCheckout?.(sandbox);
     return sandbox;
   };
 

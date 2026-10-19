@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "name": "install",
+      "cwd": ".",
+      "command": "npm install"
+    }
+  ],
+  "checks": [
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "cwd": "."
+    },
+    {
+      "name": "test",
+      "command": "npm run test",
+      "cwd": "."
+    }
+  ],
+  "meta": {
+    "source": "detected",
+    "createdAt": "2026-10-18T14:47:59.139Z",
+    "decisions": [],
+    "validation": {
+      "steps": {
+        "install@.": "ok"
+      },
+      "checks": {
+        "typecheck@.": "passing",
+        "test@.": "passing"
+      }
+    }
+  }
+}

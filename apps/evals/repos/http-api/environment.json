@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "name": "install",
+      "cwd": ".",
+      "command": "npm install"
+    }
+  ],
+  "checks": [
+    {
+      "name": "test",
+      "command": "npm run test",
+      "cwd": "."
+    }
+  ],
+  "meta": {
+    "source": "detected",
+    "createdAt": "2026-10-18T14:48:01.505Z",
+    "decisions": [],
+    "validation": {
+      "steps": {
+        "install@.": "ok"
+      },
+      "checks": {
+        "test@.": "passing"
+      }
+    }
+  }
+}

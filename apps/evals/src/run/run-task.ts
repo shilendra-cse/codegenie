@@ -1,0 +1,131 @@
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { ResolvedModel } from "@codegenie/agent";
+import { runJob, type JobResult } from "@codegenie/runner";
+import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
+import type { EnvironmentConfig } from "@codegenie/shared";
+import { grade, type Grade } from "../graders/grade.js";
+import { pinCommit, repoSource } from "../suite/repos.js";
+import type { EvalTask } from "../suite/tasks.js";
+
+const PATCH_FILE = ".codegenie-eval.patch";
+
+export type TaskResult = {
+  id: string;
+  attempt: number;
+  /** Graded as passed with no regressed checks; null when it needs a manual review. */
+  solved: boolean | null;
+  grade: Grade;
+  job: Pick<JobResult, "status" | "failedStage" | "error">;
+  checks: { fixed: number; regressions: number; failing: number } | null;
+  agent: {
+    status: string;
+    steps: number;
+    costUsd: number;
+    summary: string | null;
+  } | null;
+  durationMs: number;
+  /** Where the agent's diff was saved, when it changed anything. */
+  diffFile?: string;
+};
+
+async function applyPatch(sandbox: Sandbox, task: EvalTask) {
+  if (!task.patch) return;
+  await sandbox.writeFile(
+    PATCH_FILE,
+    await readFile(path.join(task.dir, task.patch), "utf8"),
+  );
+  const result = await sandbox.exec(
+    `git apply ${PATCH_FILE} && rm ${PATCH_FILE}`,
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(`The task's patch doesn't apply: ${result.stderr.trim()}`);
+  }
+}
+
+export function solvedFrom(result: Grade, job: JobResult): boolean | null {
+  if (result.passed === null) return null;
+  return result.passed && (job.verify?.regressions ?? 0) === 0;
+}
+
+export async function runTask(
+  task: EvalTask,
+  options: {
+    attempt: number;
+    model: ResolvedModel;
+    environment?: EnvironmentConfig;
+    resultsDir: string;
+    createSandbox?: () => Promise<Sandbox>;
+  },
+): Promise<TaskResult> {
+  const startedAt = Date.now();
+  const create = options.createSandbox ?? (() => DockerSandbox.create());
+  let sandbox: Sandbox | undefined;
+
+  const job = await runJob({
+    runId: `eval-${task.id.replace("/", "-")}-${options.attempt}`,
+    task: task.task,
+    source: repoSource(task.repo),
+    model: options.model,
+    environment: options.environment,
+    limits: {
+      ...(task.limits?.maxSteps ? { maxSteps: task.limits.maxSteps } : {}),
+      ...(task.limits?.maxCostUsd
+        ? { maxCostUsd: task.limits.maxCostUsd }
+        : {}),
+      ...(task.limits?.maxMinutes
+        ? { maxWallTimeMs: task.limits.maxMinutes * 60_000 }
+        : {}),
+    },
+    keepSandbox: true,
+    createSandbox: async () => (sandbox = await create()),
+    afterCheckout: async (box) => {
+      await pinCommit(box, task.repo);
+      await applyPatch(box, task);
+    },
+  });
+
+  let result: Grade;
+  try {
+    result = sandbox
+      ? await grade(task, sandbox, job)
+      : { passed: false, detail: job.error ?? "No sandbox was created." };
+  } finally {
+    await sandbox?.destroy().catch(() => {});
+  }
+
+  let diffFile: string | undefined;
+  if (job.diff?.patch) {
+    diffFile = path.join(
+      options.resultsDir,
+      `${task.id.replace("/", "--")}-${options.attempt}.patch`,
+    );
+    await writeFile(diffFile, job.diff.patch);
+  }
+
+  const verify = job.verify;
+  return {
+    id: task.id,
+    attempt: options.attempt,
+    solved: solvedFrom(result, job),
+    grade: result,
+    job: { status: job.status, failedStage: job.failedStage, error: job.error },
+    checks: verify
+      ? {
+          fixed: verify.fixed,
+          regressions: verify.regressions,
+          failing: verify.checks.filter((c) => c.status !== "passing").length,
+        }
+      : null,
+    agent: job.agent
+      ? {
+          status: job.agent.status,
+          steps: job.agent.steps,
+          costUsd: job.agent.usage.costUsd,
+          summary: job.agent.summary,
+        }
+      : null,
+    durationMs: Date.now() - startedAt,
+    diffFile,
+  };
+}

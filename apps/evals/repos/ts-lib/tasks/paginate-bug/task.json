@@ -1,0 +1,8 @@
+{
+  "task": "paginate() in src/paginate.ts returns the wrong items: page 1 should return the first pageSize items, but it skips them. Fix it, and add tests for paginate.",
+  "grader": {
+    "type": "hidden-tests",
+    "target": "codegenie-hidden",
+    "command": "node --test 'codegenie-hidden/*.test.*'"
+  }
+}

@@ -46,7 +46,9 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
     - [x] **C1.** Setup agent and its tools on a loop shared with the task agent.
     - [x] **C2.** Onboarding pipeline, final check, channels, `agent:setup`.
   - [ ] **D.** `EnvironmentStore` + CLI file store (last 5 versions); the store makes `agent:setup` save per repository and `agent:run` find the config by itself; `--show-environment`; health signals (needs attention); remove `--install` / `--check`.
-- [ ] **Eval set:** ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
+- [ ] **Eval set** ([evals.md](./evals.md)): ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
+  - [x] **E1.** Harness (`apps/evals`: tasks, hidden-tests / checks / manual graders, report), fixture repos `ts-lib` and `http-api` with 3 tasks.
+  - [ ] **E2.** DoDesk and BuyerBook tasks at pinned commits; first full run.
 
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)
 
