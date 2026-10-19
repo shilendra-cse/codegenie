@@ -154,7 +154,7 @@ Every entry point reduces to **task → new job**.
 | **Prepare** | load job/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId` | `sandbox_created` |
 | **Checkout** | clone into `/workspace`; checkout base; create `codegenie/<taskId>-<slug>` on the first job (later jobs check out `task.branch_name`) | `branch_created` |
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
-| **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta` |
+| **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
 | **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `lint_completed`, `test_passed`/`test_failed` |
 | **Deliver** | no diff → finish with explanation, no PR. Else commit as `codegenie[bot]`, push, open PR (draft if checks failed) with summary + checks + job link | `git_push`, `pr_opened` |
 | **Finally** | persist summary & usage; `status=succeeded/failed/cancelled`; **always** destroy sandbox | `done` / `error` |

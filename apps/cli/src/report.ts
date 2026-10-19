@@ -5,116 +5,43 @@ import type {
   OnboardingResult,
   OnboardingStatus,
 } from "@codegenie/runner";
-import type { JobEvent } from "@codegenie/shared";
-
-type Write = (line: string) => void;
-
-const STAGE_LABEL: Record<string, string> = {
-  prepare: "sandbox",
-  checkout: "checkout",
-  setup: "setup",
-  agent: "agent",
-  verify: "verify",
-};
-
-const CHECK_MARK = {
-  passing: "✓",
-  failing: "✗ failing",
-  broken: "⚠ broken",
-  "timed-out": "⚠ timed out",
-} as const;
+import {
+  cost,
+  duration,
+  line,
+  outro,
+  plural,
+  section,
+  type Style,
+} from "@codegenie/terminal";
 
 const labelled = (item: { name: string; cwd: string }) =>
   item.cwd === "." ? item.name : `${item.name} (${item.cwd})`;
 
-const COMPARISON_LABEL: Record<CheckComparison, string> = {
-  passing: "✓",
-  failing: "✗",
-  fixed: "✓ fixed",
-  regressed: "✗ regressed",
-  "still-failing": "✗ still failing",
-};
-
-function oneLine(text: string, max = 160) {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > max ? `${flat.slice(0, max)}…` : flat;
-}
-
-export function describeToolInput(input: unknown) {
-  const args = (input ?? {}) as Record<string, unknown>;
-  for (const key of ["path", "pattern", "command"]) {
-    if (typeof args[key] === "string") return oneLine(args[key] as string, 100);
+function comparison(style: Style, value: CheckComparison) {
+  switch (value) {
+    case "passing":
+      return style.ok("✓");
+    case "fixed":
+      return style.ok("✓ fixed");
+    case "failing":
+      return style.fail("✗");
+    case "regressed":
+      return style.fail("✗ regressed");
+    case "still-failing":
+      return style.warn("✗ still failing");
   }
-  return "";
 }
 
-export function createLiveReporter(write: Write) {
-  let text = "";
-  const flushText = () => {
-    if (text.trim()) write(`    💬 ${oneLine(text)}`);
-    text = "";
-  };
-
-  return {
-    onEvent(event: JobEvent) {
-      if (event.type === "text_delta") {
-        text += event.delta;
-        return;
-      }
-      flushText();
-      switch (event.type) {
-        case "stage_changed":
-          write(`→ ${STAGE_LABEL[event.stage] ?? event.stage}`);
-          break;
-        case "sandbox_created":
-          write(`    ${event.sandboxId}`);
-          break;
-        case "setup_completed": {
-          const steps = event.steps
-            .map(
-              (step) => `${labelled(step)} ${step.status === "ok" ? "✓" : "✗"}`,
-            )
-            .join("  ");
-          const checks = event.checks
-            .map((check) =>
-              check.status
-                ? `${labelled(check)} ${CHECK_MARK[check.status]}`
-                : labelled(check),
-            )
-            .join("  ");
-          write(`    steps: ${steps || "none"}`);
-          write(`    checks: ${checks || "none"}`);
-          break;
-        }
-        case "tool_start":
-          write(
-            `    ▶ ${event.toolName} ${describeToolInput(event.input)}`.trimEnd(),
-          );
-          break;
-        case "tool_end": {
-          const output = String(event.output ?? "");
-          if (output.startsWith("Error:")) {
-            write(`      ✗ ${oneLine(output, 140)}`);
-          } else if (
-            event.toolName === "run_checks" ||
-            event.toolName === "try_environment"
-          ) {
-            for (const line of output.split("\n")) {
-              if (/^[✓✗⚠] /.test(line)) write(`      ${line}`);
-            }
-          }
-          break;
-        }
-      }
-    },
-    flush: flushText,
-  };
-}
-
-function seconds(ms: number) {
-  return ms < 60_000
-    ? `${Math.round(ms / 1000)}s`
-    : `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
+function statusMark(style: Style, status: JobStatus) {
+  switch (status) {
+    case "succeeded":
+      return style.ok(`✓ ${status}`);
+    case "incomplete":
+      return style.warn(`◐ ${status}`);
+    default:
+      return style.fail(`✗ ${status}`);
+  }
 }
 
 function tokens(count: number) {
@@ -123,17 +50,62 @@ function tokens(count: number) {
 
 export function formatSummary(
   result: JobResult,
-  options: { patchPath?: string; environmentPath?: string } = {},
+  options: { style: Style; patchPath?: string; environmentPath?: string },
 ): string {
-  const lines: string[] = [""];
-  const icon =
-    result.status === "succeeded"
-      ? "✓"
-      : result.status === "incomplete"
-        ? "◐"
-        : "✗";
+  const { style } = options;
+  const lines = ["", section(style, "Result")];
+  const add = (text = "") => lines.push(line(style, text));
   const agent = result.agent;
-  const stats = [`in ${seconds(result.durationMs)}`];
+
+  if (agent?.summary) add(agent.summary);
+  if (result.failedStage) {
+    add(style.fail(`Failed at ${result.failedStage}: ${result.error}`));
+  }
+  if (agent?.limitReached)
+    add(style.warn(`Stopped at the ${agent.limitReached} limit.`));
+  if (agent?.error) add(style.fail(`Agent: ${agent.error}`));
+  for (const note of result.setup?.notes ?? [])
+    add(`${style.dim("Note:")} ${note}`);
+  if (result.setup?.health === "needs_attention") {
+    add(style.warn("⚠ Environment needs attention: a setup step failed."));
+  }
+
+  const verified = result.verify?.checks ?? [];
+  if (verified.length) {
+    add();
+    add(
+      `Checks: ${verified.map((c) => `${labelled(c)} ${comparison(style, c.comparison)}`).join("  ")}`,
+    );
+    for (const check of verified.filter(
+      (c) => c.comparison === "regressed" || c.comparison === "failing",
+    )) {
+      add(style.dim(`--- ${labelled(check)} (${check.command}) ---`));
+      for (const output of (check.outputTail ?? "").split("\n"))
+        add(style.dim(output));
+    }
+  }
+  if (options.environmentPath)
+    add(`Environment saved to ${options.environmentPath}`);
+
+  const diff = result.diff;
+  if (diff) {
+    const added = diff.files.reduce((sum, f) => sum + (f.added ?? 0), 0);
+    const removed = diff.files.reduce((sum, f) => sum + (f.removed ?? 0), 0);
+    add();
+    add(
+      diff.files.length
+        ? `${plural(diff.files.length, "file")} changed (${style.ok(`+${added}`)} ${style.fail(`−${removed}`)})`
+        : "No changes",
+    );
+    for (const file of diff.files) {
+      add(
+        `  ${file.path}  ${style.dim(file.added === null ? "binary" : `+${file.added} −${file.removed}`)}`,
+      );
+    }
+    if (options.patchPath) add(`Patch saved to ${options.patchPath}`);
+  }
+
+  const stats = [statusMark(style, result.status)];
   if (agent) {
     const { inputTokens, cachedInputTokens, outputTokens, costUsd } =
       agent.usage;
@@ -141,68 +113,19 @@ export function formatSummary(
       ? Math.round((cachedInputTokens / inputTokens) * 100)
       : 0;
     stats.push(
-      `${agent.steps} steps`,
+      plural(agent.steps, "step"),
       `${tokens(inputTokens + outputTokens)} tokens (${cached}% cached)`,
-      `$${costUsd.toFixed(4)}`,
+      cost(costUsd),
     );
   }
-  lines.push(`${icon} ${result.status} ${stats.join(" · ")}`);
+  stats.push(duration(result.durationMs));
+  lines.push(outro(style, stats.join(style.dim(" · "))));
 
-  if (result.failedStage)
-    lines.push(`Failed at ${result.failedStage}: ${result.error}`);
-  if (agent?.limitReached)
-    lines.push(`Stopped at the ${agent.limitReached} limit.`);
-  if (agent?.error) lines.push(`Agent: ${agent.error}`);
-  if (agent?.summary) lines.push("", `Summary: ${agent.summary}`);
-
-  for (const note of result.setup?.notes ?? []) lines.push(`Note: ${note}`);
-  if (result.setup?.health === "needs_attention") {
-    lines.push("Environment needs attention: a setup step failed.");
+  if (diff?.patch && !options.patchPath) {
+    lines.push("", diff.patch.trimEnd());
+    if (diff.truncated)
+      lines.push(style.dim("(patch truncated; use --patch to save it)"));
   }
-
-  const verified = result.verify?.checks ?? [];
-  if (verified.length) {
-    lines.push(
-      "",
-      `Checks: ${verified.map((c) => `${labelled(c)} ${COMPARISON_LABEL[c.comparison]}`).join("  ")}`,
-    );
-    for (const check of verified.filter(
-      (c) => c.comparison === "regressed" || c.comparison === "failing",
-    )) {
-      lines.push(
-        `--- ${labelled(check)} (${check.command}) ---`,
-        check.outputTail ?? "",
-      );
-    }
-  }
-  if (options.environmentPath) {
-    lines.push(`Environment saved to ${options.environmentPath}`);
-  }
-
-  const diff = result.diff;
-  if (diff) {
-    const added = diff.files.reduce((sum, f) => sum + (f.added ?? 0), 0);
-    const removed = diff.files.reduce((sum, f) => sum + (f.removed ?? 0), 0);
-    lines.push(
-      "",
-      diff.files.length
-        ? `Diff: ${diff.files.length} file${diff.files.length === 1 ? "" : "s"} changed (+${added} −${removed})`
-        : "Diff: no changes",
-    );
-    for (const file of diff.files) {
-      lines.push(
-        `  ${file.path}  ${file.added === null ? "binary" : `+${file.added} −${file.removed}`}`,
-      );
-    }
-    if (options.patchPath) {
-      lines.push(`Patch saved to ${options.patchPath}`);
-    } else if (diff.patch) {
-      lines.push("", diff.patch.trimEnd());
-      if (diff.truncated)
-        lines.push("(patch truncated; use --patch to save it)");
-    }
-  }
-
   return lines.join("\n");
 }
 
@@ -219,32 +142,41 @@ export function exitCode(status: JobStatus) {
   }
 }
 
-const ONBOARDING_ICON: Record<OnboardingStatus, string> = {
-  approved: "✓",
-  discarded: "○",
-  failed: "✗",
-  cancelled: "✗",
-};
+function onboardingMark(style: Style, status: OnboardingStatus) {
+  switch (status) {
+    case "approved":
+      return style.ok(`✓ ${status}`);
+    case "discarded":
+      return style.warn(`○ ${status}`);
+    default:
+      return style.fail(`✗ ${status}`);
+  }
+}
 
 export function formatSetupSummary(
   result: OnboardingResult,
   savePath: string | null,
+  style: Style,
 ): string {
-  const stats = [`in ${seconds(result.durationMs)}`];
+  const lines = [line(style)];
+  if (result.error)
+    lines.push(line(style, style.fail(`Error: ${result.error}`)));
+  if (result.agent?.error) {
+    lines.push(line(style, style.fail(`Setup agent: ${result.agent.error}`)));
+  }
+  if (savePath) lines.push(line(style, `Environment saved to ${savePath}`));
+  if (result.status === "discarded")
+    lines.push(line(style, "Nothing was saved."));
+
+  const stats = [onboardingMark(style, result.status)];
   if (result.agent) {
     stats.push(
-      `setup agent: ${result.agent.steps} steps`,
-      `$${result.agent.usage.costUsd.toFixed(4)}`,
+      `setup agent: ${plural(result.agent.steps, "step")}`,
+      cost(result.agent.usage.costUsd),
     );
   }
-  const lines = [
-    "",
-    `${ONBOARDING_ICON[result.status]} ${result.status} ${stats.join(" · ")}`,
-  ];
-  if (result.error) lines.push(`Error: ${result.error}`);
-  if (result.agent?.error) lines.push(`Setup agent: ${result.agent.error}`);
-  if (savePath) lines.push(`Environment saved to ${savePath}`);
-  if (result.status === "discarded") lines.push("Nothing was saved.");
+  stats.push(duration(result.durationMs));
+  lines.push(outro(style, stats.join(style.dim(" · "))));
   return lines.join("\n");
 }
 

@@ -50,6 +50,8 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
   - [x] **E1.** Harness (`apps/evals`: tasks, hidden-tests / checks / manual graders, report), fixture repos `ts-lib` and `http-api` with 3 tasks.
   - [x] **E2.** DoDesk (5) and BuyerBook (2) tasks at pinned commits, each with a reference solution; 10 tasks in total.
   - [ ] First full run with the real model.
+  - [x] Progress while running: stage lines, per-task log files, live view ([evals.md](./evals.md)).
+- [x] **Terminal UI** for `agent:run`, `agent:setup` and `pnpm eval`: colors, sections, spinners, arrow-key setup questions; shared `packages/terminal` ([runner.md](./runner.md)).
 
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)
 

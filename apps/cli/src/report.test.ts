@@ -1,98 +1,16 @@
 import type { AgentResult } from "@codegenie/agent";
-import type { JobResult } from "@codegenie/runner";
-import type { JobEvent } from "@codegenie/shared";
+import type { JobResult, OnboardingResult } from "@codegenie/runner";
+import { createStyle, plain } from "@codegenie/terminal";
 import { describe, expect, it } from "vitest";
-import type { OnboardingResult } from "@codegenie/runner";
 import {
-  createLiveReporter,
   exitCode,
   formatSetupSummary,
   formatSummary,
   setupExitCode,
 } from "./report.js";
 
-const ts = "2026-10-16T00:00:00.000Z";
-
-describe("createLiveReporter", () => {
-  it("prints stages, tool calls, check results and the model's text", () => {
-    const lines: string[] = [];
-    const live = createLiveReporter((line) => lines.push(line));
-    const events: JobEvent[] = [
-      { type: "stage_changed", jobId: "j", ts, stage: "setup" },
-      {
-        type: "setup_completed",
-        jobId: "j",
-        ts,
-        success: true,
-        steps: [
-          { name: "install", cwd: ".", status: "ok" },
-          { name: "install", cwd: "api", status: "failed" },
-        ],
-        checks: [
-          { name: "lint", cwd: ".", status: "passing" },
-          { name: "test", cwd: "api", status: "failing" },
-          { name: "build", cwd: "." },
-        ],
-      },
-      { type: "stage_changed", jobId: "j", ts, stage: "agent" },
-      { type: "text_delta", jobId: "j", ts, delta: "Reading " },
-      { type: "text_delta", jobId: "j", ts, delta: "the app." },
-      {
-        type: "tool_start",
-        jobId: "j",
-        ts,
-        toolCallId: "1",
-        toolName: "read_file",
-        input: { path: "src/app.ts" },
-      },
-      {
-        type: "tool_end",
-        jobId: "j",
-        ts,
-        toolCallId: "1",
-        toolName: "read_file",
-        output: "src/app.ts — lines 1–3",
-      },
-      {
-        type: "tool_start",
-        jobId: "j",
-        ts,
-        toolCallId: "2",
-        toolName: "run_checks",
-        input: {},
-      },
-      {
-        type: "tool_end",
-        jobId: "j",
-        ts,
-        toolCallId: "2",
-        toolName: "run_checks",
-        output: "✓ test: passed in 1.0s — npm run test\nAll checks passed.",
-      },
-      {
-        type: "tool_end",
-        jobId: "j",
-        ts,
-        toolCallId: "3",
-        toolName: "edit_file",
-        output: "Error: oldString was not found in a.ts.",
-      },
-    ];
-    for (const event of events) live.onEvent(event);
-
-    expect(lines).toEqual([
-      "→ setup",
-      "    steps: install ✓  install (api) ✗",
-      "    checks: lint ✓  test (api) ✗ failing  build",
-      "→ agent",
-      "    💬 Reading the app.",
-      "    ▶ read_file src/app.ts",
-      "    ▶ run_checks",
-      "      ✓ test: passed in 1.0s — npm run test",
-      "      ✗ Error: oldString was not found in a.ts.",
-    ]);
-  });
-});
+const RULE = (title: string) =>
+  `◇ ${title} ${"─".repeat(48 - title.length - 3)}`;
 
 describe("formatSummary", () => {
   const agent = {
@@ -170,25 +88,32 @@ describe("formatSummary", () => {
     durationMs: 48_000,
   };
 
-  it("summarizes status, cost, checks and the diff", () => {
-    expect(formatSummary(result)).toBe(
+  it("summarizes the summary, checks, diff and stats, then prints the patch", () => {
+    expect(formatSummary(result, { style: plain })).toBe(
       [
         "",
-        "✓ succeeded in 48s · 14 steps · 51.0k tokens (80% cached) · $0.0012",
-        "",
-        "Summary: Added GET /health.",
-        "",
-        "Checks: lint ✓  typecheck ✓ fixed  test (api) ✗ regressed  build ✗ still failing",
-        "--- test (api) (npm run test) ---",
-        "1 failing",
-        "",
-        "Diff: 2 files changed (+3 −0)",
-        "  src/app.ts  +3 −0",
-        "  logo.png  binary",
+        RULE("Result"),
+        "│ Added GET /health.",
+        "│",
+        "│ Checks: lint ✓  typecheck ✓ fixed  test (api) ✗ regressed  build ✗ still failing",
+        "│ --- test (api) (npm run test) ---",
+        "│ 1 failing",
+        "│",
+        "│ 2 files changed (+3 −0)",
+        "│   src/app.ts  +3 −0",
+        "│   logo.png  binary",
+        "└ ✓ succeeded · 14 steps · 51.0k tokens (80% cached) · $0.0012 · 48s",
         "",
         "diff --git a/src/app.ts b/src/app.ts\n+route",
       ].join("\n"),
     );
+  });
+
+  it("colors comparisons by meaning", () => {
+    const colored = formatSummary(result, { style: createStyle(true) });
+    expect(colored).toContain("\u001b[31m✗ regressed\u001b[39m");
+    expect(colored).toContain("\u001b[33m✗ still failing\u001b[39m");
+    expect(colored).toContain("\u001b[32m✓ fixed\u001b[39m");
   });
 
   it("points to a saved patch instead of printing it, and explains failures", () => {
@@ -198,12 +123,15 @@ describe("formatSummary", () => {
       error: "git clone failed: not found",
       durationMs: 3_000,
     };
-    expect(formatSummary(failed)).toBe(
-      "\n✗ failed in 3s\nFailed at checkout: git clone failed: not found",
+    expect(formatSummary(failed, { style: plain })).toBe(
+      `\n${RULE("Result")}\n│ Failed at checkout: git clone failed: not found\n└ ✗ failed · 3s`,
     );
-    expect(formatSummary(result, { patchPath: "/tmp/x.patch" })).toContain(
-      "Patch saved to /tmp/x.patch",
-    );
+    const saved = formatSummary(result, {
+      style: plain,
+      patchPath: "/tmp/x.patch",
+    });
+    expect(saved).toContain("│ Patch saved to /tmp/x.patch");
+    expect(saved).not.toContain("diff --git");
   });
 });
 
@@ -245,15 +173,15 @@ describe("formatSummary setup details", () => {
         },
         durationMs: 1_000,
       },
-      { environmentPath: "/tmp/env.json" },
+      { style: plain, environmentPath: "/tmp/env.json" },
     );
     expect(summary).toContain(
-      'Note: Setup step "install" (.) failed: `npm ci`.',
+      '│ Note: Setup step "install" (.) failed: `npm ci`.',
     );
     expect(summary).toContain(
-      "Environment needs attention: a setup step failed.",
+      "│ ⚠ Environment needs attention: a setup step failed.",
     );
-    expect(summary).toContain("Environment saved to /tmp/env.json");
+    expect(summary).toContain("│ Environment saved to /tmp/env.json");
   });
 });
 
@@ -272,23 +200,6 @@ describe("setup output", () => {
     ...overrides,
   });
 
-  it("shows try_environment results while the setup agent works", () => {
-    const lines: string[] = [];
-    createLiveReporter((l) => lines.push(l)).onEvent({
-      type: "tool_end",
-      jobId: "j",
-      ts: "",
-      toolCallId: "c",
-      toolName: "try_environment",
-      output:
-        "Steps:\n✓ install: npm ci (3.0s)\n\nChecks:\n⚠ broken (the command could not run) lint: npm run lint (0.1s)\n    sh: eslint: not found",
-    });
-    expect(lines).toEqual([
-      "      ✓ install: npm ci (3.0s)",
-      "      ⚠ broken (the command could not run) lint: npm run lint (0.1s)",
-    ]);
-  });
-
   it("summarizes a saved setup with the agent's cost", () => {
     expect(
       formatSetupSummary(
@@ -305,20 +216,22 @@ describe("setup output", () => {
           },
         }),
         "/tmp/env.json",
+        plain,
       ),
     ).toBe(
-      "\n✓ approved in 2m 5s · setup agent: 6 steps · $0.0123\nEnvironment saved to /tmp/env.json",
+      "│\n│ Environment saved to /tmp/env.json\n└ ✓ approved · setup agent: 6 steps · $0.0123 · 2m 5s",
     );
   });
 
   it("says when nothing was saved, and why setup failed", () => {
-    expect(formatSetupSummary(result({ status: "discarded" }), null)).toContain(
-      "Nothing was saved.",
-    );
+    expect(
+      formatSetupSummary(result({ status: "discarded" }), null, plain),
+    ).toContain("Nothing was saved.");
     expect(
       formatSetupSummary(
         result({ status: "failed", error: "git clone failed" }),
         null,
+        plain,
       ),
     ).toContain("Error: git clone failed");
   });

@@ -217,6 +217,13 @@ export type JobEventToolEnd = JobEventBase & {
   output?: unknown;
 };
 
+/** After each model step: progress of the agent run so far. Streamed, not persisted. */
+export type JobEventAgentStep = JobEventBase & {
+  type: "agent_step";
+  steps: number;
+  costUsd: number;
+};
+
 export type JobEventTextDelta = JobEventBase & {
   type: "text_delta";
   delta: string;
@@ -287,6 +294,7 @@ export type JobEvent =
   | JobEventToolStart
   | JobEventToolEnd
   | JobEventTextDelta
+  | JobEventAgentStep
   | JobEventBranchCreated
   | JobEventLintCompleted
   | JobEventTestStarted

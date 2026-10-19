@@ -71,6 +71,40 @@ pnpm agent:run   --repo ../BuyerBook --environment env.json --task "…"
 - Exit codes: 0 saved or discarded, 1 failed, 130 cancelled.
 - The code: `apps/cli/src/commands/` (`run.ts`, `setup.ts`), `args/`, `channel/terminal.ts`; `main.ts` picks the command.
 
+### Terminal UI (`packages/terminal`)
+
+`agent:run`, `agent:setup` and `pnpm eval` share one look:
+
+```
+◆ CodeGenie · gpt-6-luna · ../BuyerBook
+│ Task: Reject budgetMax below budgetMin
+│
+◇ Setup ────────────────────────────────────────
+│ steps: ✓ install (frontend)   ✓ install (server)
+│ checks before: lint (frontend) ✗ failing · typecheck (frontend) ✓
+◇ Agent ────────────────────────────────────────
+│ ▸ read_file    server/src/…/buyerValidator.ts
+│ ▸ run_checks
+│   ✓ typecheck (frontend): passed in 3.7s
+◒ Agent working · 7 steps · $0.0021 · 0:48     (redrawn in place, terminal only)
+…
+◇ Result ───────────────────────────────────────
+│ Checks: typecheck ✓  lint ✗ still failing
+│ 1 file changed (+18 −2)
+└ ✓ succeeded · 9 steps · 31.0k tokens (62% cached) · $0.0035 · 3m 12s
+```
+
+| Module | Role |
+|---|---|
+| `style.ts` | colors by meaning (`picocolors`): green works, red broken or failed, yellow already failing or needs attention, dim for paths and times, cyan for tool names; `styleFor(stream)` turns them off outside a terminal or with `NO_COLOR` |
+| `layout.ts` · `symbols.ts` · `format.ts` | `◆` intro, `◇` sections, `│` gutter, `└` outro; spinner frames; durations, timers, costs |
+| `job-events.ts` | job events → lines (stages, setup results, tool calls, check results, the agent's notes); the CLI's live output and the evals' log files |
+| `live.ts` | `LiveArea`: lines redrawn at the bottom (`log-update`) with permanent lines printed above; only in an interactive terminal (TTY, rows > 0, not CI), otherwise just the permanent lines |
+
+- The spinner line follows the job's stage, and while the agent works shows steps and cost from the `agent_step` event.
+- `agent:setup` asks its questions with the arrow keys (`@clack/prompts`, `channel/prompt.ts`): the recommended option is preselected, "Something else…" opens a text answer, and the spinner pauses while a question is open. Without a terminal for input, the numbered prompt is used.
+- `--json`, log files and piped output contain no colors or redraws.
+
 ## 3. Setup
 
 Setup now runs from an **environment config** (steps + checks): either one passed in, which is replayed, or one drafted by the rules and applied. The full design, including onboarding, lives in [environment.md](./environment.md).
