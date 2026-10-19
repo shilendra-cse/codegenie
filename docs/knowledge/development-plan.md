@@ -49,7 +49,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [ ] **Eval set** ([evals.md](./evals.md)): ≥ 10 mid-sized tasks across ≥ 3 JS/TS repos (DoDesk, BuyerBook, plus small fixture projects); onboarding in `--yes` mode; `pnpm eval` reports pass rate, checks-pass rate (fixed / regressed), setup outcomes, time, cost.
   - [x] **E1.** Harness (`apps/evals`: tasks, hidden-tests / checks / manual graders, report), fixture repos `ts-lib` and `http-api` with 3 tasks.
   - [x] **E2.** DoDesk (5) and BuyerBook (2) tasks at pinned commits, each with a reference solution; 10 tasks in total.
-  - [ ] First full run with the real model.
+  - [x] First full run with the real model: 10 of 10 solved, $0.0214, 25m ([evals.md](./evals.md)). Next: harder tasks, `--repeat` runs.
   - [x] Progress while running: stage lines, per-task log files, live view ([evals.md](./evals.md)).
 - [x] **Terminal UI** for `agent:run`, `agent:setup` and `pnpm eval`: colors, sections, spinners, arrow-key setup questions; shared `packages/terminal` ([runner.md](./runner.md)).
 

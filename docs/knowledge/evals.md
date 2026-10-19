@@ -1,6 +1,6 @@
 # Evals
 
-> Status: **In progress** (harness and 10 tasks on 4 repositories built; first real run pending) · Last updated: 2026-10-19 · Code: `apps/evals` · Related: [runner.md](./runner.md), [environment.md](./environment.md), [development-plan.md](./development-plan.md)
+> Status: **In progress** (harness and 10 tasks on 4 repositories built; baseline run: 10 of 10) · Last updated: 2026-10-19 · Code: `apps/evals` · Related: [runner.md](./runner.md), [environment.md](./environment.md), [development-plan.md](./development-plan.md)
 
 Evals are a fixed set of tasks the agent is given, graded automatically. They answer "does the agent actually complete real tasks, and did a change make it better or worse?". Every change to the agent (prompt, tools, model) can be measured by running them again.
 
@@ -16,6 +16,22 @@ pnpm eval --onboard                           # onboard the repositories again f
 - Uses the model and API key from `apps/cli/.env`. Every task is a real agent run and costs money; runs are manual only, never in CI.
 - Tasks run two at a time (`--concurrency`).
 - Output: one line per finished task, then the report. Saved in `apps/evals/results/<time>/` (git-ignored): `report.md`, `results.json` and each task's diff (`<repo>--<task>-<attempt>.patch`).
+
+### Progress while running
+
+- **In a terminal**, a live view: one line per running task, redrawn in place (spinner, stage, steps and cost while the agent works, time), finished tasks listed above it, totals below:
+  ```
+  ✓ ts-lib/paginate-bug           1m 35s  $0.0041
+  ✗ http-api/health               2m 10s  $0.0062  hidden tests failed
+  ◒ dodesk/comment-author-only    agent · 12 steps · $0.0030 · 2:41
+  ◓ dodesk/due-date-validation    setup · 0:52
+
+  3 of 10 done · 2 running · $0.0133 · 6:40
+  ```
+- **Elsewhere** (pipes, CI): a line per stage change, and every 30 seconds while a task runs a line with its stage, steps, cost and time.
+- **A full log per task** in `results/<time>/<repo>--<task>-<attempt>.log`: the same detail as `agent:run` (tool calls, check results, the agent's notes) plus the grade; its path is printed when the task starts, so `tail -f` follows one task.
+- Code: `src/run/progress.ts` (`EvalProgress`), on `packages/terminal`.
+- Later, `--verbose`: the full agent output in the terminal (implies `--concurrency 1`).
 
 ## 2. How a task runs
 
@@ -102,25 +118,32 @@ apps/evals/src/
 
 The runner gained one option for this: `afterCheckout` (in `runJob` and `runOnboarding`) runs right after checkout, where the harness pins the commit and applies the task's patch.
 
-## 5. Next
+## 5. Results
 
-### Progress while running
+Baseline, run 2026-10-19 with `openai:gpt-6-luna`: **10 of 10 solved**, $0.0214 in total, 25m 8s (two tasks at a time).
 
-- **In a terminal**, a live view: one line per running task, redrawn in place (spinner, stage, steps and cost while the agent works, time), finished tasks listed above it, totals below:
-  ```
-  ✓ ts-lib/paginate-bug           1m 35s  $0.0041
-  ✗ http-api/health               2m 10s  $0.0062  hidden tests failed
-  ◒ dodesk/comment-author-only    agent · 12 steps · $0.0030 · 2:41
-  ◓ dodesk/due-date-validation    setup · 0:52
+| Task | Solved | Checks | Steps | Time | Cost |
+|---|---|---|---|---|---|
+| buyerbook/budget-range | ✓ | 4 failing (already failing) | 11 | 4m 33s | $0.0026 |
+| buyerbook/export-type-error | ✓ | 2 fixed, 2 failing (already failing) | 10 | 3m 33s | $0.0017 |
+| dodesk/comment-author-only | ✓ | all passing | 15 | 8m 25s | $0.0048 |
+| dodesk/due-date-validation | ✓ | all passing | 12 | 9m 45s | $0.0034 |
+| dodesk/issue-labels-cleanup | ✓ | all passing | 10 | 6m 31s | $0.0020 |
+| dodesk/issue-number-bug | ✓ | all passing | 7 | 7m 32s | $0.0024 |
+| dodesk/relative-date | ✓ | all passing | 7 | 6m 39s | $0.0021 |
+| http-api/health | ✓ | all passing | 5 | 17s | $0.0006 |
+| ts-lib/paginate-bug | ✓ | all passing | 6 | 30s | $0.0008 |
+| ts-lib/rename-fetch-user | ✓ | all passing | 10 | 43s | $0.0009 |
 
-  3 of 10 done · 2 running · $0.0133 · 6:40
-  ```
-- **Elsewhere** (pipes, CI): a line per stage change, and every 30 seconds while a task runs a line with its stage, steps, cost and time.
-- **A full log per task** in `results/<time>/<repo>--<task>-<attempt>.log`: the same detail as `agent:run` (tool calls, check results, the agent's notes) plus the grade; its path is printed when the task starts, so `tail -f` follows one task.
-- Code: `src/run/progress.ts` (`EvalProgress`), on `packages/terminal`.
-- Later, `--verbose`: the full agent output in the terminal (implies `--concurrency 1`).
+What it shows:
 
-### Then
+- **The suite is too easy to measure improvements.** With every task solved, a change to the agent can only show up as a drop. The task texts spell out the interface the hidden tests expect, which keeps grading fair but makes them easier than real tickets.
+- **Time goes to setup, not the agent.** DoDesk tasks took 6–10 minutes for 7–15 agent steps: cloning, `npm ci` in `backend/` and `client/` (the client alone ~80 s), the baseline checks (client build ~45 s) and the same checks again in verify. Snapshots after setup ([environment.md](./environment.md), not in the MVP) are the largest speed-up available.
+- **BuyerBook's checks were already failing**, so verify can't show new problems there (the pass/fail limitation in [environment.md](./environment.md)).
+- **Cost is far below the limits:** about $0.002 per task against the $2 per-task limit, so harder tasks can use more steps.
 
-- [ ] First full run with the real model; read the results together.
-- [ ] More tasks where the results show gaps (e.g. multi-file features, UI changes graded manually).
+## 6. Next
+
+- [ ] Harder tasks: vaguer, ticket-like descriptions; features across several files; bugs that need investigation; manually graded BuyerBook tasks.
+- [ ] `--repeat 3` runs to see whether results are stable.
+- [ ] Rerun after every change to the agent's prompt, tools or model, and compare with the baseline above.
