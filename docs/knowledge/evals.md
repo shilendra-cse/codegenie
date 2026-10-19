@@ -1,6 +1,6 @@
 # Evals
 
-> Status: **In progress** (E1 built: harness, graders, report, fixture repos with 3 tasks) · Last updated: 2026-10-19 · Code: `apps/evals` · Related: [runner.md](./runner.md), [environment.md](./environment.md), [development-plan.md](./development-plan.md)
+> Status: **In progress** (harness and 10 tasks on 4 repositories built; first real run pending) · Last updated: 2026-10-19 · Code: `apps/evals` · Related: [runner.md](./runner.md), [environment.md](./environment.md), [development-plan.md](./development-plan.md)
 
 Evals are a fixed set of tasks the agent is given, graded automatically. They answer "does the agent actually complete real tasks, and did a change make it better or worse?". Every change to the agent (prompt, tools, model) can be measured by running them again.
 
@@ -32,7 +32,9 @@ the repository's saved environment (onboarded once with the recommended answers)
 | `checks` | the listed checks (`name@cwd`) must pass after the agent's changes | bug fixes in repositories without tests |
 | `manual` | nothing automatic; the report asks for a review of the saved diff | open-ended tasks |
 
-Hidden tests are checked when they're written: they must fail on the untouched repository and pass with a correct solution.
+Hidden tests are checked when they're written: they must fail on the untouched repository (with the planted bug, if any) and pass with `reference.patch` applied, while the repository's own checks still pass. The reference solution stays in the task folder so this can be checked again; it's never copied into the sandbox.
+
+Hidden tests are written against the interface the task text spells out (function names and signatures, error codes, messages), so a correct solution in any style passes.
 
 ## 3. Repositories and tasks
 
@@ -46,7 +48,8 @@ apps/evals/repos/<repo>/
 └── tasks/<task>/
     ├── task.json        task text, grader, optional patch and limits
     ├── hidden/          files for the hidden-tests grader (never visible to the agent)
-    └── <name>.patch     optional: applied after checkout, e.g. to plant a bug
+    ├── planted.patch    optional (named in task.json): applied after checkout to plant a bug
+    └── reference.patch  a correct solution, never used in runs (see below)
 ```
 
 ```json
@@ -61,11 +64,20 @@ apps/evals/repos/<repo>/
 - `environment.json` records the commit it was made at. After the commit in `repo.json` changes, the next run onboards the repository again; a missing file is onboarded too, and `--onboard` redoes them all.
 - `limits` (optional): `maxSteps`, `maxCostUsd`, `maxMinutes`.
 
-| Task | Grader |
-|---|---|
-| `ts-lib/paginate-bug` | hidden tests: pages start at 1 |
-| `ts-lib/rename-fetch-user` | hidden tests: `getUser` exists, `fetchUser` is gone, callers work |
-| `http-api/health` | hidden tests: `GET /health` returns `{ "status": "ok" }`, other routes unchanged |
+| Task | What | Grader |
+|---|---|---|
+| `ts-lib/paginate-bug` | fix the page offset (pages start at 1) | hidden tests |
+| `ts-lib/rename-fetch-user` | rename `fetchUser` to `getUser` everywhere | hidden tests |
+| `http-api/health` | add `GET /health` | hidden tests |
+| `dodesk/comment-author-only` | only a comment's author may edit or delete it (403 otherwise) | hidden tests (backend vitest, mocked queries) |
+| `dodesk/issue-number-bug` | planted bug: new issues reuse the previous number; find and fix it | hidden tests; the repository's own tests don't catch it |
+| `dodesk/due-date-validation` | accept only real dates / ISO timestamps as `dueDate` | hidden tests (schemas) |
+| `dodesk/issue-labels-cleanup` | trim, drop empty and de-duplicate labels on create and update | hidden tests (service, mocked queries) |
+| `dodesk/relative-date` | `formatRelativeDate` in the client ("5 minutes ago", "yesterday", "Jun 5") | hidden tests (client vitest) |
+| `buyerbook/export-type-error` | make the server compile again (`insertExportUrl.ts`) | checks: `typecheck@server`, `build@server` |
+| `buyerbook/budget-range` | reject `budgetMax` below `budgetMin` in the buyer validators | hidden tests (`node --test`) |
+
+Repositories: DoDesk at `fcc85c1` (all 8 checks pass), BuyerBook at `12e4333` (5 of 6 checks fail before any change; see the limitation in [environment.md](./environment.md)). Their saved environments come from the onboarding runs at those commits.
 
 Fixtures: `ts-lib` is TypeScript run directly by Node 24 (`node --test`, `tsc --noEmit`); `http-api` is a dependency-free `node:http` server. Their checks all pass before any task.
 
@@ -90,8 +102,7 @@ apps/evals/src/
 
 The runner gained one option for this: `afterCheckout` (in `runJob` and `runOnboarding`) runs right after checkout, where the harness pins the commit and applies the task's patch.
 
-## 5. Next (E2)
+## 5. Next
 
-- [ ] `repos/dodesk/` (pinned commit): issues filtered by priority, only the author edits a comment, team member pagination, a planted bug, a client utility. Hidden tests in the backend's and client's vitest setups.
-- [ ] `repos/buyerbook/`: fix the existing `insertExportUrl.ts` type error (graded by checks), buyer phone validation (manual).
-- [ ] First full run with the real model, read the results together.
+- [ ] First full run with the real model; read the results together.
+- [ ] More tasks where the results show gaps (e.g. multi-file features, UI changes graded manually).

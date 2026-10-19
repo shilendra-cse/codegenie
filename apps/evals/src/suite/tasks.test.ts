@@ -39,11 +39,27 @@ describe("loadTasks", () => {
   it("loads the real repositories and their tasks", async () => {
     const tasks = await loadTasks();
     expect(tasks.map((t) => t.id)).toEqual([
+      "buyerbook/budget-range",
+      "buyerbook/export-type-error",
+      "dodesk/comment-author-only",
+      "dodesk/due-date-validation",
+      "dodesk/issue-labels-cleanup",
+      "dodesk/issue-number-bug",
+      "dodesk/relative-date",
       "http-api/health",
       "ts-lib/paginate-bug",
       "ts-lib/rename-fetch-user",
     ]);
-    expect(tasks[0]).toMatchObject({
+    expect(tasks.find((t) => t.id === "dodesk/issue-number-bug")).toMatchObject(
+      {
+        repo: {
+          name: "dodesk",
+          commit: "fcc85c13d7dc166cf01a1ac6b0d0284e6bff6c7b",
+        },
+        patch: "planted.patch",
+      },
+    );
+    expect(tasks.find((t) => t.id === "http-api/health")).toMatchObject({
       repo: { name: "http-api", fixture: true },
       hiddenFiles: ["health.test.js"],
     });

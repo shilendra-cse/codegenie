@@ -1,0 +1,10 @@
+{
+  "task": "When several issues are created in a DoDesk team, a new issue sometimes gets the same number as the team's previous issue (for example two issues numbered ENG-4). Find the cause in the backend and fix it, and add a test that would have caught it.",
+  "patch": "planted.patch",
+  "grader": {
+    "type": "hidden-tests",
+    "target": "backend/tests/codegenie-hidden",
+    "command": "npx vitest run tests/codegenie-hidden",
+    "cwd": "backend"
+  }
+}

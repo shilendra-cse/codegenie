@@ -1,0 +1,12 @@
+diff --git a/server/src/resources/export/queries/insertExportUrl.ts b/server/src/resources/export/queries/insertExportUrl.ts
+index e84128f..b45fa98 100644
+--- a/server/src/resources/export/queries/insertExportUrl.ts
++++ b/server/src/resources/export/queries/insertExportUrl.ts
+@@ -8,6 +8,7 @@ export async function insertExportUrl(url: string, createdById: string) {
+         const result = await db.insert(exportBuyersUrls).values({
+             id,
+             createdById,
++            status: "completed",
+             url,
+         })
+         return result;

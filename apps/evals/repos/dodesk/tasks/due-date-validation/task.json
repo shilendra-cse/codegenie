@@ -1,0 +1,9 @@
+{
+  "task": "The backend's createIssueSchema and updateIssueSchema accept any string as dueDate, so a value like \"next week\" is saved as an invalid date.\n\nOnly accept a real calendar date in YYYY-MM-DD form (e.g. 2026-07-01) or a full ISO 8601 UTC timestamp (e.g. 2026-07-01T10:00:00.000Z); anything else must fail validation. In updates, an empty string must still be accepted, because it clears the due date. Add tests.",
+  "grader": {
+    "type": "hidden-tests",
+    "target": "backend/tests/codegenie-hidden",
+    "command": "npx vitest run tests/codegenie-hidden",
+    "cwd": "backend"
+  }
+}

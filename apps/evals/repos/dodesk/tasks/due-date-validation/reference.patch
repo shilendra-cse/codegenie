@@ -1,0 +1,30 @@
+diff --git a/backend/src/resources/issues/issue.schema.ts b/backend/src/resources/issues/issue.schema.ts
+index d508342..f7825b2 100644
+--- a/backend/src/resources/issues/issue.schema.ts
++++ b/backend/src/resources/issues/issue.schema.ts
+@@ -1,5 +1,7 @@
+ import { z } from 'zod';
+ 
++const dueDate = z.union([z.iso.date(), z.iso.datetime()]);
++
+ export const createIssueSchema = z.object({
+   body: z.object({
+     title: z.string().min(1, 'Title is required'),
+@@ -7,7 +9,7 @@ export const createIssueSchema = z.object({
+     state: z.string().optional(),
+     priority: z.number().optional(),
+     labels: z.array(z.string()).optional(),
+-    dueDate: z.string().optional(),
++    dueDate: dueDate.optional(),
+     assigneeId: z.string().optional(),
+   }),
+   params: z.object({
+@@ -22,7 +24,7 @@ export const updateIssueSchema = z.object({
+     state: z.string().optional(),
+     priority: z.number().optional(),
+     labels: z.array(z.string()).optional(),
+-    dueDate: z.string().optional(),
++    dueDate: z.union([dueDate, z.literal('')]).optional(),
+     assigneeId: z.string().nullable().optional(),
+     notes: z.string().optional(),
+   }).refine(

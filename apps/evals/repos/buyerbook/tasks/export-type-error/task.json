@@ -1,0 +1,7 @@
+{
+  "task": "The BuyerBook server doesn't compile: `npm run type-check` (and so `npm run build`) fails with an error in server/src/resources/export/queries/insertExportUrl.ts. Fix it properly, without `any`, `@ts-ignore` or loosening the database schema.",
+  "grader": {
+    "type": "checks",
+    "passing": ["typecheck@server", "build@server"]
+  }
+}
