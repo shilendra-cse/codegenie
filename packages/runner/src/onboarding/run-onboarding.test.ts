@@ -164,6 +164,21 @@ describe("runOnboarding", () => {
     ]);
   });
 
+  it("runs the after-checkout hook in both sandboxes", async () => {
+    const { createSandbox } = sandboxes();
+    const hooked: string[] = [];
+    let n = 0;
+    await runOnboarding(
+      options({
+        createSandbox,
+        afterCheckout: async () => {
+          hooked.push(`sandbox-${n++}`);
+        },
+      }),
+    );
+    expect(hooked).toEqual(["sandbox-0", "sandbox-1"]);
+  });
+
   it("fails cleanly when the repository can't be checked out", async () => {
     const { createSandbox, destroyed } = sandboxes((command) =>
       command.includes("git clone")

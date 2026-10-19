@@ -1,0 +1,121 @@
+diff --git a/backend/src/resources/comments/comment.controller.ts b/backend/src/resources/comments/comment.controller.ts
+index 26d445c..8d4b3f8 100644
+--- a/backend/src/resources/comments/comment.controller.ts
++++ b/backend/src/resources/comments/comment.controller.ts
+@@ -13,11 +13,11 @@ export const createComment = asyncHandler(async (req, res) => {
+ });
+ 
+ export const updateComment = asyncHandler(async (req, res) => {
+-  const comment = await commentService.update(req.params.commentId!, req.body.content);
++  const comment = await commentService.update(req.params.commentId!, req.user.id, req.body.content);
+   sendSuccess(res, { comment }, 200, 'Comment updated successfully');
+ });
+ 
+ export const deleteComment = asyncHandler(async (req, res) => {
+-  const comment = await commentService.delete(req.params.commentId!);
++  const comment = await commentService.delete(req.params.commentId!, req.user.id);
+   sendSuccess(res, { comment }, 200, 'Comment deleted successfully');
+ });
+diff --git a/backend/src/resources/comments/comment.query.ts b/backend/src/resources/comments/comment.query.ts
+index adef374..7c15690 100644
+--- a/backend/src/resources/comments/comment.query.ts
++++ b/backend/src/resources/comments/comment.query.ts
+@@ -2,6 +2,8 @@ import prisma from '../../shared/db/prisma';
+ import { commentIncludes } from './comment.types';
+ 
+ export const commentQuery = {
++  findById: (id: string) => prisma.comment.findUnique({ where: { id } }),
++
+   findByIssue: (issueId: string) =>
+     prisma.comment.findMany({
+       where: {
+diff --git a/backend/src/resources/comments/comment.service.ts b/backend/src/resources/comments/comment.service.ts
+index 6c395a7..98a345e 100644
+--- a/backend/src/resources/comments/comment.service.ts
++++ b/backend/src/resources/comments/comment.service.ts
+@@ -2,6 +2,14 @@ import { AppError } from '../../shared/errors/AppError';
+ import { ErrorCodes } from '../../shared/errors/errorCodes';
+ import { commentQuery } from './comment.query';
+ 
++async function assertAuthor(commentId: string, userId: string) {
++  const comment = await commentQuery.findById(commentId);
++  if (!comment) throw new AppError(ErrorCodes.COMMENT_NOT_FOUND, 404, 'Comment not found');
++  if (comment.userId !== userId) {
++    throw new AppError(ErrorCodes.FORBIDDEN, 403, 'Only the author can change this comment');
++  }
++}
++
+ export const commentService = {
+   async getByIssue(issueId: string) {
+     return commentQuery.findByIssue(issueId);
+@@ -20,7 +28,8 @@ export const commentService = {
+     });
+   },
+ 
+-  async update(commentId: string, content: string) {
++  async update(commentId: string, userId: string, content: string) {
++    await assertAuthor(commentId, userId);
+     try {
+       return await commentQuery.update(commentId, content);
+     } catch (error: unknown) {
+@@ -31,7 +40,8 @@ export const commentService = {
+     }
+   },
+ 
+-  async delete(commentId: string) {
++  async delete(commentId: string, userId: string) {
++    await assertAuthor(commentId, userId);
+     try {
+       const comment = await commentQuery.delete(commentId);
+       return comment;
+diff --git a/backend/tests/unit/resources/comments/comment.service.test.ts b/backend/tests/unit/resources/comments/comment.service.test.ts
+index c0dc837..e9f2e25 100644
+--- a/backend/tests/unit/resources/comments/comment.service.test.ts
++++ b/backend/tests/unit/resources/comments/comment.service.test.ts
+@@ -4,6 +4,7 @@ import { ErrorCodes } from '@/shared/errors/errorCodes';
+ 
+ vi.mock('@/resources/comments/comment.query', () => ({
+   commentQuery: {
++    findById: vi.fn(),
+     findByIssue: vi.fn(),
+     create: vi.fn(),
+     update: vi.fn(),
+@@ -17,6 +18,7 @@ import { commentQuery } from '@/resources/comments/comment.query';
+ describe('commentService', () => {
+   beforeEach(() => {
+     vi.clearAllMocks();
++    vi.mocked(commentQuery.findById).mockResolvedValue({ id: 'comment-1', userId: 'user-1' } as never);
+   });
+ 
+   it('creates a comment', async () => {
+@@ -37,7 +39,7 @@ describe('commentService', () => {
+   it('maps P2025 to comment not found on update', async () => {
+     vi.mocked(commentQuery.update).mockRejectedValue({ code: 'P2025' });
+ 
+-    await expect(commentService.update('missing', 'text')).rejects.toMatchObject({
++    await expect(commentService.update('missing', 'user-1', 'text')).rejects.toMatchObject({
+       code: ErrorCodes.COMMENT_NOT_FOUND,
+       statusCode: 404,
+     });
+@@ -46,18 +48,18 @@ describe('commentService', () => {
+   it('maps P2025 to comment not found on delete', async () => {
+     vi.mocked(commentQuery.delete).mockRejectedValue({ code: 'P2025' });
+ 
+-    await expect(commentService.delete('missing')).rejects.toBeInstanceOf(AppError);
++    await expect(commentService.delete('missing', 'user-1')).rejects.toBeInstanceOf(AppError);
+   });
+ 
+   it('rethrows non-P2025 errors from update', async () => {
+     vi.mocked(commentQuery.update).mockRejectedValue(new Error('Write failed'));
+ 
+-    await expect(commentService.update('comment-1', 'text')).rejects.toThrow('Write failed');
++    await expect(commentService.update('comment-1', 'user-1', 'text')).rejects.toThrow('Write failed');
+   });
+ 
+   it('rethrows non-P2025 errors from delete', async () => {
+     vi.mocked(commentQuery.delete).mockRejectedValue(new Error('Write failed'));
+ 
+-    await expect(commentService.delete('comment-1')).rejects.toThrow('Write failed');
++    await expect(commentService.delete('comment-1', 'user-1')).rejects.toThrow('Write failed');
+   });
+ });

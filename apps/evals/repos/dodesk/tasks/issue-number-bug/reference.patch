@@ -1,0 +1,13 @@
+diff --git b/backend/src/resources/issues/issue.query.ts a/backend/src/resources/issues/issue.query.ts
+index d197c56..4694c49 100644
+--- b/backend/src/resources/issues/issue.query.ts
++++ a/backend/src/resources/issues/issue.query.ts
+@@ -54,7 +54,7 @@ export const issueQuery = {
+       orderBy: { number: 'desc' },
+       select: { number: true },
+     });
+-    return last?.number ?? 1;
++    return (last?.number ?? 0) + 1;
+   },
+ 
+   create: (data: Prisma.IssueUncheckedCreateInput) =>

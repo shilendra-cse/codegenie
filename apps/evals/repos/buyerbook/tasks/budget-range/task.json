@@ -1,0 +1,9 @@
+{
+  "task": "BuyerBook lets a buyer be saved with budgetMax lower than budgetMin. In server/src/resources/buyers/validators/buyerValidator.ts, make buyerSchema and updateBuyerSchema reject that, with the message \"budgetMax must be greater than or equal to budgetMin\" on the budgetMax field. Only check when both values are present. uploadBulkBuyerSchema must reject a list containing such a buyer, and the exported names and types must keep working.",
+  "grader": {
+    "type": "hidden-tests",
+    "target": "server/codegenie-hidden",
+    "command": "node --test 'codegenie-hidden/*.test.*'",
+    "cwd": "server"
+  }
+}

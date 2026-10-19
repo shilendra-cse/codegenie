@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "name": "install",
+      "cwd": "backend",
+      "command": "npm ci"
+    },
+    {
+      "name": "install",
+      "cwd": "client",
+      "command": "npm ci"
+    }
+  ],
+  "checks": [
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "cwd": "backend"
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "cwd": "backend"
+    },
+    {
+      "name": "test",
+      "command": "npm run test",
+      "cwd": "backend"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "cwd": "backend"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "cwd": "client"
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "cwd": "client"
+    },
+    {
+      "name": "test",
+      "command": "npm run test",
+      "cwd": "client"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "cwd": "client"
+    }
+  ],
+  "meta": {
+    "source": "detected",
+    "createdAt": "2026-10-18T12:47:58.183Z",
+    "commit": "fcc85c13d7dc166cf01a1ac6b0d0284e6bff6c7b",
+    "decisions": [],
+    "validation": {
+      "steps": {
+        "install@backend": "ok",
+        "install@client": "ok"
+      },
+      "checks": {
+        "lint@backend": "passing",
+        "typecheck@backend": "passing",
+        "test@backend": "passing",
+        "build@backend": "passing",
+        "lint@client": "passing",
+        "typecheck@client": "passing",
+        "test@client": "passing",
+        "build@client": "passing"
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "name": "install",
+      "cwd": "frontend",
+      "command": "npm ci"
+    },
+    {
+      "name": "install",
+      "cwd": "server",
+      "command": "npm ci"
+    }
+  ],
+  "checks": [
+    {
+      "name": "lint",
+      "cwd": "frontend",
+      "command": "npm run lint"
+    },
+    {
+      "name": "typecheck",
+      "cwd": "frontend",
+      "command": "npx --no-install tsc --noEmit"
+    },
+    {
+      "name": "build",
+      "cwd": "frontend",
+      "command": "npm run build"
+    },
+    {
+      "name": "typecheck",
+      "cwd": "server",
+      "command": "npm run type-check"
+    },
+    {
+      "name": "build",
+      "cwd": "server",
+      "command": "npm run build"
+    }
+  ],
+  "meta": {
+    "source": "ai",
+    "createdAt": "2026-10-18T13:39:44.224Z",
+    "commit": "12e43331592bcbe938342f05ed2b0459af25c349",
+    "decisions": [],
+    "validation": {
+      "steps": {
+        "install@frontend": "ok",
+        "install@server": "ok"
+      },
+      "checks": {
+        "lint@frontend": "failing",
+        "typecheck@frontend": "passing",
+        "build@frontend": "failing",
+        "typecheck@server": "failing",
+        "build@server": "failing"
+      }
+    }
+  }
+}

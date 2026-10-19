@@ -1,0 +1,8 @@
+{
+  "task": "Rename fetchUser to getUser in src/users.ts and update every place that uses it. Don't keep the old name.",
+  "grader": {
+    "type": "hidden-tests",
+    "target": "codegenie-hidden",
+    "command": "node --test 'codegenie-hidden/*.test.*'"
+  }
+}

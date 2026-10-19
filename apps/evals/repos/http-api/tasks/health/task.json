@@ -1,0 +1,8 @@
+{
+  "task": "Add a GET /health endpoint that responds with status 200 and the JSON body {\"status\":\"ok\"}. Add a test for it.",
+  "grader": {
+    "type": "hidden-tests",
+    "target": "codegenie-hidden",
+    "command": "node --test 'codegenie-hidden/*.test.*'"
+  }
+}

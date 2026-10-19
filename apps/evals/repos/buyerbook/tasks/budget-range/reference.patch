@@ -1,0 +1,41 @@
+diff --git a/server/src/resources/buyers/validators/buyerValidator.ts b/server/src/resources/buyers/validators/buyerValidator.ts
+index 8bb52e9..596aaf7 100644
+--- a/server/src/resources/buyers/validators/buyerValidator.ts
++++ b/server/src/resources/buyers/validators/buyerValidator.ts
+@@ -1,7 +1,7 @@
+ import { z } from "zod";
+ 
+ // Buyer input validator
+-export const buyerSchema = z.object({
++const buyerFields = z.object({
+   fullName: z.string().min(2, "Name must be at least 2 characters"),
+   email: z.email().optional(),
+   phone: z.string().regex(/^\d{7,15}$/, "Phone must be 7–15 digits"),
+@@ -22,11 +22,25 @@ export const buyerSchema = z.object({
+   tags: z.array(z.string()).optional(),
+ });
+ 
++type Budget = { budgetMin?: number; budgetMax?: number };
++
++function checkBudget(value: Budget, ctx: z.RefinementCtx) {
++  if (value.budgetMin !== undefined && value.budgetMax !== undefined && value.budgetMax < value.budgetMin) {
++    ctx.addIssue({
++      code: "custom",
++      path: ["budgetMax"],
++      message: "budgetMax must be greater than or equal to budgetMin",
++    });
++  }
++}
++
++export const buyerSchema = buyerFields.superRefine(checkBudget);
++
+ export const uploadBulkBuyerSchema = z.array(buyerSchema).min(1, "At least one buyer is required").max(200, "Maximum 200 buyers can be uploaded at a time");
+ 
+ // Type inference
+ export type BuyerInput = z.infer<typeof buyerSchema>;
+ 
+ // Update buyer validator
+-export const updateBuyerSchema = buyerSchema.partial()
++export const updateBuyerSchema = buyerFields.partial().superRefine(checkBudget)
+ export type BuyerUpdateInput = z.infer<typeof updateBuyerSchema>; //infer type
+\ No newline at end of file

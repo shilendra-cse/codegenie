@@ -3,3 +3,4 @@ node_modules
 .pnpm-store
 package-lock.json
 env.json
+apps/evals/results/

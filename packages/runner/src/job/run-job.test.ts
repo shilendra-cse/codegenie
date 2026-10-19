@@ -107,6 +107,38 @@ describe("runJob", () => {
     expect(destroyed()).toBe(1);
   });
 
+  it("runs the after-checkout hook before setup, and fails at checkout when it throws", async () => {
+    const { sandbox } = fakeSandbox();
+    const order: string[] = [];
+    const ok = await runJob(
+      options(sandbox, {
+        afterCheckout: async (box) => {
+          order.push(`hook:${box.id}`);
+          await box.exec("git apply plant-bug.patch");
+        },
+      }),
+    );
+    expect(ok.status).toBe("succeeded");
+    const commands = sandbox.execCalls.map((c) => c.command);
+    expect(order).toEqual(["hook:fake-sandbox"]);
+    expect(commands.indexOf("git apply plant-bug.patch")).toBeLessThan(
+      commands.findIndex((c) => c.includes("npm ci")),
+    );
+
+    const failed = await runJob(
+      options(fakeSandbox().sandbox, {
+        afterCheckout: async () => {
+          throw new Error("patch does not apply");
+        },
+      }),
+    );
+    expect(failed).toMatchObject({
+      status: "failed",
+      failedStage: "checkout",
+      error: "patch does not apply",
+    });
+  });
+
   it("reports when the sandbox can't be created", async () => {
     const result = await runJob(
       options(new FakeSandbox(), {

@@ -1,0 +1,41 @@
+diff --git a/backend/src/resources/issues/issue.service.ts b/backend/src/resources/issues/issue.service.ts
+index db54956..4d04ce2 100644
+--- a/backend/src/resources/issues/issue.service.ts
++++ b/backend/src/resources/issues/issue.service.ts
+@@ -11,6 +11,18 @@ import {
+   formatDeletedIssue,
+ } from './issue.types';
+ 
++function cleanLabels(labels: string[]) {
++  const seen = new Set<string>();
++  const cleaned: string[] = [];
++  for (const raw of labels) {
++    const label = raw.trim();
++    if (!label || seen.has(label.toLowerCase())) continue;
++    seen.add(label.toLowerCase());
++    cleaned.push(label);
++  }
++  return cleaned;
++}
++
+ export const issueService = {
+   async create(input: CreateIssueInput) {
+     const team = await teamQuery.findById(input.teamId);
+@@ -23,7 +35,7 @@ export const issueService = {
+       description: input.description ?? null,
+       state: input.state ?? 'backlog',
+       priority: input.priority ?? 0,
+-      labels: input.labels ?? [],
++      labels: cleanLabels(input.labels ?? []),
+       dueDate: input.dueDate ? new Date(input.dueDate) : null,
+       workspaceId: team.workspaceId,
+       teamId: input.teamId,
+@@ -58,7 +70,7 @@ export const issueService = {
+     if (input.description !== undefined) dataToUpdate.description = input.description;
+     if (input.state !== undefined) dataToUpdate.state = input.state;
+     if (input.priority !== undefined) dataToUpdate.priority = input.priority;
+-    if (input.labels !== undefined) dataToUpdate.labels = input.labels;
++    if (input.labels !== undefined) dataToUpdate.labels = cleanLabels(input.labels);
+     if (input.notes !== undefined) dataToUpdate.notes = input.notes;
+ 
+     if (input.dueDate !== undefined) {
