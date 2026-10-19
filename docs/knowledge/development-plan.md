@@ -58,15 +58,45 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 ### Phase 2 — Worker, queue, Daytona
 **Goal:** a queued job runs the full pipeline in a Daytona sandbox, with events persisted and published.
 
-- [ ] `apps/worker` with BullMQ; pipeline stages prepare → checkout → setup → agent → verify → finally (deliver comes in Phase 3).
-- [ ] `emit()` → `job_events` (`seq`) + Redis `job:{id}`; `jobs.stage`/status/usage updates.
-- [ ] `DaytonaSandbox`; `codegenie-base` snapshot build script; `SANDBOX_PROVIDER=docker|daytona`.
-- [ ] Reaper: fail stalled jobs, delete orphaned sandboxes.
-- [ ] Per-job limits enforced (30 min / 150 steps / $2).
-- [ ] Environment storage in the database: migration for `project_environments` and `jobs.environment_id`, drop `projects.setup_config`; `DbEnvironmentStore`; jobs load the project's active config and record the version used ([database.md](./database.md)).
+Decisions:
+- The database code moves to `packages/db` so the server and the worker share one schema ([architecture.md](./architecture.md)).
+- The worker is built and tested with Docker sandboxes first; Daytona comes after it (needs a Daytona account and API key by then).
+- The worker can onboard a project (`onboard-project` job, recommended answers like `agent:setup --yes`): the only way to set a project up before the website. Interactive onboarding in the browser stays in Phase 4.
+- The worker side of cancellation (a Redis message aborts the job and removes the sandbox) comes now; the Cancel button and API in Phase 4.
+- Public repositories only: private ones need the GitHub App token (Phase 3).
+
+Branches, each built in small batches (see Ways of working):
+
+- [x] **1. `refactor/db-package`** — move only, no behavior change.
+  1. `packages/db`: Drizzle schema, migrations, `drizzle.config` and `createDb(url)` moved from `apps/server/src/db/`; the server imports `@codegenie/db`; db scripts run from the package. (Planned as two batches; one, since a half-moved schema doesn't compile.)
+  2. Docs.
+- [ ] **2. `feat/db-environments`** — environments in Postgres, the same `EnvironmentStore` as the CLI's file store, keyed by project id ([database.md](./database.md)).
+  1. Schema + migration: `project_environments`, `jobs.environment_id`, drop `projects.setup_config` if present.
+  2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests against Postgres in Docker (skipped without it).
+  3. Docs.
+- [ ] **3. `feat/worker-queue`** — the worker, on Docker sandboxes.
+  1. Queue contract in `shared`: queue name, job kinds (`run-job`, `onboard-project`), payloads.
+  2. Event sink: every event into `job_events` (`seq` 1, 2, 3…) and published on Redis `job:{id}`; `text_delta` and `agent_step` published only.
+  3. Job lifecycle: `jobs` status, stage, sandbox id, environment version, summary, usage, errors, timestamps.
+  4. `run-job` handler: load job, task, project and the active environment (clear error without one); `runJob`; record the result; mark health.
+  5. `onboard-project` handler: `runOnboarding` with recommended answers; save as the project's next environment version.
+  6. BullMQ consumer: concurrency, graceful shutdown, per-job limits (30 min / 150 steps / $2), cancellation via Redis.
+  7. `pnpm worker:enqueue`: create project, task and job rows for a public repository and queue them; Docker test of the whole loop with the scripted agent.
+  8. Docs.
+- [ ] **4. `feat/daytona-sandbox`** — needs a Daytona account.
+  1. `DaytonaSandbox` (exec, files, destroy) with a mocked SDK in tests.
+  2. `SANDBOX_PROVIDER=docker|daytona` in `createSandbox`, config.
+  3. `codegenie-base` snapshot build script (same tools as the Docker image).
+  4. Integration test against Daytona (skipped without a key).
+  5. Docs (`sandbox.md`).
+- [ ] **5. `feat/reaper`**
+  1. Stalled jobs: running jobs whose worker died are marked `failed`.
+  2. Orphaned sandboxes (by job label, Docker and Daytona) with no running job are deleted.
+  3. Docs.
 
 **Done when:** a script-enqueued job runs in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill.
-**Needs:** Daytona account.
+**Needs:** Daytona account (branch 4).
+**Known issue:** production builds of the server and worker don't run yet (`tsc` keeps the `@/…` path aliases, which plain Node can't resolve; development runs through `tsx`). Fixed with the deploy work in Phase 5.
 
 ### Phase 3 — GitHub App & delivery
 **Goal:** real PRs on real repos using only installation tokens. *(U1, U2, U6 backend)*
@@ -99,6 +129,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` job on the same branch/PR. *(U8)*
 - [ ] Quotas: 1 concurrent job/user, 10 jobs/user/day, global daily spend cap with clear rejection message.
 - [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with job id.
+- [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
 - [ ] Deploy: Vercel (web), Railway (api, worker, Postgres, Redis), prod GitHub App, custom domain, per-service secrets, migrations as release step.
 - [ ] Re-run eval against production config.
 

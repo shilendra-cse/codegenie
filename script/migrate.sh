@@ -62,6 +62,6 @@ log "Waiting for Postgres"
 wait_for "Postgres" compose exec -T postgres pg_isready -U codegenie_user -d codegenie_db
 
 log "Applying database migrations"
-pnpm --filter @codegenie/server db:migrate
+pnpm --filter @codegenie/db migrate
 
 printf '\nMigrations applied.\n'

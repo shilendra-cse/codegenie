@@ -1,0 +1,42 @@
+{
+  "name": "@codegenie/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Postgres schema, client and migrations (Drizzle), shared by the server and the worker",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "push": "drizzle-kit push",
+    "studio": "drizzle-kit studio",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.5",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.5.2",
+    "@types/pg": "^8.15.5",
+    "dotenv": "^17.2.2",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.3",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.59.3"
+  }
+}
