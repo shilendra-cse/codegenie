@@ -31,7 +31,7 @@ packages/agent/src/
 │   ├── run-segment.ts        one streamText call: events, infra-error abort, message snapshot
 │   ├── agent-result.ts       AgentStatus, LoopResult, AgentResult, finish tool input lookup
 │   ├── compaction.ts         cache-friendly context compaction
-│   ├── events.ts             AI SDK stream parts → JobEvent
+│   ├── events.ts             AI SDK stream parts → RunEvent
 │   ├── limits.ts             default limits and the messages the model sees
 │   └── errors.ts             infrastructure-error detection
 ├── tools/
@@ -94,7 +94,7 @@ Details:
 - **Limits** (defaults, override per run): 150 steps, 30 minutes, $2. The cost check runs after each step, so the last step plus the wrap-up can go slightly over.
 - **Wrap-up** has its own 2-minute budget and forces the `finish_task` tool (`toolChoice`).
 - **Messages** of completed steps are kept even if a segment is aborted mid-step.
-- **Events:** the loop emits `tool_start`, `tool_end` (output preview ≤ 2 KB), `text_delta`, and after every model step `agent_step` (steps so far and cost so far; streamed, not persisted). It does not emit `done`/`error`: the run ending is not the job ending (checks and delivery follow), so the caller reports the outcome.
+- **Events:** the loop emits `tool_start`, `tool_end` (output preview ≤ 2 KB), `text_delta`, and after every model step `agent_step` (steps so far and cost so far; streamed, not persisted). It does not emit `done`/`error`: the agent loop ending is not the run ending (checks and delivery follow), so the caller reports the outcome.
 
 ### Result
 
@@ -110,7 +110,7 @@ AgentResult {
 }
 ```
 
-The worker maps `incomplete` to a succeeded job delivered as a draft PR marked incomplete.
+`incomplete` is its own run status; delivery opens it as a draft PR marked incomplete.
 
 ## 5. Prompt
 

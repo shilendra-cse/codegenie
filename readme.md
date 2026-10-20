@@ -9,12 +9,12 @@ A web-based autonomous coding agent. Connect your GitHub repositories, describe 
 ```
 apps/
   web/        Next.js UI
-  server/     Express API (auth, projects, tasks, live job events)
-  worker/     Job runner for queued tasks
-  cli/        Run a job from the terminal (pnpm agent:setup, pnpm agent:run)
+  server/     Express API (auth, projects, tasks, live run events)
+  worker/     Runs queued tasks and project onboarding
+  cli/        Run a task from the terminal (pnpm agent:setup, pnpm agent:run)
   evals/      Eval tasks and the harness that grades the agent (pnpm eval)
 packages/
-  runner/     Runs a job end to end: sandbox, checkout, setup, agent, verify
+  runner/     Runs a task end to end: sandbox, checkout, setup, agent, verify
   agent/      The AI agent: model, prompt, tools, loop
   sandbox/    Isolated environments (Docker)
   db/         Postgres schema, client and migrations, shared by server and worker

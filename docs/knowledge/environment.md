@@ -2,10 +2,10 @@
 
 > Status: **Built** (parts A–D) · Last updated: 2026-10-18 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
 
-Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task job.
+Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task run.
 
 ```
-connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONFIG ──► every TASK JOB replays it
+connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONFIG ──► every TASK RUN replays it
                  rules → try → AI → ask → verify      saved, versioned       read-only
                                                          ▲                        │
                                                          └── rerun onboarding ◄───┘ "needs attention"
@@ -15,11 +15,11 @@ connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONF
 
 | Decision | Choice | Why |
 |---|---|---|
-| Where setup knowledge lives | One explicit, versioned **environment config per repository**, replayed by every job | Jobs are deterministic and debuggable ("this job ran *this* config"). Matches GitHub Copilot, Codex, Cursor, Devin and OpenHands. |
+| Where setup knowledge lives | One explicit, versioned **environment config per repository**, replayed by every run | Runs are deterministic and debuggable ("this run replayed *this* config"). Matches GitHub Copilot, Codex, Cursor, Devin and OpenHands. |
 | How a config is created | **Onboarding**: rules draft → try it → AI setup agent fixes gaps → **asks the user** multiple-choice questions when it can't decide → final check in a fresh sandbox → user approves | Common repos need no AI; hard cases get solved with a click instead of a failed setup. Everything kept is verified. |
 | Verification | A step or check is kept only if it actually ran; the final config is re-run in a **fresh** sandbox | Unverified AI setup works poorly (EnvBench ~7% on Python); validate-and-keep-only-what-worked reaches 86% (Repo2Run). |
-| AI in task jobs | **None.** Jobs only replay the config | Speed, cost and predictability. All figuring-out happens in onboarding. |
-| Storage | **Database** (`project_environments`, versioned) for the product; a local file store for the CLI until the worker exists | Shared with the team, versioned, health-tracked, audit trail per job. |
+| AI in task runs | **None.** Runs only replay the config | Speed, cost and predictability. All figuring-out happens in onboarding. |
+| Storage | **Database** (`project_environments`, versioned) for the product; a local file store for the CLI until the worker exists | Shared with the team, versioned, health-tracked, audit trail per run. |
 | Config committed in the user's repo | **Post-MVP**, optional | Adds friction to onboarding; only teams that want setup reviewed in PRs need it. |
 | Writing into the user's repo | **Never**, except the agent's task changes | Nothing CodeGenie-specific can end up in a PR. |
 
@@ -28,7 +28,7 @@ connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONF
 ```ts
 type EnvironmentConfig = {
   version: 1;
-  steps: { name: string; cwd: string; command: string }[];   // replayed in order before every job
+  steps: { name: string; cwd: string; command: string }[];   // replayed in order before every run
   checks: Check[];                                            // { name, cwd, command }: run_checks + verify
   meta: {
     source: "detected" | "ai" | "user" | "mixed";
@@ -177,12 +177,12 @@ backend tests: 6 pass, 9 fail: "connect ECONNREFUSED localhost:5433"
 Using "npm run test" for backend. Re-running… ✓ 6/6 pass.
 ```
 
-## 4. Task jobs
+## 4. Task runs
 
 ```
 1. LOAD        the project's active config (none → onboarding first)
 2. SANDBOX + CHECKOUT
-3. REPLAY      run the steps; a failed step doesn't stop the job (the agent is told)
+3. REPLAY      run the steps; a failed step doesn't stop the run (the agent is told)
 4. BASELINE    run every check once → passing / failing / broken / timed-out
 5. AGENT       the prompt shows setup status and which checks were already failing
 6. VERIFY      run the checks again → fixed / regressed / still failing / passing
@@ -190,7 +190,7 @@ Using "npm run test" for backend. Re-running… ✓ 6/6 pass.
 8. CLEANUP
 ```
 
-- The config is **read-only** during jobs: no detection, no AI, no questions.
+- The config is **read-only** during runs: no detection, no AI, no questions.
 - Baseline is on by default; `--no-baseline-checks` skips it for slow suites.
 - Before/after comparison per check:
 
@@ -205,7 +205,7 @@ Known limitation: the comparison is pass/fail per check, so a check that was alr
 
 ### 4.1 Health
 
-Jobs flag the config as **needs attention** (without stopping) when:
+Runs flag the config as **needs attention** (without stopping) when:
 
 - a setup step failed, or
 - a folder with a `package.json` appears that the config doesn't cover (`uncoveredProjects`: the multi-project rules run on the checkout; workspace packages don't count, since the root installs them).
@@ -228,12 +228,12 @@ interface EnvironmentStore {
 
 | Where | Store | Notes |
 |---|---|---|
-| Product (worker + website) | `DbEnvironmentStore` (`packages/db`): **database** table `project_environments` ([database.md](./database.md)), keyed by project id | every version kept, one active per project, health with reasons; `jobs.environment_id` records which version each job used (set by the worker) |
+| Product (worker + website) | `DbEnvironmentStore` (`packages/db`): **database** table `project_environments` ([database.md](./database.md)), keyed by project id | every version kept, one active per project, health with reasons; `runs.environment_id` records which version each run used (set by the worker) |
 | CLI (built) | `FileEnvironmentStore` (`apps/cli/src/store/`): `~/.codegenie/environments/<repo-key>.json`, or under `$CODEGENIE_HOME` | the last 5 versions in one file, numbered on; written through a temporary file; configs validated on load |
 
 **Repo key** (`repo-key.ts`): git URLs become host/path, lowercased, without protocol, user or `.git` (`github.com/acme/app`), so every URL form of a repository matches. A local folder uses its `origin` remote when it is the repository's top level, so a clone and its URL share one environment; otherwise (no remote, or a folder inside another repository) it is `local:<absolute path>`.
 
-Lifecycle: onboarding saves a new active version (health ok); a job marks the active version as needing attention; rollback to an older version comes with the website (phase 4).
+Lifecycle: onboarding saves a new active version (health ok); a run marks the active version as needing attention; rollback to an older version comes with the website (phase 4).
 
 ## 6. CLI
 
@@ -263,11 +263,11 @@ packages/runner/src/
 ├── environment/
 │   ├── config.ts     zod schema
 │   ├── draft/        rules → draft (multi-project detectors)
-│   ├── apply.ts      replay steps (onboarding and jobs)
+│   ├── apply.ts      replay steps (onboarding and runs)
 │   ├── validate.ts   statuses + classifier
 │   ├── health.ts     uncovered project folder hint
 │   └── store.ts      EnvironmentStore interface
-├── job/              load → replay → baseline → agent → verify (before/after)
+├── run/              load → replay → baseline → agent → verify (before/after)
 └── stages/           checkout · changes · verify
 
 apps/cli/src/
@@ -282,7 +282,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 
 | Part | Contents | Outcome |
 |---|---|---|
-| A ✅ | config type + schema; `apply` / `validate`; jobs replay the config; baseline + before/after; rules-only draft, auto-approved | jobs run from an explicit config |
+| A ✅ | config type + schema; `apply` / `validate`; runs replay the config; baseline + before/after; rules-only draft, auto-approved | runs replay an explicit config |
 | B ✅ | multi-project draft rules | correct drafts for DoDesk and BuyerBook |
 | C ✅ | C1 setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>` | the guided conversation works |
 | D ✅ | `EnvironmentStore` + CLI file store (versions); `agent:setup` saves and `--show`s, `agent:run` loads; health signals | complete onboarding in the CLI |
@@ -294,8 +294,8 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 - [ ] Config committed in the user's repository (`.codegenie/environment.json`, checked before the database)
 - [ ] Services in the sandbox (e.g. PostgreSQL for tests)
 - [ ] Environment variables and secrets (onboarding offers "skip" or "dummy value" options meanwhile)
-- [ ] Snapshots after setup for faster jobs, plus a maintenance step on resume. Measured in the baseline eval run ([evals.md](./evals.md)): DoDesk tasks took 6–10 minutes for only 7–15 agent steps, most of it clone + `npm ci` in two projects (client ~80 s), baseline checks (client build ~45 s) and the same checks again in verify. Options, largest gain first:
-  - start jobs from a sandbox snapshot taken after setup (keyed by environment version + lockfiles), so the install is skipped;
+- [ ] Snapshots after setup for faster runs, plus a maintenance step on resume. Measured in the baseline eval run ([evals.md](./evals.md)): DoDesk tasks took 6–10 minutes for only 7–15 agent steps, most of it clone + `npm ci` in two projects (client ~80 s), baseline checks (client build ~45 s) and the same checks again in verify. Options, largest gain first:
+  - start runs from a sandbox snapshot taken after setup (keyed by environment version + lockfiles), so the install is skipped;
   - reuse the saved environment's check results as the baseline when the commit hasn't changed, instead of running the checks again;
   - keep `build` out of the baseline for slow builds (it rarely differs before the agent's changes).
 - [ ] Non-JavaScript ecosystems (new draft detectors)

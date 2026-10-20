@@ -2,11 +2,11 @@
 
 > Status: **In progress** (everything except deliver built) · Last updated: 2026-10-18 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
-The runner executes a coding job end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
+The runner executes a coding task end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
 
 The CLI (`apps/cli`) and the worker (`apps/worker`) both use the runner, so a local run behaves exactly like production.
 
-## 1. Stages: `runJob()`
+## 1. Stages: `runTask()`
 
 ```
 sandbox → checkout → setup → baseline → agent → verify → diff → (deliver) → cleanup
@@ -24,14 +24,14 @@ sandbox → checkout → setup → baseline → agent → verify → diff → (d
 | deliver | Commit, push, open the PR | planned (needs the GitHub App) |
 | cleanup | Destroy the sandbox, always (unless asked to keep it) | built |
 
-`runJob()` never throws for job problems. It returns a `JobResult`: `status` (the agent's status, or `failed` with `failedStage` and `error` when an earlier stage broke), plus the checkout, setup, agent, verify and diff results that exist. `checksPassed` is the verify outcome (`null` when there are no checks); failing checks don't change the agent's status.
+`runTask()` never throws for run problems. It returns a `RunResult`: `status` (the agent's status, or `failed` with `failedStage` and `error` when an earlier stage broke), plus the checkout, setup, agent, verify and diff results that exist. `checksPassed` is the verify outcome (`null` when there are no checks); failing checks don't change the agent's status.
 
 Events: `stage_changed` (prepare, checkout, setup, agent, verify), `sandbox_created`, and the setup and agent events.
 
 ```
 packages/runner/src/
 ├── index.ts              public API
-├── job/                  runJob(), JobResult (+ unit and integration tests)
+├── run/                  runTask(), RunResult (+ unit and integration tests)
 ├── stages/               each stage: index.ts, its files and tests
 │   ├── checkout/         clone or local copy; local-files picks what to copy
 │   ├── setup/            detectors, install
@@ -42,7 +42,7 @@ packages/runner/src/
 
 ## 2. CLI: `pnpm agent:setup` and `pnpm agent:run`
 
-`apps/cli` sets repositories up and runs jobs from the terminal, with live progress, the summary, check results and the diff.
+`apps/cli` sets repositories up and runs tasks from the terminal, with live progress, the summary, check results and the diff.
 
 ```bash
 pnpm agent:setup --repo ../my-project                      # once per repository (asks when it can't decide)
@@ -88,10 +88,10 @@ pnpm agent:run   --repo https://github.com/org/repo.git --ref main --task-file t
 |---|---|
 | `style.ts` | colors by meaning (`picocolors`): green works, red broken or failed, yellow already failing or needs attention, dim for paths and times, cyan for tool names; `styleFor(stream)` turns them off outside a terminal or with `NO_COLOR` |
 | `layout.ts` · `symbols.ts` · `format.ts` | `◆` intro, `◇` sections, `│` gutter, `└` outro; spinner frames; durations, timers, costs |
-| `job-events.ts` | job events → lines (stages, setup results, tool calls, check results, the agent's notes); the CLI's live output and the evals' log files |
+| `run-events.ts` | run events → lines (stages, setup results, tool calls, check results, the agent's notes); the CLI's live output and the evals' log files |
 | `live.ts` | `LiveArea`: lines redrawn at the bottom (`log-update`) with permanent lines printed above; only in an interactive terminal (TTY, rows > 0, not CI), otherwise just the permanent lines |
 
-- The spinner line follows the job's stage, and while the agent works shows steps and cost from the `agent_step` event.
+- The spinner line follows the run's stage, and while the agent works shows steps and cost from the `agent_step` event.
 - `agent:setup` asks its questions with the arrow keys (`@clack/prompts`, `channel/prompt.ts`): the recommended option is preselected, "Something else…" opens a text answer, and the spinner pauses while a question is open. Without a terminal for input, the numbered prompt is used.
 - `--json`, log files and piped output contain no colors or redraws.
 
@@ -101,13 +101,13 @@ Setup now runs from an **environment config** (steps + checks): either one passe
 
 ```
 packages/runner/src/
-├── job/                 runJob(): runs the stages in order
+├── run/                 runTask(): runs the stages in order
 ├── stages/              one folder per stage, in run order
 │   ├── checkout/
 │   ├── setup/           run-setup.ts: apply steps, baseline checks, then the baseline commit
 │   ├── verify/          rerun checks; compare.ts: passing / fixed / regressed / still failing
 │   └── changes/         baseline commit + diff (taken before verify reruns the checks)
-└── environment/         config building blocks, independent of jobs (reused by onboarding)
+└── environment/         config building blocks, independent of runs (reused by onboarding)
     ├── config.ts        schema: parseEnvironmentConfig()
     ├── build-config.ts  draft + results → EnvironmentConfig
     ├── apply.ts         run steps in order; install alternatives (frozen first, then lenient), keeping what worked

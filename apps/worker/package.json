@@ -2,7 +2,7 @@
   "name": "@codegenie/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Job runner: consumes queued jobs and runs the agent in a sandbox",
+  "description": "Worker: consumes queued task runs and project onboarding, and runs them in a sandbox",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

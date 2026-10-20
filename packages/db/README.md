@@ -3,10 +3,10 @@
 The Postgres schema, client and migrations ([Drizzle](https://orm.drizzle.team)), shared by `apps/server` and `apps/worker`. Table design: [docs/knowledge/database.md](../../docs/knowledge/database.md).
 
 ```ts
-import { createDb, jobs } from "@codegenie/db";
+import { createDb, runs } from "@codegenie/db";
 
 const { db, pool } = createDb(config.database.url); // each app, from its own config
-await db.select().from(jobs);
+await db.select().from(runs);
 ```
 
 ## Rules

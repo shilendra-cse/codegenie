@@ -11,18 +11,18 @@ CodeGenie is a web-based autonomous coding agent. A user connects their GitHub r
 | # | Decision | Choice | Rationale |
 |---|---|---|---|
 | D1 | Sandbox provider | **Daytona Cloud**, behind a `Sandbox` interface | Generous free tier, pay-as-you-go, self-hostable later. Interface keeps the vendor swappable; a `DockerSandbox` serves local dev. |
-| D2 | Where the agent loop runs | **In our worker**, tools execute remotely in the sandbox | LLM keys, DB and Redis never enter the sandbox; job state survives sandbox failure; trivial event streaming. |
+| D2 | Where the agent loop runs | **In our worker**, tools execute remotely in the sandbox | LLM keys, DB and Redis never enter the sandbox; run state survives sandbox failure; trivial event streaming. |
 | D3 | GitHub access | **GitHub App** (repo access) + GitHub OAuth (login only) | Per-repo consent, 1-hour scoped installation tokens, bot identity on commits/PRs, webhooks. |
-| D4 | Job execution | **BullMQ** on Redis, dedicated `apps/worker` process | Already have Redis; durable queue, retries, concurrency control, stalled-job detection. |
-| D5 | Live updates | Worker → Redis pub/sub + `job_events` table → server **SSE** → browser | Replayable (refresh mid-job works), auditable, simple. |
+| D4 | Run execution | **BullMQ** on Redis, dedicated `apps/worker` process | Already have Redis; durable queue, retries, concurrency control, stalled-job detection. |
+| D5 | Live updates | Worker → Redis pub/sub + `run_events` table → server **SSE** → browser | Replayable (refresh mid-run works), auditable, simple. |
 | D6 | Delivery | Worker (not the agent) commits, pushes, opens PR. **Draft PR** if checks fail, ready PR if they pass. Never push to default branch. | Model can't push half-done work; consistent git hygiene. |
 | D7 | Autonomy | Fire-and-forget to PR. Plan-approval step is a **post-MVP** per-task toggle. | Keep MVP flow minimal. |
-| D8 | Sandbox lifetime | **One sandbox per job, deleted at the end.** Pause/resume for follow-ups is post-MVP. | Cost and simplicity. |
+| D8 | Sandbox lifetime | **One sandbox per run, deleted at the end.** Pause/resume for follow-ups is post-MVP. | Cost and simplicity. |
 | D9 | LLM | Provider-agnostic via **Vercel AI SDK**; platform-controlled model from a **catalog** (prices, context window), selected by env (`AGENT_MODEL`); currently `gpt-6-luna` | Avoid lock-in; predictable cost; pick models by eval results. See [agent.md](./agent.md). |
 | D10 | Hosting | **Vercel** (web) + **Railway** (api, worker, Postgres, Redis) | Managed, cheap at MVP scale, private networking between services. |
 | D11 | Domains & auth cookies | Custom domain; web at `app.`, API proxied via Next.js rewrite (`/api/*` → api service) | Single browser origin: no third-party-cookie or CORS problems with Better Auth. |
 | D12 | Task intake | All sources normalize to one `Task`; MVP = prompt only, then Jira, then Notion | Pipeline is source-agnostic; integrations are adapters. |
-| D13 | Task vs Job | A **task** owns conversation, branch and PR; a **job** is one agent run on it | Follow-ups and PR-comment replies reuse the task's branch/PR without job chains. |
+| D13 | Task vs Run | A **task** owns conversation, branch and PR; a **run** is one attempt at it | Follow-ups and PR-comment replies reuse the task's branch/PR without run chains. |
 | D14 | Project ownership | Single-user projects for MVP | Team/org access can be added later without schema changes to existing tables. |
 
 ---
@@ -45,7 +45,7 @@ Browser ──HTTPS──► apps/web (Next.js, Vercel)                         
                                                         Daytona SDK    │   │ GitHub App API
                                                                        ▼   ▼
                                                      Daytona sandbox ──git──► GitHub
-                                                     (one per job)
+                                                     (one per run)
                                                                        LLM API ◄── worker
 ```
 
@@ -55,10 +55,10 @@ Browser ──HTTPS──► apps/web (Next.js, Vercel)                         
 apps/
   web/        Next.js UI
   server/     Express API (auth, REST, SSE, webhooks) — never touches sandboxes
-  worker/     BullMQ consumer: calls the runner for queued jobs
+  worker/     BullMQ consumer: calls the runner for queued runs
   cli/        local dev harness: calls the runner, prints events
 packages/
-  runner/     runs a job end to end: checkout → setup → agent → verify → deliver (no AI logic)
+  runner/     runs a task end to end: checkout → setup → agent → verify → deliver (no AI logic)
   agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools
   sandbox/    Sandbox interface + DockerSandbox (+ DaytonaSandbox)
   db/         Postgres schema, client and migrations (Drizzle), shared by server and worker
@@ -71,7 +71,7 @@ docs/
 
 Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `db → shared`; apps → runner, db. Apps never import from other apps.
 
-**`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates jobs and writes events), so the schema lives in one shared package instead of inside one app:
+**`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates runs and writes events), so the schema lives in one shared package instead of inside one app:
 - data access only: schema, client, migrations, and query helpers both apps need (e.g. `DbEnvironmentStore`); business rules stay in the apps;
 - queries only one app needs stay in that app;
 - migrations run from one place (the deploy step, `pnpm migrate`), never on app startup;
@@ -83,17 +83,17 @@ A schema change can mean redeploying both apps; that comes from sharing the data
 ## 3. Components
 
 ### apps/web
-Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/jobs history), new task, live job view (event timeline, tool calls, streamed summary, PR link). Talks only to `/api/*` (same origin via rewrite).
+Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/runs history), new task, live run view (event timeline, tool calls, streamed summary, PR link). Talks only to `/api/*` (same origin via rewrite).
 
 ### apps/server
 - Better Auth (GitHub/Google login, sessions).
 - GitHub App: install callback, webhook receiver (`installation`, `installation_repositories`, `pull_request_review_comment`, `issue_comment`), signature verification.
-- REST: projects, tasks, task messages (follow-ups), jobs, cancel.
-- `GET /api/jobs/:id/events` — SSE replay + live.
+- REST: projects, tasks, task messages (follow-ups), runs, cancel.
+- `GET /api/runs/:id/events` — SSE replay + live.
 - Writes rows and enqueues; does no long-running work.
 
 ### apps/worker
-Consumes BullMQ jobs and runs the pipeline in §5: `run-job` (a task's job) and `onboard-project` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Configurable concurrency; cancellation through a Redis message aborts the job and removes its sandbox. Also runs a periodic **reaper** that fails stalled jobs and deletes orphaned sandboxes. Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
+Consumes the BullMQ queue and runs the pipeline in §5: `run-task` (one run of a task) and `onboard-project` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Configurable concurrency; cancellation through a Redis message aborts the run and removes its sandbox. Also runs a periodic **reaper** that fails stalled runs and deletes orphaned sandboxes. Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
 
 ### packages/agent
 Details: **[agent.md](./agent.md)**.
@@ -115,7 +115,7 @@ interface Sandbox {
 ```
 Implementations: `DaytonaSandbox` (prod), `DockerSandbox` (dev/tests). Selected by `SANDBOX_PROVIDER=daytona|docker`.
 
-Daytona sandboxes are created from a prebuilt **`codegenie-base` snapshot** (git, ripgrep, fd, Node + corepack, Python + uv, Go, build-essential), labelled with `jobId`, with auto-stop as a safety net.
+Daytona sandboxes are created from a prebuilt **`codegenie-base` snapshot** (git, ripgrep, fd, Node + corepack, Python + uv, Go, build-essential), labelled with `runId`, with auto-stop as a safety net.
 
 ---
 
@@ -133,39 +133,39 @@ For any repo access, the server/worker signs a JWT with the App private key and 
 ```
 POST /api/projects/:id/tasks { content, baseBranch? }
   authorize user owns project
-  tx: insert task(source=prompt) + message(role=user) + job(trigger=initial, status=queued)
-  queue.add("run-job", { jobId }, { jobId })     // idempotent
-  → 201 { jobId, messageId }
+  tx: insert task(source=prompt) + message(role=user) + run(trigger=initial, status=queued)
+  queue.add("run-task", { runId }, { jobId: runId })     // idempotent
+  → 201 { runId, messageId }
 ```
-Client opens the SSE stream for `jobId`.
+Client opens the SSE stream for `runId`.
 
 ### 4.3 Live events
 ```
-worker emit(e):   INSERT job_events  +  PUBLISH job:{jobId}
-server SSE:       SUBSCRIBE first → replay job_events after Last-Event-ID → forward live (dedupe by id)
+worker emit(e):   INSERT run_events  +  PUBLISH run:{runId}
+server SSE:       SUBSCRIBE first → replay run_events after Last-Event-ID → forward live (dedupe by id)
                   heartbeat 15s; close on done/error
 ```
-Events are keyed by (`job_id`, `seq`); `seq` is the SSE event id. High-frequency `text_delta` events are published live but persisted batched (or only the final assistant message).
+Events are keyed by (`run_id`, `seq`); `seq` is the SSE event id. High-frequency `text_delta` events are published live but persisted batched (or only the final assistant message).
 
 ### 4.4 Follow-ups
-- **UI follow-up message** (`POST /api/tasks/:id/messages`) → new job on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous job's summary + new instruction, pushes to the same PR.
-- **PR review comment / `@codegenie` mention** (webhook, deduped via `webhook_deliveries`) → new job on the task with `trigger=pr_comment`; context includes comment, file and line.
-- **Jira (post-MVP)** → webhook on assignment/label → Task → job; PR link posted back to the ticket.
+- **UI follow-up message** (`POST /api/tasks/:id/messages`) → new run on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous run's summary + new instruction, pushes to the same PR.
+- **PR review comment / `@codegenie` mention** (webhook, deduped via `webhook_deliveries`) → new run on the task with `trigger=pr_comment`; context includes comment, file and line.
+- **Jira (post-MVP)** → webhook on assignment/label → Task → run; PR link posted back to the ticket.
 
-Every entry point reduces to **task → new job**.
+Every entry point reduces to **task → new run**.
 
 ---
 
-## 5. Job pipeline (worker)
+## 5. Run pipeline (worker)
 
 | Stage | Actions | Events |
 |---|---|---|
-| **Prepare** | load job/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId` | `sandbox_created` |
-| **Checkout** | clone into `/workspace`; checkout base; create `codegenie/<taskId>-<slug>` on the first job (later jobs check out `task.branch_name`) | `branch_created` |
+| **Prepare** | load run/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId` | `sandbox_created` |
+| **Checkout** | clone into `/workspace`; checkout base; create `codegenie/<taskId>-<slug>` on the first run (later runs check out `task.branch_name`) | `branch_created` |
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
 | **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
 | **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `lint_completed`, `test_passed`/`test_failed` |
-| **Deliver** | no diff → finish with explanation, no PR. Else commit as `codegenie[bot]`, push, open PR (draft if checks failed) with summary + checks + job link | `git_push`, `pr_opened` |
+| **Deliver** | no diff → finish with explanation, no PR. Else commit as `codegenie[bot]`, push, open PR (draft if checks failed) with summary + checks + run link | `git_push`, `pr_opened` |
 | **Finally** | persist summary & usage; `status=succeeded/failed/cancelled`; **always** destroy sandbox | `done` / `error` |
 
 The token is passed to git via a one-off credential env at push/clone time rather than stored in `.git/config`.
@@ -193,7 +193,7 @@ The token is passed to git via a one-off credential env at push/clone time rathe
 - Loop ends only on `finish_task` or a limit — not when the model stops calling tools.
 - Tool output truncated head+tail with an "N lines omitted" marker.
 - At ~70% of the context window, older tool results are summarized; task, plan and recent turns kept.
-- Limits per job: `maxSteps` (~150), `maxWallTime` (~30 min), `maxCostUsd`. On limit: force a summary, deliver as draft PR marked incomplete.
+- Limits per run: `maxSteps` (~150), `maxWallTime` (~30 min), `maxCostUsd`. On limit: force a summary, deliver as draft PR marked incomplete.
 - Cancellation via `AbortSignal`, checked every step.
 - Message history uses the SDK's native tool messages (`response.messages`), never synthetic user/assistant turns.
 
@@ -203,10 +203,10 @@ The token is passed to git via a one-off credential env at push/clone time rathe
 
 Full design: **[database.md](./database.md)**. Summary:
 
-- **Task** = unit of work (conversation, branch, PR). **Job** = one agent execution on a task. Follow-ups and PR-comment responses are new jobs on the same task.
-- Tables: Better Auth (`user`, `session`, `account`, `verification`), `github_installations`, `projects`, `tasks`, `jobs`, `messages`, `job_events`, `webhook_deliveries`.
-- A partial unique index allows at most one queued/running job per task.
-- `job_events` keyed by (`job_id`, `seq`) for gap-free SSE replay.
+- **Task** = unit of work (conversation, branch, PR). **Run** = one agent execution on a task. Follow-ups and PR-comment responses are new runs on the same task.
+- Tables: Better Auth (`user`, `session`, `account`, `verification`), `github_installations`, `projects`, `tasks`, `runs`, `messages`, `run_events`, `webhook_deliveries`.
+- A partial unique index allows at most one queued/running run per task.
+- `run_events` keyed by (`run_id`, `seq`) for gap-free SSE replay.
 - Existing migrations are replaced by one clean initial migration.
 
 Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub service (replaced by App tokens), unused JWT/bcrypt config.
@@ -217,11 +217,11 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Failure | Handling |
 |---|---|
-| Worker crash mid-job | BullMQ stalled detection → reaper marks `failed`, deletes sandbox by `sandboxId`/label. No auto-retry once the agent has started. |
+| Worker crash mid-run | BullMQ stalled detection → reaper marks `failed`, deletes sandbox by `sandboxId`/label. No auto-retry once the agent has started. |
 | Sandbox create fails | Retry with backoff (nothing has happened yet). |
 | Dependency install fails | Continue; agent is told setup failed and may fix it. |
 | LLM error / rate limit | Backoff retry inside loop; fail after N attempts. |
-| User cancels | `POST /api/jobs/:id/cancel` → abort signal → sandbox destroyed → `cancelled`. |
+| User cancels | `POST /api/runs/:id/cancel` → abort signal → sandbox destroyed → `cancelled`. |
 | Push rejected / branch protection | `error` event with reason; diff saved as an artifact. |
 
 ---
@@ -229,7 +229,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 ## 9. Security
 
 - Untrusted code runs **only** in Daytona sandboxes; never on our servers.
-- Sandbox receives only a repo-scoped, ~1h installation token, only for the job's duration.
+- Sandbox receives only a repo-scoped, ~1h installation token, only for the run's duration.
 - Secret placement:
 
 | Secret | web | api | worker | sandbox |
@@ -243,9 +243,9 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | Installation token (repo-scoped, 1h) | – | – | – | ✓ |
 
 - Webhook signatures verified; production refuses to boot with default secrets.
-- Agent never pushes to the default branch; one active job per task (enforced by a DB index).
-- Per-user limits on concurrent jobs and daily spend, enforced at task creation.
-- Full audit trail in `job_events`.
+- Agent never pushes to the default branch; one active run per task (enforced by a DB index).
+- Per-user limits on concurrent runs and daily spend, enforced at task creation.
+- Full audit trail in `run_events`.
 
 ---
 
@@ -271,9 +271,9 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 |---|---|---|
 | 0. Foundations | CI (lint, type-check, Vitest), cleanup, package skeletons, **new DB schema + clean initial migration**, shared types updated | Repo in final shape, schema in place |
 | 1. Agent core | `packages/sandbox` (interface + Docker), `packages/agent` with sandbox-backed tools, fixed history, configurable model, limits | Agent works locally against any repo |
-| 2. Worker + Daytona | `DaytonaSandbox`, base snapshot, `apps/worker`, BullMQ, events → Redis + `job_events` | Jobs run in the cloud |
+| 2. Worker + Daytona | `DaytonaSandbox`, base snapshot, `apps/worker`, BullMQ, events → Redis + `run_events` | Runs execute in the cloud |
 | 3. GitHub App | install flow, token minting, clone → push → PR | Real PRs |
-| 4. API + UI | tasks/jobs endpoints, SSE, repo picker, `/build`, live job view | **MVP: prompt → PR** |
+| 4. API + UI | tasks/runs endpoints, SSE, repo picker, `/build`, live run view | **MVP: prompt → PR** |
 | 5. Iteration | follow-ups, PR-comment webhooks, cancellation | Collaborative loop |
 | 6. Integrations | Jira, then Notion | Ticket → PR |
 | Later | plan approval, sandbox pause/resume, live previews, code index, billing, orgs | |
