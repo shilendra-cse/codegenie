@@ -39,6 +39,7 @@ describe.skipIf(!database)("DbEnvironmentStore against Postgres", () => {
     const second = await store.save(projectId, config("npm install"), "ai");
 
     expect(second).toMatchObject({
+      id: expect.any(String),
       repoKey: projectId,
       version: 2,
       source: "ai",

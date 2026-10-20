@@ -19,7 +19,8 @@ export type JobRecord = {
 
 type AgentResult = NonNullable<JobResult["agent"]>;
 
-function failureOf(result: JobResult, agent?: AgentResult): JobFailure | null {
+export function jobFailure(result: JobResult): JobFailure | null {
+  const agent: AgentResult | undefined = result.agent;
   if (result.status === "failed") {
     return {
       code: `${result.failedStage ?? "agent"}_failed`,
@@ -80,7 +81,7 @@ export function createJobRecord(db: Db, jobId: string): JobRecord {
 
     finish(result) {
       const agent = result.agent;
-      const failure = failureOf(result, agent);
+      const failure = jobFailure(result);
       return end(
         {
           status: result.status,
