@@ -1,5 +1,6 @@
 import { jobEvents, type Db } from "@codegenie/db";
 import { jobChannel, type JobEvent } from "@codegenie/shared";
+import { createSerialQueue } from "../lib/serial-queue.js";
 
 export type Publisher = {
   publish(channel: string, message: string): Promise<unknown>;
@@ -22,8 +23,7 @@ export function createEventSink(
   jobId: string,
 ): EventSink {
   let seq = 0;
-  let writes = Promise.resolve();
-  let failure: unknown = null;
+  const writes = createSerialQueue();
 
   const write = async (event: JobEvent) => {
     const { type, jobId: _jobId, ts, seq: _seq, ...payload } = event;
@@ -44,16 +44,7 @@ export function createEventSink(
   };
 
   return {
-    emit(event) {
-      writes = writes.then(() =>
-        write(event).catch((error: unknown) => {
-          failure ??= error;
-        }),
-      );
-    },
-    async flush() {
-      await writes;
-      if (failure) throw failure;
-    },
+    emit: (event) => writes.add(() => write(event)),
+    flush: () => writes.drain(),
   };
 }
