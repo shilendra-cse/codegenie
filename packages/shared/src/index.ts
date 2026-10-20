@@ -75,3 +75,11 @@ export type {
 } from "./types/environment.js";
 
 export { checkKey } from "./types/environment.js";
+
+export {
+  CANCEL_CHANNEL,
+  JOB_QUEUE,
+  onboardingChannel,
+  type QueuedWork,
+  type QueuedWorkKind,
+} from "./types/queue.js";
