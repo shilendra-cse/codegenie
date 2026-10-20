@@ -74,14 +74,14 @@ Branches, each built in small batches (see Ways of working):
   1. Schema + migration: `project_environments`, `runs.environment_id`, drop `projects.setup_config` if present.
   2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests on a fresh Postgres database per run (`@codegenie/db/testing`), and a Postgres service in CI.
   3. Docs.
-- [ ] **3. `feat/worker-queue`** — the worker, on Docker sandboxes.
+- [x] **3. `feat/worker-queue`** — the worker, on Docker sandboxes. (Two PRs: `feat/worker-queue` for 1–4 and `feat/worker-consumer` for 5–8, with `refactor/job-to-run` between them renaming jobs to runs.)
   1. Queue contract in `shared`: queue name, work kinds (`run-task`, `onboard-project`), payloads.
   2. Event sink: every event into `run_events` (`seq` 1, 2, 3…) and published on Redis `run:{id}`; `text_delta` and `agent_step` published only.
   3. Run lifecycle: `runs` status, stage, sandbox id, environment version, summary, usage, errors, timestamps.
   4. `run-task` handler: load run, task, project and the active environment (clear error without one); `runTask`; record the result; mark health.
-  5. `onboard-project` handler: `runOnboarding` with recommended answers; save as the project's next environment version.
-  6. BullMQ consumer: concurrency, graceful shutdown, per-run limits (30 min / 150 steps / $2), cancellation via Redis.
-  7. `pnpm worker:enqueue`: create project, task and run rows for a public repository and queue them; Docker test of the whole loop with the scripted agent.
+  5. `onboard-project` handler: `runOnboarding` with recommended answers; save as the project's next environment version; progress published live on `project:{id}:onboarding` (not stored); throws when onboarding fails.
+  6. BullMQ consumer: concurrency, cancellation via Redis, no retry for work whose worker died; worker process: config, logger, graceful shutdown. Per-run limits (30 min / 150 steps / $2) are the agent's defaults. (Planned as one batch; two: consumer, then process.)
+  7. `pnpm worker:enqueue onboard | run | cancel` for public repositories (dev tooling in `apps/worker/src/dev/`, moves to the API in Phase 4); end-to-end test of onboarding and a run through Docker, Postgres and Redis; Redis in CI.
   8. Docs.
 - [ ] **4. `feat/daytona-sandbox`** — needs a Daytona account.
   1. `DaytonaSandbox` (exec, files, destroy) with a mocked SDK in tests.
