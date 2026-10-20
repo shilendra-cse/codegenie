@@ -31,6 +31,8 @@
     "@codegenie/db": "workspace:*",
     "@codegenie/runner": "workspace:*",
     "@codegenie/shared": "workspace:*",
-    "drizzle-orm": "^0.44.5"
+    "bullmq": "^6.3.17",
+    "drizzle-orm": "^0.44.5",
+    "ioredis": "^5.10.1"
   }
 }
