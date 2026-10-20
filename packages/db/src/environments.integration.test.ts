@@ -4,13 +4,8 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "./client.js";
 import { DbEnvironmentStore } from "./environments.js";
-import {
-  githubInstallations,
-  projectEnvironments,
-  projects,
-  user,
-} from "./schema/index.js";
-import { testDatabaseOrSkip } from "./testing/index.js";
+import { projectEnvironments } from "./schema/index.js";
+import { insertProject, testDatabaseOrSkip } from "./testing/index.js";
 
 const database = await testDatabaseOrSkip("DbEnvironmentStore");
 
@@ -26,35 +21,7 @@ const config = (command: string, commit?: string): EnvironmentConfig => ({
   },
 });
 
-let installations = 0;
-async function newProject() {
-  const db = database!.db;
-  const userId = randomUUID();
-  await db
-    .insert(user)
-    .values({ id: userId, name: "Ada", email: `${userId}@example.com` });
-  const [installation] = await db
-    .insert(githubInstallations)
-    .values({
-      installationId: ++installations,
-      accountLogin: "acme",
-      accountType: "organization",
-      installedByUserId: userId,
-    })
-    .returning();
-  const [project] = await db
-    .insert(projects)
-    .values({
-      userId,
-      installationId: installation!.id,
-      repoGithubId: installations,
-      repoOwner: "acme",
-      repoName: "app",
-      defaultBranch: "main",
-    })
-    .returning();
-  return project!.id;
-}
+const newProject = async () => (await insertProject(database!.db)).id;
 
 describe.skipIf(!database)("DbEnvironmentStore against Postgres", () => {
   const store = new DbEnvironmentStore(database?.db as Db);
