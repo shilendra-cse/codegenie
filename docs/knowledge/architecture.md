@@ -123,7 +123,7 @@ interface Sandbox {
 ```
 Implementations: `DaytonaSandbox` (prod), `DockerSandbox` (dev/tests). Selected by `SANDBOX_PROVIDER=daytona|docker`.
 
-Daytona sandboxes are created from a prebuilt **`codegenie-base` snapshot** (git, ripgrep, fd, Node + corepack, Python + uv, Go, build-essential), labelled with `runId`, with auto-stop as a safety net.
+Daytona sandboxes are created from the **`codegenie-base` snapshot**, built from the same Dockerfile as the Docker image (`pnpm sandbox:build-snapshot`). Every sandbox is labelled `codegenie=1` plus `kind` and `runId` / `projectId`; Daytona's are ephemeral, with a 2-hour TTL and auto-stop as safety nets. Details: [sandbox.md](./sandbox.md) §7.
 
 ---
 

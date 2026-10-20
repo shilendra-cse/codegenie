@@ -63,6 +63,12 @@ describe.skipIf(!redis)("consumer against Redis", () => {
     await finished(await queue.add("onboard-project", { projectId: "p-1" }));
 
     expect(received).toEqual([{ runId: "run-1" }, { projectId: "p-1" }]);
+    expect(logs.map((l) => l.message)).toEqual([
+      "Work started",
+      "Work finished",
+      "Work started",
+      "Work finished",
+    ]);
   });
 
   it("fails work of an unknown kind and keeps going", async () => {

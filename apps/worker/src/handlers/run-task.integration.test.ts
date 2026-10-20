@@ -113,7 +113,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       .orderBy(asc(runEvents.seq));
 
   it("runs a run with the project's environment and records everything", async () => {
-    const { project, run, published, depsFor, labels } = await setUp({
+    const { project, run, published, depsFor, labels, logs } = await setUp({
       environment: environment(),
       message: "Add a GET /health endpoint",
     });
@@ -123,6 +123,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
 
     expect(result?.status).toBe("succeeded");
     expect(labels).toEqual([{ kind: "run", runId: run.id }]);
+    expect(logs).toContain("Run finished");
     expect(JSON.stringify(model.doStreamCalls[0]!.prompt)).toContain(
       "Add a GET /health endpoint",
     );

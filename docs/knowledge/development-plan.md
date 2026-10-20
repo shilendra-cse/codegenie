@@ -83,12 +83,12 @@ Branches, each built in small batches (see Ways of working):
   6. BullMQ consumer: concurrency, cancellation via Redis, no retry for work whose worker died; worker process: config, logger, graceful shutdown. Per-run limits (30 min / 150 steps / $2) are the agent's defaults. (Planned as one batch; two: consumer, then process.)
   7. `pnpm worker:enqueue onboard | run | cancel` for public repositories (dev tooling in `apps/worker/src/dev/`, moves to the API in Phase 4); end-to-end test of onboarding and a run through Docker, Postgres and Redis; Redis in CI.
   8. Docs.
-- [ ] **4. `feat/daytona-sandbox`** — needs a Daytona account.
-  1. `DaytonaSandbox` (exec, files, destroy) with a mocked SDK in tests.
-  2. `SANDBOX_PROVIDER=docker|daytona` in `createSandbox`, config.
-  3. `codegenie-base` snapshot build script (same tools as the Docker image).
-  4. Integration test against Daytona (skipped without a key).
-  5. Docs (`sandbox.md`).
+- [x] **4. `feat/daytona-sandbox`** ([sandbox.md](./sandbox.md) §7).
+  1. `DaytonaSandbox` (exec, files, destroy), designed from a probe of the real API and tested with a fake built from its recorded answers.
+  2. `SANDBOX_PROVIDER=docker|daytona` in the worker and `createSandbox`; sandboxes labelled by run or onboarding for the reaper.
+  3. `pnpm sandbox:build-snapshot`: `codegenie-base` built on Daytona from the same Dockerfile, then checked.
+  4. ~~Integration test against Daytona~~: dropped, no automated tests against real Daytona (cost). Checked by hand instead: onboarding and a run of `octocat/Hello-World` through the worker on Daytona. Added the worker's start / finish / outcome logs, which that run showed were missing.
+  5. Docs.
 - [ ] **5. `feat/reaper`**
   1. Stalled runs: runs still `running` whose worker died are marked `failed`.
   2. Orphaned sandboxes (by run label, Docker and Daytona) whose run is no longer running are deleted.

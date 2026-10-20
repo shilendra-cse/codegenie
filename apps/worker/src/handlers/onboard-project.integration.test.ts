@@ -57,6 +57,7 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
 
   function depsFor(handler: Handler = () => ({}), script: ScriptedStep[] = []) {
     const labels: SandboxLabels[] = [];
+    const logs: { message: string; data?: Record<string, unknown> }[] = [];
     const published: { channel: string; message: OnboardingMessage }[] = [];
     const publisher: Publisher = {
       async publish(channel, message) {
@@ -70,7 +71,7 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
     const deps: OnboardProjectDeps = {
       db,
       publisher,
-      log: () => {},
+      log: (_level, message, data) => logs.push({ message, data }),
       model: scriptedModel(script).resolved,
       createSandbox: createSandbox(handler, labels),
     };
@@ -78,13 +79,14 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       deps,
       published,
       labels,
+      logs,
       messages: () => published.map((p) => p.message),
     };
   }
 
   it("saves the drafted environment and publishes its progress", async () => {
     const project = await insertProject(db);
-    const { deps, published, messages, labels } = depsFor();
+    const { deps, published, messages, labels, logs } = depsFor();
 
     const result = await handleOnboardProject(deps, { projectId: project.id });
 
@@ -109,6 +111,10 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       type: "done",
       status: "approved",
       version: 1,
+    });
+    expect(logs).toContainEqual({
+      message: "Onboarding finished",
+      data: { projectId: project.id, status: "approved", version: 1 },
     });
   });
 

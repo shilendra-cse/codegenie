@@ -1,6 +1,7 @@
 import { scriptedModel } from "@codegenie/agent/testing";
 import { DbEnvironmentStore, runs, type Db } from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -37,6 +38,7 @@ describe.skipIf(!database)("run-task handler when runTask throws", () => {
           publisher: { publish: async () => 1 },
           log: () => {},
           model: scriptedModel([]).resolved,
+          createSandbox: async () => new FakeSandbox(),
         },
         { runId: run.id },
       ),

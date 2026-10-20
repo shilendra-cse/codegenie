@@ -81,6 +81,11 @@ export async function handleOnboardProject(
       error: String(error),
     });
   }
+  deps.log("info", "Onboarding finished", {
+    projectId,
+    status: result.status,
+    ...(saved ? { version: saved.version } : {}),
+  });
 
   if (result.status === "failed") {
     throw new Error(`Onboarding ${repo} failed: ${result.error}`);

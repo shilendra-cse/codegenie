@@ -144,5 +144,11 @@ export async function handleRunTask(
       result.setup.healthReasons,
     );
   }
+  deps.log("info", "Run finished", {
+    runId,
+    status: result.status,
+    steps: result.agent?.steps ?? 0,
+    costUsd: result.agent?.usage.costUsd ?? 0,
+  });
   return result;
 }
