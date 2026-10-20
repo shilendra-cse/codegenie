@@ -12,8 +12,11 @@ import { projects } from "./schema/projects-schema.js";
 
 type Row = typeof projectEnvironments.$inferSelect;
 
-function toStored(row: Row): StoredEnvironment {
+export type DbStoredEnvironment = StoredEnvironment & { id: string };
+
+function toStored(row: Row): DbStoredEnvironment {
   return {
+    id: row.id,
     repoKey: row.projectId,
     version: row.version,
     source: row.source,

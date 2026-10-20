@@ -88,6 +88,7 @@ export type JobStatus =
   | "queued"
   | "running"
   | "succeeded"
+  | "incomplete"
   | "failed"
   | "cancelled";
 
@@ -274,7 +275,7 @@ export type JobEventError = JobEventBase & {
 
 export type JobEventDone = JobEventBase & {
   type: "done";
-  status: Extract<JobStatus, "succeeded" | "failed" | "cancelled">;
+  status: Exclude<JobStatus, "queued" | "running">;
 };
 
 export type JobEvent =
