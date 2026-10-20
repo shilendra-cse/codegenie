@@ -16,7 +16,6 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@codegenie/sandbox": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.5.2",
     "eslint": "^9.37.0",
@@ -32,6 +31,7 @@
     "@codegenie/agent": "workspace:*",
     "@codegenie/db": "workspace:*",
     "@codegenie/runner": "workspace:*",
+    "@codegenie/sandbox": "workspace:*",
     "@codegenie/shared": "workspace:*",
     "bullmq": "^6.3.17",
     "dotenv": "^17.2.3",

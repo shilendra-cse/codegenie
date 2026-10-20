@@ -13,13 +13,15 @@ import {
 import { eq } from "drizzle-orm";
 import type { Publisher } from "../events/sink.js";
 import type { Log } from "../lib/log.js";
+import type { SandboxFactory } from "../lib/sandbox-factory.js";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
 export type OnboardProjectDeps = {
   db: Db;
   publisher: Publisher;
   log: Log;
-} & Pick<RunOnboardingOptions, "model" | "agentLimits" | "createSandbox">;
+  createSandbox: SandboxFactory;
+} & Pick<RunOnboardingOptions, "model" | "agentLimits">;
 
 export async function handleOnboardProject(
   deps: OnboardProjectDeps,
@@ -51,7 +53,7 @@ export async function handleOnboardProject(
     },
     model: deps.model,
     agentLimits: deps.agentLimits,
-    createSandbox: deps.createSandbox,
+    createSandbox: () => deps.createSandbox({ kind: "onboarding", projectId }),
     channel: autoChannel((message) => publish({ type: "info", message })),
     emit: (event) => publish({ type: "event", event }),
     signal,

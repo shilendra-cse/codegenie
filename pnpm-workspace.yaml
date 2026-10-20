@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+overrides:
+  # ai pins 1.9.0 and the Daytona SDK needs ^1.9.1; two copies would split drizzle-orm (an optional peer) in two.
+  "@opentelemetry/api": "1.9.1"

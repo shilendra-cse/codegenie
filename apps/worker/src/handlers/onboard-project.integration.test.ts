@@ -1,6 +1,7 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import { DbEnvironmentStore, type Db } from "@codegenie/db";
 import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
+import type { SandboxLabels } from "@codegenie/sandbox";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import type { OnboardingMessage } from "@codegenie/shared";
 import { afterAll, describe, expect, it } from "vitest";
@@ -32,8 +33,9 @@ const finishWithoutLint: ScriptedStep = {
   ],
 };
 
-function createSandbox(handler: Handler = () => ({})) {
-  return async () => {
+function createSandbox(handler: Handler, labels: SandboxLabels[]) {
+  return async (l: SandboxLabels) => {
+    labels.push(l);
     const sandbox = new FakeSandbox({
       "package.json": JSON.stringify({
         scripts: { lint: "eslint .", test: "node --test" },
@@ -53,7 +55,8 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
   const environments = new DbEnvironmentStore(db);
   afterAll(() => database?.drop());
 
-  function depsFor(handler?: Handler, script: ScriptedStep[] = []) {
+  function depsFor(handler: Handler = () => ({}), script: ScriptedStep[] = []) {
+    const labels: SandboxLabels[] = [];
     const published: { channel: string; message: OnboardingMessage }[] = [];
     const publisher: Publisher = {
       async publish(channel, message) {
@@ -69,18 +72,27 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       publisher,
       log: () => {},
       model: scriptedModel(script).resolved,
-      createSandbox: createSandbox(handler),
+      createSandbox: createSandbox(handler, labels),
     };
-    return { deps, published, messages: () => published.map((p) => p.message) };
+    return {
+      deps,
+      published,
+      labels,
+      messages: () => published.map((p) => p.message),
+    };
   }
 
   it("saves the drafted environment and publishes its progress", async () => {
     const project = await insertProject(db);
-    const { deps, published, messages } = depsFor();
+    const { deps, published, messages, labels } = depsFor();
 
     const result = await handleOnboardProject(deps, { projectId: project.id });
 
     expect(result.status).toBe("approved");
+    expect(labels).toEqual([
+      { kind: "onboarding", projectId: project.id },
+      { kind: "onboarding", projectId: project.id },
+    ]);
     expect(await environments.load(project.id)).toMatchObject({
       version: 1,
       source: "detected",

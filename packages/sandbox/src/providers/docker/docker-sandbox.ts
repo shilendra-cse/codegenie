@@ -14,6 +14,7 @@ import {
   type FileEntry,
   type ListFilesOptions,
   type Sandbox,
+  type SandboxLabels,
   type SandboxResources,
 } from "../../core/types.js";
 import { runProcess, type RunProcessResult } from "../../lib/run-process.js";
@@ -40,6 +41,7 @@ import { docker, isContainerGone } from "./docker-cli.js";
 export type DockerSandboxOptions = {
   resources?: SandboxResources;
   image?: string;
+  labels?: SandboxLabels;
 };
 
 export class DockerSandbox implements Sandbox {
@@ -84,6 +86,10 @@ export class DockerSandbox implements Sandbox {
       id,
       "--label",
       SANDBOX_LABEL,
+      ...Object.entries(options.labels ?? {}).flatMap(([key, value]) => [
+        "--label",
+        `${key}=${value}`,
+      ]),
       "--memory",
       `${memoryGb}g`,
       "--cpus",

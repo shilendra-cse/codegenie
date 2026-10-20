@@ -1,5 +1,6 @@
 import { resolveModel } from "@codegenie/agent";
 import { createDb } from "@codegenie/db";
+import { createSandbox, type SandboxLabels } from "@codegenie/sandbox";
 import { config as loadDotenv } from "dotenv";
 import { Redis } from "ioredis";
 import { ConfigError, ENV_FILE, parseConfig } from "./config.js";
@@ -40,6 +41,8 @@ async function main() {
     publisher: redis.publisher,
     log,
     model: resolveModel(config.model),
+    createSandbox: (labels: SandboxLabels) =>
+      createSandbox({ ...config.sandbox, labels }),
   };
   const consumer = await startConsumer({
     connection: redis.queue,
@@ -55,6 +58,7 @@ async function main() {
   log("info", "Worker started", {
     model: config.model,
     concurrency: config.concurrency,
+    sandbox: config.sandbox.provider,
   });
 
   let stoppingSince: number | null = null;

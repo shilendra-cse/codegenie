@@ -25,11 +25,13 @@ import {
 } from "../../core/limits.js";
 import {
   WORKSPACE_DIR,
+  type DaytonaConnection,
   type ExecOptions,
   type ExecResult,
   type FileEntry,
   type ListFilesOptions,
   type Sandbox,
+  type SandboxLabels,
 } from "../../core/types.js";
 import { CappedBuffer } from "../../lib/capped-buffer.js";
 import { findArgs, parseFindOutput } from "../../lib/find-files.js";
@@ -74,11 +76,11 @@ export type DaytonaClient = {
   ): Promise<RemoteSandbox>;
 };
 
-export type DaytonaSandboxOptions = {
-  /** Defaults to a client from DAYTONA_API_KEY / DAYTONA_API_URL / DAYTONA_TARGET. */
+export type DaytonaSandboxOptions = Partial<DaytonaConnection> & {
+  /** Without one, a client is made from the connection, or DAYTONA_API_KEY / DAYTONA_API_URL / DAYTONA_TARGET. */
   client?: DaytonaClient;
   snapshot?: string;
-  labels?: Record<string, string>;
+  labels?: SandboxLabels;
 };
 
 const messageOf = (error: unknown) =>
@@ -107,7 +109,11 @@ export class DaytonaSandbox implements Sandbox {
     let client = options.client;
     if (!client) {
       try {
-        client = new Daytona();
+        client = new Daytona({
+          apiKey: options.apiKey,
+          apiUrl: options.apiUrl,
+          target: options.target,
+        });
       } catch (error) {
         throw new SandboxUnavailableError(
           `Daytona isn't configured: ${messageOf(error)}`,

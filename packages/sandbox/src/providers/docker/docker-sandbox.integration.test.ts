@@ -47,11 +47,27 @@ describe.skipIf(notReady)("DockerSandbox", () => {
   let sandbox: DockerSandbox;
 
   beforeAll(async () => {
-    sandbox = await DockerSandbox.create();
+    sandbox = await DockerSandbox.create({
+      labels: { kind: "run", runId: "r-test" },
+    });
   });
 
   afterAll(async () => {
     await sandbox?.destroy();
+  });
+
+  it("labels the container for the reaper", async () => {
+    const r = await runProcess("docker", [
+      "inspect",
+      "--format",
+      "{{json .Config.Labels}}",
+      sandbox.id,
+    ]);
+    expect(JSON.parse(r.stdout)).toMatchObject({
+      codegenie: "1",
+      kind: "run",
+      runId: "r-test",
+    });
   });
 
   describe("exec", () => {

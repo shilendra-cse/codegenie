@@ -18,12 +18,14 @@ import {
   type RunRecord,
 } from "../runs/run-record.js";
 import type { Log } from "../lib/log.js";
+import type { SandboxFactory } from "../lib/sandbox-factory.js";
 
 export type RunTaskDeps = {
   db: Db;
   publisher: Publisher;
   log: Log;
-} & Pick<RunTaskOptions, "model" | "limits" | "createSandbox">;
+  createSandbox: SandboxFactory;
+} & Pick<RunTaskOptions, "model" | "limits">;
 
 async function loadRun(db: Db, runId: string) {
   const run = await db.query.runs.findFirst({
@@ -122,7 +124,7 @@ export async function handleRunTask(
       model: deps.model,
       limits: deps.limits,
       environment: environment.config,
-      createSandbox: deps.createSandbox,
+      createSandbox: () => deps.createSandbox({ kind: "run", runId }),
       emit,
       signal,
     });
