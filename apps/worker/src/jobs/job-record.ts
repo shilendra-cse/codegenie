@@ -1,4 +1,4 @@
-import { jobs, type Db } from "@codegenie/db";
+import { runs, type Db } from "@codegenie/db";
 import type { JobResult } from "@codegenie/runner";
 import type { JobEvent } from "@codegenie/shared";
 import { and, eq, inArray } from "drizzle-orm";
@@ -38,32 +38,32 @@ export function jobFailure(result: JobResult): JobFailure | null {
 
 export function createJobRecord(db: Db, jobId: string): JobRecord {
   const updates = createSerialQueue();
-  const update = (values: Partial<typeof jobs.$inferInsert>) =>
+  const update = (values: Partial<typeof runs.$inferInsert>) =>
     db
-      .update(jobs)
+      .update(runs)
       .set(values)
-      .where(eq(jobs.id, jobId))
+      .where(eq(runs.id, jobId))
       .then(() => {});
 
   const end = async (
-    values: Partial<typeof jobs.$inferInsert>,
+    values: Partial<typeof runs.$inferInsert>,
     from: ("queued" | "running")[],
   ) => {
     const ended = await db
-      .update(jobs)
+      .update(runs)
       .set({ ...values, finishedAt: new Date() })
-      .where(and(eq(jobs.id, jobId), inArray(jobs.status, from)))
-      .returning({ id: jobs.id });
+      .where(and(eq(runs.id, jobId), inArray(runs.status, from)))
+      .returning({ id: runs.id });
     return ended.length > 0;
   };
 
   return {
     async start(environmentId) {
       const started = await db
-        .update(jobs)
+        .update(runs)
         .set({ status: "running", startedAt: new Date(), environmentId })
-        .where(and(eq(jobs.id, jobId), eq(jobs.status, "queued")))
-        .returning({ id: jobs.id });
+        .where(and(eq(runs.id, jobId), eq(runs.status, "queued")))
+        .returning({ id: runs.id });
       if (started.length === 0) {
         throw new JobStateError(`Job ${jobId} isn't queued.`);
       }

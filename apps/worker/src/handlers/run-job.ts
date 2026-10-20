@@ -1,4 +1,4 @@
-import { DbEnvironmentStore, jobs, messages, type Db } from "@codegenie/db";
+import { DbEnvironmentStore, runs, messages, type Db } from "@codegenie/db";
 import { runJob, type JobResult, type RunJobOptions } from "@codegenie/runner";
 import type { JobEvent, QueuedWork } from "@codegenie/shared";
 import { and, desc, eq } from "drizzle-orm";
@@ -22,13 +22,13 @@ export type RunJobDeps = {
 } & Pick<RunJobOptions, "model" | "limits" | "createSandbox">;
 
 async function loadJob(db: Db, jobId: string) {
-  const job = await db.query.jobs.findFirst({
-    where: eq(jobs.id, jobId),
+  const job = await db.query.runs.findFirst({
+    where: eq(runs.id, jobId),
     with: { task: { with: { project: true } } },
   });
   if (!job) throw new Error(`Job ${jobId} doesn't exist.`);
   const message = await db.query.messages.findFirst({
-    where: and(eq(messages.jobId, jobId), eq(messages.role, "user")),
+    where: and(eq(messages.runId, jobId), eq(messages.role, "user")),
     orderBy: desc(messages.createdAt),
   });
   return { ...job, instruction: message?.content ?? job.task.title };

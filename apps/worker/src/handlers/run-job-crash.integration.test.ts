@@ -1,6 +1,6 @@
 import { scriptedModel } from "@codegenie/agent/testing";
-import { DbEnvironmentStore, jobs, type Db } from "@codegenie/db";
-import { insertJob, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { DbEnvironmentStore, runs, type Db } from "@codegenie/db";
+import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -18,7 +18,7 @@ describe.skipIf(!database)("run-job handler when runJob throws", () => {
   afterAll(() => database?.drop());
 
   it("fails the job with the error and passes it on", async () => {
-    const { project, job } = await insertJob(db);
+    const { project, run: job } = await insertRun(db);
     await new DbEnvironmentStore(db).save(
       project.id,
       {
@@ -42,7 +42,7 @@ describe.skipIf(!database)("run-job handler when runJob throws", () => {
       ),
     ).rejects.toThrow("runner bug");
 
-    const [row] = await db.select().from(jobs).where(eq(jobs.id, job.id));
+    const [row] = await db.select().from(runs).where(eq(runs.id, job.id));
     expect(row).toMatchObject({
       status: "failed",
       errorCode: "worker_error",

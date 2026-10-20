@@ -1,4 +1,4 @@
-import { jobEvents, type Db } from "@codegenie/db";
+import { runEvents, type Db } from "@codegenie/db";
 import { jobChannel, type JobEvent } from "@codegenie/shared";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
@@ -32,8 +32,8 @@ export function createEventSink(
       return;
     }
     const numbered = { ...event, seq: seq + 1 };
-    await deps.db.insert(jobEvents).values({
-      jobId,
+    await deps.db.insert(runEvents).values({
+      runId: jobId,
       seq: numbered.seq,
       type,
       payload,

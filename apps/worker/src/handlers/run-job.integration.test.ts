@@ -1,12 +1,12 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import {
   DbEnvironmentStore,
-  jobEvents,
-  jobs,
+  runEvents,
+  runs,
   messages,
   type Db,
 } from "@codegenie/db";
-import { insertJob, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import type { EnvironmentConfig, JobEvent } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
@@ -50,7 +50,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
   async function setUp(
     options: { environment?: EnvironmentConfig; message?: string } = {},
   ) {
-    const { project, task, job } = await insertJob(db);
+    const { project, task, run: job } = await insertRun(db);
     if (options.environment) {
       await new DbEnvironmentStore(db).save(
         project.id,
@@ -61,7 +61,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     if (options.message) {
       await db.insert(messages).values({
         taskId: task.id,
-        jobId: job.id,
+        runId: job.id,
         role: "user",
         content: options.message,
       });
@@ -100,13 +100,13 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
   }
 
   const row = async (jobId: string) =>
-    (await db.select().from(jobs).where(eq(jobs.id, jobId)))[0]!;
+    (await db.select().from(runs).where(eq(runs.id, jobId)))[0]!;
   const stored = (jobId: string) =>
     db
       .select()
-      .from(jobEvents)
-      .where(eq(jobEvents.jobId, jobId))
-      .orderBy(asc(jobEvents.seq));
+      .from(runEvents)
+      .where(eq(runEvents.runId, jobId))
+      .orderBy(asc(runEvents.seq));
 
   it("runs a job with the project's environment and records everything", async () => {
     const { project, job, published, depsFor } = await setUp({
@@ -174,7 +174,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     const { job, depsFor, logs, sandboxes } = await setUp({
       environment: environment(),
     });
-    await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, job.id));
+    await db.update(runs).set({ status: "running" }).where(eq(runs.id, job.id));
     expect(
       await handleRunJob(depsFor([finish]).deps, { jobId: job.id }),
     ).toBeNull();

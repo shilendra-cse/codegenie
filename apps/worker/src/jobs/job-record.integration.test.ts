@@ -1,10 +1,10 @@
 import {
   DbEnvironmentStore,
-  jobs,
+  runs,
   projectEnvironments,
   type Db,
 } from "@codegenie/db";
-import { insertJob, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { JobResult } from "@codegenie/runner";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
@@ -35,10 +35,10 @@ describe.skipIf(!database)("job record against Postgres", () => {
   afterAll(() => database?.drop());
 
   const row = async (jobId: string) =>
-    (await db.select().from(jobs).where(eq(jobs.id, jobId)))[0]!;
+    (await db.select().from(runs).where(eq(runs.id, jobId)))[0]!;
 
   async function newJob() {
-    const { project, job } = await insertJob(db);
+    const { project, run: job } = await insertRun(db);
     await new DbEnvironmentStore(db).save(
       project.id,
       {
@@ -192,9 +192,9 @@ describe.skipIf(!database)("job record against Postgres", () => {
   it("doesn't overwrite a job that was ended elsewhere", async () => {
     const { job, record } = await startedJob();
     await db
-      .update(jobs)
+      .update(runs)
       .set({ status: "failed", errorCode: "stalled" })
-      .where(eq(jobs.id, job.id));
+      .where(eq(runs.id, job.id));
 
     expect(await record.finish({ status: "succeeded", durationMs: 1 })).toBe(
       false,

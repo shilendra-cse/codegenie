@@ -31,7 +31,7 @@ export const environmentHealthEnum = pgEnum("environment_health", [
   "needs_attention",
 ]);
 
-/** A project's environment config versions; jobs replay the active one. */
+/** A project's environment config versions; runs replay the active one. */
 export const projectEnvironments = pgTable(
   "project_environments",
   {

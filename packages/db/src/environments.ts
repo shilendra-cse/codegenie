@@ -32,7 +32,7 @@ function toStored(row: Row): DbStoredEnvironment {
 
 /**
  * Environments in Postgres, keyed by project id: every version is kept, the
- * latest saved one is active and jobs replay it.
+ * latest saved one is active and runs replay it.
  */
 export class DbEnvironmentStore implements EnvironmentStore {
   constructor(private readonly db: Db) {}

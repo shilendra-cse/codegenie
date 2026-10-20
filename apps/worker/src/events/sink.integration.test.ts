@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { jobEvents, type Db } from "@codegenie/db";
-import { insertJob, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { runEvents, type Db } from "@codegenie/db";
+import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { JobEvent, JobStage } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
@@ -35,17 +35,17 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   const storedEvents = (jobId: string) =>
     db
       .select({
-        seq: jobEvents.seq,
-        type: jobEvents.type,
-        payload: jobEvents.payload,
-        createdAt: jobEvents.createdAt,
+        seq: runEvents.seq,
+        type: runEvents.type,
+        payload: runEvents.payload,
+        createdAt: runEvents.createdAt,
       })
-      .from(jobEvents)
-      .where(eq(jobEvents.jobId, jobId))
-      .orderBy(asc(jobEvents.seq));
+      .from(runEvents)
+      .where(eq(runEvents.runId, jobId))
+      .orderBy(asc(runEvents.seq));
 
   it("stores events numbered in order and publishes each with its number", async () => {
-    const { job } = await insertJob(db);
+    const { run: job } = await insertRun(db);
     const { publisher, messages } = recordingPublisher();
     const sink = createEventSink({ db, publisher }, job.id);
 
@@ -89,7 +89,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   });
 
   it("only publishes text and step progress, without using a number", async () => {
-    const { job } = await insertJob(db);
+    const { run: job } = await insertRun(db);
     const { publisher, messages } = recordingPublisher();
     const sink = createEventSink({ db, publisher }, job.id);
 
@@ -115,7 +115,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   });
 
   it("keeps the order of many quick events", async () => {
-    const { job } = await insertJob(db);
+    const { run: job } = await insertRun(db);
     const sink = createEventSink(
       { db, publisher: recordingPublisher().publisher },
       job.id,
@@ -140,7 +140,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   });
 
   it("reports a failed write on flush and keeps going without gaps", async () => {
-    const { job } = await insertJob(db);
+    const { run: job } = await insertRun(db);
     const { publisher } = recordingPublisher((message) =>
       message.includes("sb-broken"),
     );

@@ -2,7 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import type { Db } from "../client.js";
 import {
   githubInstallations,
-  jobs,
+  runs,
   projects,
   tasks,
   user,
@@ -57,14 +57,14 @@ export async function insertTask(
   return task!;
 }
 
-export async function insertJob(
+export async function insertRun(
   db: Db,
-  values: Partial<typeof jobs.$inferInsert> = {},
+  values: Partial<typeof runs.$inferInsert> = {},
 ) {
   const project = await insertProject(db);
   const task = await insertTask(db, project);
-  const [job] = await db
-    .insert(jobs)
+  const [run] = await db
+    .insert(runs)
     .values({
       taskId: task.id,
       trigger: "initial",
@@ -72,5 +72,5 @@ export async function insertJob(
       ...values,
     })
     .returning();
-  return { project, task, job: job! };
+  return { project, task, run: run! };
 }
