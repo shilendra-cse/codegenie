@@ -118,6 +118,8 @@ export type SetupQuestion = {
 /** `auto` marks answers picked without asking anyone (non-interactive runs). */
 export type SetupAnswer = { option: number; auto?: boolean } | { other: string };
 
+export type OnboardingStatus = "approved" | "discarded" | "failed" | "cancelled";
+
 export interface UserChannel {
   ask(question: SetupQuestion): Promise<SetupAnswer>;
   info(message: string): void;

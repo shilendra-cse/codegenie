@@ -1,10 +1,9 @@
 import type {
   CheckComparison,
   OnboardingResult,
-  OnboardingStatus,
   RunResult,
 } from "@codegenie/runner";
-import type { FinalRunStatus } from "@codegenie/shared";
+import type { FinalRunStatus, OnboardingStatus } from "@codegenie/shared";
 import {
   cost,
   duration,

@@ -11,6 +11,7 @@ import {
   type EnvironmentConfig,
   type EnvironmentDecision,
   type EnvironmentProposal,
+  type OnboardingStatus,
   type TryResult,
   type UserChannel,
 } from "@codegenie/shared";
@@ -39,12 +40,6 @@ export type RunOnboardingOptions = {
   /** Runs right after each checkout (e.g. evals pin a commit). */
   afterCheckout?: (sandbox: Sandbox) => Promise<void>;
 };
-
-export type OnboardingStatus =
-  | "approved"
-  | "discarded"
-  | "failed"
-  | "cancelled";
 
 export type OnboardingResult = {
   status: OnboardingStatus;
