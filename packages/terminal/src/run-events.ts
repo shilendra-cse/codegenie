@@ -1,4 +1,4 @@
-import type { CheckStatus, JobEvent } from "@codegenie/shared";
+import type { CheckStatus, RunEvent } from "@codegenie/shared";
 import { oneLine } from "./format.js";
 import { line, section } from "./layout.js";
 import type { Style } from "./style.js";
@@ -52,10 +52,10 @@ export function describeToolInput(input: unknown) {
 }
 
 /**
- * Turns job events into lines: a section per stage, tool calls, check results and
+ * Turns run events into lines: a section per stage, tool calls, check results and
  * the agent's notes. Used for the CLI's live output and the evals' log files.
  */
-export function createJobReporter(write: (line: string) => void, style: Style) {
+export function createRunReporter(write: (line: string) => void, style: Style) {
   let text = "";
   const flushText = () => {
     if (text.trim()) write(line(style, style.dim(`“${oneLine(text)}”`)));
@@ -63,7 +63,7 @@ export function createJobReporter(write: (line: string) => void, style: Style) {
   };
 
   return {
-    onEvent(event: JobEvent) {
+    onEvent(event: RunEvent) {
       if (event.type === "text_delta") {
         text += event.delta;
         return;

@@ -1,19 +1,18 @@
 import type { AgentResult } from "@codegenie/agent";
-import type { SetupResult } from "@codegenie/shared";
+import type { FinalRunStatus, SetupResult } from "@codegenie/shared";
 import type { Diff } from "../stages/changes/index.js";
 import type { VerifyResult } from "../stages/verify/index.js";
 
-export type JobStatus = "succeeded" | "incomplete" | "failed" | "cancelled";
-export type JobStageName =
+export type RunStageName =
   | "sandbox"
   | "checkout"
   | "setup"
   | "agent"
   | "verify";
 
-export type JobResult = {
-  status: JobStatus;
-  failedStage?: JobStageName;
+export type RunResult = {
+  status: FinalRunStatus;
+  failedStage?: RunStageName;
   error?: string;
   sandboxId?: string;
   checkout?: { description: string; files: number | null };

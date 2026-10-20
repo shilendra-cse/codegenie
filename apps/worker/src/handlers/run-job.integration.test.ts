@@ -8,7 +8,7 @@ import {
 } from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig, JobEvent } from "@codegenie/shared";
+import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
@@ -66,10 +66,10 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
         content: options.message,
       });
     }
-    const published: JobEvent[] = [];
+    const published: RunEvent[] = [];
     const publisher: Publisher = {
       async publish(_channel, message) {
-        published.push(JSON.parse(message) as JobEvent);
+        published.push(JSON.parse(message) as RunEvent);
         return 1;
       },
     };
@@ -115,7 +115,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     });
     const { deps, model } = depsFor([finish]);
 
-    const result = await handleRunJob(deps, { jobId: job.id });
+    const result = await handleRunJob(deps, { runId: job.id });
 
     expect(result?.status).toBe("succeeded");
     expect(JSON.stringify(model.doStreamCalls[0]!.prompt)).toContain(
@@ -150,7 +150,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
   it("uses the task title when the job has no message", async () => {
     const { job, depsFor } = await setUp({ environment: environment() });
     const { deps, model } = depsFor([finish]);
-    await handleRunJob(deps, { jobId: job.id });
+    await handleRunJob(deps, { runId: job.id });
     expect(JSON.stringify(model.doStreamCalls[0]!.prompt)).toContain(
       "Add a /health endpoint",
     );
@@ -159,7 +159,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
   it("fails a job whose project hasn't been set up, without a sandbox", async () => {
     const { job, depsFor, sandboxes } = await setUp();
     expect(
-      await handleRunJob(depsFor([finish]).deps, { jobId: job.id }),
+      await handleRunJob(depsFor([finish]).deps, { runId: job.id }),
     ).toBeNull();
     expect(await row(job.id)).toMatchObject({
       status: "failed",
@@ -176,7 +176,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     });
     await db.update(runs).set({ status: "running" }).where(eq(runs.id, job.id));
     expect(
-      await handleRunJob(depsFor([finish]).deps, { jobId: job.id }),
+      await handleRunJob(depsFor([finish]).deps, { runId: job.id }),
     ).toBeNull();
     expect(logs).toEqual(["Skipping a job that isn't queued"]);
     expect(sandboxes()).toBe(0);
@@ -190,7 +190,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     const { job, depsFor } = await setUp({ environment: environment() });
     const result = await handleRunJob(
       depsFor([finish], fakeSandbox("git clone")).deps,
-      { jobId: job.id },
+      { runId: job.id },
     );
 
     expect(result?.status).toBe("failed");
@@ -215,7 +215,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     const { project, job, depsFor } = await setUp({
       environment: environment("api"),
     });
-    await handleRunJob(depsFor([finish]).deps, { jobId: job.id });
+    await handleRunJob(depsFor([finish]).deps, { runId: job.id });
     expect(
       (await new DbEnvironmentStore(db).load(project.id))!.health,
     ).toMatchObject({
@@ -230,7 +230,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     const { depsFor } = await setUp();
     await expect(
       handleRunJob(depsFor([finish]).deps, {
-        jobId: "00000000-0000-0000-0000-000000000000",
+        runId: "00000000-0000-0000-0000-000000000000",
       }),
     ).rejects.toThrow("doesn't exist");
   });

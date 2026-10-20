@@ -1,5 +1,5 @@
 import { SandboxGoneError } from "@codegenie/sandbox";
-import type { JobEvent } from "@codegenie/shared";
+import type { RunEvent } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { scriptedModel, type ScriptedStep } from "../testing/mock-model.js";
@@ -19,7 +19,7 @@ function setup(
 ) {
   const sandbox = new FakeSandbox(files);
   const { model, resolved } = scriptedModel(script);
-  const events: JobEvent[] = [];
+  const events: RunEvent[] = [];
   const run = (overrides: Partial<RunAgentOptions> = {}) =>
     runAgent({
       runId: "run-1",
@@ -87,7 +87,7 @@ describe("runAgent", () => {
     expect(start).toMatchObject({
       toolName: "read_file",
       toolCallId: "call-1",
-      jobId: "run-1",
+      runId: "run-1",
     });
     expect(end).toMatchObject({ toolName: "read_file", toolCallId: "call-1" });
     expect((end as { output: string }).output).toContain("1│ const a = 1;");

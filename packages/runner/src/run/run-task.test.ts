@@ -1,8 +1,8 @@
 import { scriptedModel } from "@codegenie/agent/testing";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { JobEvent } from "@codegenie/shared";
+import type { RunEvent } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
-import { runJob, type RunJobOptions } from "./run-job.js";
+import { runTask, type RunTaskOptions } from "./run-task.js";
 
 const repo = {
   "package.json": JSON.stringify({ scripts: { test: "node --test" } }),
@@ -30,8 +30,8 @@ function fakeSandbox(failOn?: string) {
 
 function options(
   sandbox: FakeSandbox,
-  overrides: Partial<RunJobOptions> = {},
-): RunJobOptions {
+  overrides: Partial<RunTaskOptions> = {},
+): RunTaskOptions {
   const { resolved } = scriptedModel([
     { toolCalls: [{ toolName: "read_file", input: { path: "src/app.js" } }] },
     {
@@ -49,7 +49,7 @@ function options(
     },
   ]);
   return {
-    runId: "job-1",
+    runId: "run-1",
     task: "Set a to 2",
     source: { type: "git", url: "https://github.com/acme/app.git" },
     model: resolved,
@@ -58,11 +58,11 @@ function options(
   };
 }
 
-describe("runJob", () => {
+describe("runTask", () => {
   it("runs every stage in order and returns the full result", async () => {
     const { sandbox, destroyed } = fakeSandbox();
-    const events: JobEvent[] = [];
-    const result = await runJob(
+    const events: RunEvent[] = [];
+    const result = await runTask(
       options(sandbox, { emit: (event) => events.push(event) }),
     );
 
@@ -97,7 +97,7 @@ describe("runJob", () => {
 
   it("reports a failed checkout and still destroys the sandbox", async () => {
     const { sandbox, destroyed } = fakeSandbox("git clone");
-    const result = await runJob(options(sandbox));
+    const result = await runTask(options(sandbox));
     expect(result).toMatchObject({
       status: "failed",
       failedStage: "checkout",
@@ -110,7 +110,7 @@ describe("runJob", () => {
   it("runs the after-checkout hook before setup, and fails at checkout when it throws", async () => {
     const { sandbox } = fakeSandbox();
     const order: string[] = [];
-    const ok = await runJob(
+    const ok = await runTask(
       options(sandbox, {
         afterCheckout: async (box) => {
           order.push(`hook:${box.id}`);
@@ -125,7 +125,7 @@ describe("runJob", () => {
       commands.findIndex((c) => c.includes("npm ci")),
     );
 
-    const failed = await runJob(
+    const failed = await runTask(
       options(fakeSandbox().sandbox, {
         afterCheckout: async () => {
           throw new Error("patch does not apply");
@@ -140,7 +140,7 @@ describe("runJob", () => {
   });
 
   it("reports when the sandbox can't be created", async () => {
-    const result = await runJob(
+    const result = await runTask(
       options(new FakeSandbox(), {
         createSandbox: async () => {
           throw new Error("Docker is not running");
@@ -158,7 +158,7 @@ describe("runJob", () => {
     const { sandbox, destroyed } = fakeSandbox();
     const controller = new AbortController();
     controller.abort();
-    const result = await runJob(
+    const result = await runTask(
       options(sandbox, { signal: controller.signal, keepSandbox: true }),
     );
     expect(result.status).toBe("cancelled");
@@ -168,7 +168,7 @@ describe("runJob", () => {
 
   it("reports failing checks without changing the agent's status", async () => {
     const { sandbox } = fakeSandbox("npm run test");
-    const result = await runJob(options(sandbox));
+    const result = await runTask(options(sandbox));
     expect(result).toMatchObject({
       status: "succeeded",
       verify: {
@@ -187,7 +187,7 @@ describe("runJob", () => {
       sandbox.files.get("/workspace/src/app.js")?.includes("a = 2")
         ? { exitCode: 1, stdout: "expected 1, got 2" }
         : base(command, opts);
-    const result = await runJob(options(sandbox));
+    const result = await runTask(options(sandbox));
     expect(result.verify).toMatchObject({
       checks: [
         {
@@ -203,7 +203,7 @@ describe("runJob", () => {
 
   it("replays a given environment config", async () => {
     const { sandbox } = fakeSandbox();
-    const result = await runJob(
+    const result = await runTask(
       options(sandbox, {
         environment: {
           version: 1,
@@ -222,7 +222,7 @@ describe("runJob", () => {
 
   it("collects the diff before verify runs the checks again", async () => {
     const { sandbox } = fakeSandbox();
-    await runJob(options(sandbox));
+    await runTask(options(sandbox));
     const commands = sandbox.execCalls.map((c) => c.command);
     const diff = commands.findIndex((c) => c.includes("--numstat"));
     const verify = commands.findIndex((c) => c.includes("logs/verify-"));

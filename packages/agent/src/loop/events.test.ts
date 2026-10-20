@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { EVENT_OUTPUT_CHARS, toJobEvent } from "./events.js";
+import { EVENT_OUTPUT_CHARS, toRunEvent } from "./events.js";
 
 const ts = "2026-10-15T00:00:00.000Z";
 
-describe("toJobEvent", () => {
+describe("toRunEvent", () => {
   it("maps text, tool calls, results and errors", () => {
     expect(
-      toJobEvent({ type: "text-delta", id: "t", text: "Hi" }, "run-1", ts),
+      toRunEvent({ type: "text-delta", id: "t", text: "Hi" }, "run-1", ts),
     ).toEqual({
       type: "text_delta",
-      jobId: "run-1",
+      runId: "run-1",
       ts,
       delta: "Hi",
     });
     expect(
-      toJobEvent(
+      toRunEvent(
         {
           type: "tool-call",
           toolCallId: "c1",
@@ -26,14 +26,14 @@ describe("toJobEvent", () => {
       ),
     ).toEqual({
       type: "tool_start",
-      jobId: "run-1",
+      runId: "run-1",
       ts,
       toolCallId: "c1",
       toolName: "read_file",
       input: { path: "a.ts" },
     });
     expect(
-      toJobEvent(
+      toRunEvent(
         {
           type: "tool-result",
           toolCallId: "c1",
@@ -46,7 +46,7 @@ describe("toJobEvent", () => {
       ),
     ).toMatchObject({ type: "tool_end", toolCallId: "c1", output: "content" });
     expect(
-      toJobEvent(
+      toRunEvent(
         {
           type: "tool-error",
           toolCallId: "c2",
@@ -65,7 +65,7 @@ describe("toJobEvent", () => {
   });
 
   it("shortens large tool output in events", () => {
-    const event = toJobEvent(
+    const event = toRunEvent(
       {
         type: "tool-result",
         toolCallId: "c",
@@ -83,9 +83,9 @@ describe("toJobEvent", () => {
   });
 
   it("ignores parts the UI doesn't need", () => {
-    expect(toJobEvent({ type: "start" }, "run-1", ts)).toBeNull();
+    expect(toRunEvent({ type: "start" }, "run-1", ts)).toBeNull();
     expect(
-      toJobEvent({ type: "text-delta", id: "t", text: "" }, "run-1", ts),
+      toRunEvent({ type: "text-delta", id: "t", text: "" }, "run-1", ts),
     ).toBeNull();
   });
 });

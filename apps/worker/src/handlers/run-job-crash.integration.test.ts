@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@codegenie/runner", () => ({
-  runJob: vi.fn(async () => {
+  runTask: vi.fn(async () => {
     throw new Error("runner bug");
   }),
 }));
@@ -13,7 +13,7 @@ vi.mock("@codegenie/runner", () => ({
 const { handleRunJob } = await import("./run-job.js");
 const database = await testDatabaseOrSkip("run-job handler crash");
 
-describe.skipIf(!database)("run-job handler when runJob throws", () => {
+describe.skipIf(!database)("run-job handler when runTask throws", () => {
   const db = database?.db as Db;
   afterAll(() => database?.drop());
 
@@ -38,7 +38,7 @@ describe.skipIf(!database)("run-job handler when runJob throws", () => {
           log: () => {},
           model: scriptedModel([]).resolved,
         },
-        { jobId: job.id },
+        { runId: job.id },
       ),
     ).rejects.toThrow("runner bug");
 

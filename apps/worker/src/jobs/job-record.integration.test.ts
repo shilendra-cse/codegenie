@@ -5,14 +5,14 @@ import {
   type Db,
 } from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import type { JobResult } from "@codegenie/runner";
+import type { RunResult } from "@codegenie/runner";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { createJobRecord, JobStateError } from "./job-record.js";
 
 const database = await testDatabaseOrSkip("job record");
 
-type AgentResult = NonNullable<JobResult["agent"]>;
+type AgentResult = NonNullable<RunResult["agent"]>;
 const agent = (overrides: Partial<AgentResult> = {}): AgentResult => ({
   status: "succeeded",
   summary: "Added GET /health.",
@@ -80,26 +80,26 @@ describe.skipIf(!database)("job record against Postgres", () => {
     const { job, record } = await newJob();
     record.observe({
       type: "stage_changed",
-      jobId: job.id,
+      runId: job.id,
       ts: "",
       stage: "prepare",
     });
     record.observe({
       type: "sandbox_created",
-      jobId: job.id,
+      runId: job.id,
       ts: "",
       sandboxId: "sb-1",
     });
     record.observe({
       type: "tool_start",
-      jobId: job.id,
+      runId: job.id,
       ts: "",
       toolCallId: "1",
       toolName: "bash",
     });
     record.observe({
       type: "stage_changed",
-      jobId: job.id,
+      runId: job.id,
       ts: "",
       stage: "agent",
     });
@@ -134,7 +134,7 @@ describe.skipIf(!database)("job record against Postgres", () => {
     });
   });
 
-  const endings: [string, JobResult, Record<string, unknown>][] = [
+  const endings: [string, RunResult, Record<string, unknown>][] = [
     [
       "a failed stage",
       {

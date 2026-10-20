@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { JobEvent } from "@codegenie/shared";
+import type { RunEvent } from "@codegenie/shared";
 import {
   clock,
   cost,
@@ -9,7 +9,7 @@ import {
   spinnerFrame,
   type Style,
 } from "@codegenie/terminal";
-import type { TaskResult } from "./run-task.js";
+import type { TaskResult } from "./run-eval-task.js";
 
 const STAGE: Record<string, string> = {
   prepare: "sandbox",
@@ -97,7 +97,7 @@ export class EvalProgress {
     );
   }
 
-  taskEvent(name: string, event: JobEvent) {
+  taskEvent(name: string, event: RunEvent) {
     const task = this.running.get(name);
     if (!task) return;
     if (event.type === "stage_changed") {
@@ -174,7 +174,7 @@ export class EvalProgress {
 
 /** Why a task wasn't solved, in a few words. */
 export function reason(result: TaskResult) {
-  if (!result.agent) return `failed at ${result.job.failedStage ?? "start"}`;
+  if (!result.agent) return `failed at ${result.run.failedStage ?? "start"}`;
   if (result.grade.passed && result.checks?.regressions) {
     return `${plural(result.checks.regressions, "check")} regressed`;
   }

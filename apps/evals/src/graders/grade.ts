@@ -1,4 +1,4 @@
-import type { JobResult } from "@codegenie/runner";
+import type { RunResult } from "@codegenie/runner";
 import type { Sandbox } from "@codegenie/sandbox";
 import type { EvalTask } from "../suite/tasks.js";
 import { checks } from "./checks.js";
@@ -14,19 +14,19 @@ export type Grade = {
 export async function grade(
   task: EvalTask,
   sandbox: Sandbox,
-  job: JobResult,
+  run: RunResult,
 ): Promise<Grade> {
-  if (!job.agent) {
+  if (!run.agent) {
     return {
       passed: false,
-      detail: `The job failed at ${job.failedStage ?? "an early stage"}: ${job.error ?? job.status}`,
+      detail: `The run failed at ${run.failedStage ?? "an early stage"}: ${run.error ?? run.status}`,
     };
   }
   switch (task.grader.type) {
     case "hidden-tests":
       return hiddenTests(task, task.grader, sandbox);
     case "checks":
-      return checks(task.grader.passing, job);
+      return checks(task.grader.passing, run);
     case "manual":
       return { passed: null, detail: "Needs a manual review of the diff." };
   }

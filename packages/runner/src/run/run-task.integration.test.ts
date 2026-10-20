@@ -5,15 +5,15 @@ import path from "node:path";
 import { scriptedModel } from "@codegenie/agent/testing";
 import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
-import { runJob } from "./run-job.js";
+import { runTask } from "./run-task.js";
 
-const probe = await dockerSandboxOrSkip("runJob");
+const probe = await dockerSandboxOrSkip("runTask");
 await probe?.destroy();
 const notReady = !probe;
 const dirs: string[] = [];
 
 function localRepo(files: Record<string, string>) {
-  const dir = mkdtempSync(path.join(tmpdir(), "cg-job-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "cg-run-"));
   dirs.push(dir);
   for (const [file, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
@@ -27,7 +27,7 @@ function localRepo(files: Record<string, string>) {
   return dir;
 }
 
-describe.skipIf(notReady)("runJob against DockerSandbox", () => {
+describe.skipIf(notReady)("runTask against DockerSandbox", () => {
   afterAll(() => {
     for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
   });
@@ -74,8 +74,8 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
       },
     ]);
 
-    const result = await runJob({
-      runId: "it-job",
+    const result = await runTask({
+      runId: "it-run",
       task: "Fix add",
       source: { type: "local", path: dir },
       model: resolved,
@@ -124,7 +124,7 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
     expect(ls).not.toContain(".env");
     expect(ls).toContain("report.txt");
 
-    const replay = await runJob({
+    const replay = await runTask({
       runId: "it-replay",
       task: "Nothing",
       source: { type: "local", path: dir },
@@ -148,7 +148,7 @@ describe.skipIf(notReady)("runJob against DockerSandbox", () => {
         ],
       },
     ]);
-    const result = await runJob({
+    const result = await runTask({
       runId: "it-clone",
       task: "Look around",
       source: {

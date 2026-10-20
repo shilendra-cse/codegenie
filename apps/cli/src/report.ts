@@ -1,10 +1,10 @@
 import type {
   CheckComparison,
-  JobResult,
-  JobStatus,
   OnboardingResult,
   OnboardingStatus,
+  RunResult,
 } from "@codegenie/runner";
+import type { FinalRunStatus } from "@codegenie/shared";
 import {
   cost,
   duration,
@@ -33,7 +33,7 @@ function comparison(style: Style, value: CheckComparison) {
   }
 }
 
-function statusMark(style: Style, status: JobStatus) {
+function statusMark(style: Style, status: FinalRunStatus) {
   switch (status) {
     case "succeeded":
       return style.ok(`✓ ${status}`);
@@ -49,7 +49,7 @@ function tokens(count: number) {
 }
 
 export function formatSummary(
-  result: JobResult,
+  result: RunResult,
   options: { style: Style; patchPath?: string },
 ): string {
   const { style } = options;
@@ -130,7 +130,7 @@ export function formatSummary(
   return lines.join("\n");
 }
 
-export function exitCode(status: JobStatus) {
+export function exitCode(status: FinalRunStatus) {
   switch (status) {
     case "succeeded":
       return 0;

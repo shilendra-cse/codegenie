@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Emit, ResolvedModel } from "@codegenie/agent";
-import { runJob, type JobResult } from "@codegenie/runner";
+import { runTask, type RunResult } from "@codegenie/runner";
 import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
 import type { EnvironmentConfig } from "@codegenie/shared";
 import { grade, type Grade } from "../graders/grade.js";
@@ -16,7 +16,7 @@ export type TaskResult = {
   /** Graded as passed with no regressed checks; null when it needs a manual review. */
   solved: boolean | null;
   grade: Grade;
-  job: Pick<JobResult, "status" | "failedStage" | "error">;
+  run: Pick<RunResult, "status" | "failedStage" | "error">;
   checks: { fixed: number; regressions: number; failing: number } | null;
   agent: {
     status: string;
@@ -48,12 +48,12 @@ export function artifactName(taskId: string, attempt: number) {
   return `${taskId.replace("/", "--")}-${attempt}`;
 }
 
-export function solvedFrom(result: Grade, job: JobResult): boolean | null {
+export function solvedFrom(result: Grade, run: RunResult): boolean | null {
   if (result.passed === null) return null;
-  return result.passed && (job.verify?.regressions ?? 0) === 0;
+  return result.passed && (run.verify?.regressions ?? 0) === 0;
 }
 
-export async function runTask(
+export async function runEvalTask(
   task: EvalTask,
   options: {
     attempt: number;
@@ -68,7 +68,7 @@ export async function runTask(
   const create = options.createSandbox ?? (() => DockerSandbox.create());
   let sandbox: Sandbox | undefined;
 
-  const job = await runJob({
+  const run = await runTask({
     runId: `eval-${task.id.replace("/", "-")}-${options.attempt}`,
     task: task.task,
     source: repoSource(task.repo),
@@ -95,28 +95,28 @@ export async function runTask(
   let result: Grade;
   try {
     result = sandbox
-      ? await grade(task, sandbox, job)
-      : { passed: false, detail: job.error ?? "No sandbox was created." };
+      ? await grade(task, sandbox, run)
+      : { passed: false, detail: run.error ?? "No sandbox was created." };
   } finally {
     await sandbox?.destroy().catch(() => {});
   }
 
   let diffFile: string | undefined;
-  if (job.diff?.patch) {
+  if (run.diff?.patch) {
     diffFile = path.join(
       options.resultsDir,
       `${artifactName(task.id, options.attempt)}.patch`,
     );
-    await writeFile(diffFile, job.diff.patch);
+    await writeFile(diffFile, run.diff.patch);
   }
 
-  const verify = job.verify;
+  const verify = run.verify;
   return {
     id: task.id,
     attempt: options.attempt,
-    solved: solvedFrom(result, job),
+    solved: solvedFrom(result, run),
     grade: result,
-    job: { status: job.status, failedStage: job.failedStage, error: job.error },
+    run: { status: run.status, failedStage: run.failedStage, error: run.error },
     checks: verify
       ? {
           fixed: verify.fixed,
@@ -124,12 +124,12 @@ export async function runTask(
           failing: verify.checks.filter((c) => c.status !== "passing").length,
         }
       : null,
-    agent: job.agent
+    agent: run.agent
       ? {
-          status: job.agent.status,
-          steps: job.agent.steps,
-          costUsd: job.agent.usage.costUsd,
-          summary: job.agent.summary,
+          status: run.agent.status,
+          steps: run.agent.steps,
+          costUsd: run.agent.usage.costUsd,
+          summary: run.agent.summary,
         }
       : null,
     durationMs: Date.now() - startedAt,

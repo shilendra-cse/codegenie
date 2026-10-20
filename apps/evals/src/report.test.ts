@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { formatReport } from "./report.js";
-import type { TaskResult } from "./run/run-task.js";
+import type { TaskResult } from "./run/run-eval-task.js";
 
 const result = (overrides: Partial<TaskResult>): TaskResult => ({
   id: "ts-lib-paginate-bug",
   attempt: 1,
   solved: true,
   grade: { passed: true, detail: "Hidden tests passed." },
-  job: { status: "succeeded" },
+  run: { status: "succeeded" },
   checks: { fixed: 0, regressions: 0, failing: 0 },
   agent: {
     status: "succeeded",
@@ -74,7 +74,7 @@ describe("formatReport", () => {
     expect(report).toContain("Diff: http-api-health-1.patch");
   });
 
-  it("numbers repeated attempts and shows jobs that failed before the agent", () => {
+  it("numbers repeated attempts and shows runs that failed before the agent", () => {
     const report = formatReport(
       [
         result({ attempt: 1 }),
@@ -83,7 +83,7 @@ describe("formatReport", () => {
           solved: false,
           agent: null,
           checks: null,
-          job: { status: "failed", failedStage: "setup", error: "boom" },
+          run: { status: "failed", failedStage: "setup", error: "boom" },
         }),
       ],
       {
@@ -97,6 +97,6 @@ describe("formatReport", () => {
     expect(report).toContain(
       "| ts-lib-paginate-bug #2 | ✗ | failed at setup | — | — |",
     );
-    expect(report).toContain("Job error: boom");
+    expect(report).toContain("Run error: boom");
   });
 });

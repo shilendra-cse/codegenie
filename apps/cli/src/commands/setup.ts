@@ -6,7 +6,7 @@ import { intro, line, styleFor, type Style } from "@codegenie/terminal";
 import { promptChannel } from "../channel/prompt.js";
 import { terminalChannel } from "../channel/terminal.js";
 import { loadModel } from "../config.js";
-import { createLiveJob } from "../live-job.js";
+import { createLiveRun } from "../live-run.js";
 import { formatSetupSummary, setupExitCode } from "../report.js";
 import { FileEnvironmentStore } from "../store/file-store.js";
 import { repoKey } from "../store/repo-key.js";
@@ -78,7 +78,7 @@ export async function setupCommand(
     controller.abort();
   });
 
-  const live = createLiveJob(process.stdout, style);
+  const live = createLiveRun(process.stdout, style);
   const info = (message: string) => showProgress(live, style, message);
   const channel = options.yes
     ? { ...autoChannel(info), close: () => {} }
@@ -139,7 +139,7 @@ const MARK = /^(\s*)([✓✗⚠])/;
 
 /** Onboarding's progress messages: shown in the gutter, the latest one beside the spinner. */
 function showProgress(
-  live: ReturnType<typeof createLiveJob>,
+  live: ReturnType<typeof createLiveRun>,
   style: Style,
   message: string,
 ) {

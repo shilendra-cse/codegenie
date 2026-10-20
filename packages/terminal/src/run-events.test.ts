@@ -1,25 +1,25 @@
-import type { JobEvent } from "@codegenie/shared";
+import type { RunEvent } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
-import { createJobReporter } from "./job-events.js";
+import { createRunReporter } from "./run-events.js";
 import { createStyle, plain } from "./style.js";
 
 const ts = "2026-10-19T00:00:00.000Z";
 
-function report(events: JobEvent[], style = plain) {
+function report(events: RunEvent[], style = plain) {
   const lines: string[] = [];
-  const reporter = createJobReporter((l) => lines.push(l), style);
+  const reporter = createRunReporter((l) => lines.push(l), style);
   for (const event of events) reporter.onEvent(event);
   reporter.flush();
   return lines;
 }
 
-describe("createJobReporter", () => {
+describe("createRunReporter", () => {
   it("writes a section per stage, setup results, tool calls, check results and notes", () => {
     const lines = report([
-      { type: "stage_changed", jobId: "j", ts, stage: "setup" },
+      { type: "stage_changed", runId: "j", ts, stage: "setup" },
       {
         type: "setup_completed",
-        jobId: "j",
+        runId: "j",
         ts,
         success: false,
         steps: [
@@ -32,13 +32,13 @@ describe("createJobReporter", () => {
           { name: "build", cwd: "." },
         ],
       },
-      { type: "stage_changed", jobId: "j", ts, stage: "agent" },
-      { type: "text_delta", jobId: "j", ts, delta: "Reading " },
-      { type: "text_delta", jobId: "j", ts, delta: "the app." },
-      { type: "agent_step", jobId: "j", ts, steps: 1, costUsd: 0.001 },
+      { type: "stage_changed", runId: "j", ts, stage: "agent" },
+      { type: "text_delta", runId: "j", ts, delta: "Reading " },
+      { type: "text_delta", runId: "j", ts, delta: "the app." },
+      { type: "agent_step", runId: "j", ts, steps: 1, costUsd: 0.001 },
       {
         type: "tool_start",
-        jobId: "j",
+        runId: "j",
         ts,
         toolCallId: "1",
         toolName: "read_file",
@@ -46,7 +46,7 @@ describe("createJobReporter", () => {
       },
       {
         type: "tool_end",
-        jobId: "j",
+        runId: "j",
         ts,
         toolCallId: "1",
         toolName: "read_file",
@@ -54,7 +54,7 @@ describe("createJobReporter", () => {
       },
       {
         type: "tool_start",
-        jobId: "j",
+        runId: "j",
         ts,
         toolCallId: "2",
         toolName: "run_checks",
@@ -62,7 +62,7 @@ describe("createJobReporter", () => {
       },
       {
         type: "tool_end",
-        jobId: "j",
+        runId: "j",
         ts,
         toolCallId: "2",
         toolName: "run_checks",
@@ -71,7 +71,7 @@ describe("createJobReporter", () => {
       },
       {
         type: "tool_start",
-        jobId: "j",
+        runId: "j",
         ts,
         toolCallId: "3",
         toolName: "edit_file",
@@ -79,7 +79,7 @@ describe("createJobReporter", () => {
       },
       {
         type: "tool_end",
-        jobId: "j",
+        runId: "j",
         ts,
         toolCallId: "3",
         toolName: "edit_file",
@@ -106,7 +106,7 @@ describe("createJobReporter", () => {
       [
         {
           type: "setup_completed",
-          jobId: "j",
+          runId: "j",
           ts,
           success: true,
           steps: [{ name: "install", cwd: ".", status: "ok" }],

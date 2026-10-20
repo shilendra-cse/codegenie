@@ -12,7 +12,7 @@ import type { UsageTracker } from "../model/usage.js";
 import { findToolInput } from "./agent-result.js";
 import type { Compactor } from "./compaction.js";
 import { isInfrastructureError } from "./errors.js";
-import { toJobEvent, type Emit } from "./events.js";
+import { toRunEvent, type Emit } from "./events.js";
 
 const MAX_MODEL_RETRIES = 3;
 
@@ -83,7 +83,7 @@ export async function runSegment(
       completed = step.response.messages;
       env.emit({
         type: "agent_step",
-        jobId: env.runId,
+        runId: env.runId,
         ts: new Date().toISOString(),
         steps: state.steps,
         costUsd: state.usage.costUsd,
@@ -99,7 +99,7 @@ export async function runSegment(
     } else if (part.type === "error") {
       outcome.modelError = part.error;
     }
-    const event = toJobEvent(part, env.runId);
+    const event = toRunEvent(part, env.runId);
     if (event) env.emit(event);
   }
 

@@ -1,6 +1,10 @@
 import { DbEnvironmentStore, runs, messages, type Db } from "@codegenie/db";
-import { runJob, type JobResult, type RunJobOptions } from "@codegenie/runner";
-import type { JobEvent, QueuedWork } from "@codegenie/shared";
+import {
+  runTask,
+  type RunResult,
+  type RunTaskOptions,
+} from "@codegenie/runner";
+import type { RunEvent, QueuedWork } from "@codegenie/shared";
 import { and, desc, eq } from "drizzle-orm";
 import {
   createEventSink,
@@ -19,7 +23,7 @@ export type RunJobDeps = {
   db: Db;
   publisher: Publisher;
   log: Log;
-} & Pick<RunJobOptions, "model" | "limits" | "createSandbox">;
+} & Pick<RunTaskOptions, "model" | "limits" | "createSandbox">;
 
 async function loadJob(db: Db, jobId: string) {
   const job = await db.query.runs.findFirst({
@@ -38,25 +42,25 @@ async function endJob(
   deps: Pick<RunJobDeps, "log">,
   job: {
     id: string;
-    emit: (event: JobEvent) => void;
+    emit: (event: RunEvent) => void;
     record: JobRecord;
     sink: EventSink;
   },
-  result: JobResult,
+  result: RunResult,
 ) {
   const ts = new Date().toISOString();
   const failure = jobFailure(result);
   if (result.status === "failed" && failure) {
-    job.emit({ type: "error", jobId: job.id, ts, ...failure });
+    job.emit({ type: "error", runId: job.id, ts, ...failure });
   }
-  job.emit({ type: "done", jobId: job.id, ts, status: result.status });
+  job.emit({ type: "done", runId: job.id, ts, status: result.status });
 
   await job.record.flush();
   try {
     await job.sink.flush();
   } catch (error) {
     deps.log("warn", "Some job events weren't saved or published", {
-      jobId: job.id,
+      runId: job.id,
       error: String(error),
     });
   }
@@ -65,7 +69,7 @@ async function endJob(
       "warn",
       "The job was ended elsewhere; its result wasn't recorded",
       {
-        jobId: job.id,
+        runId: job.id,
         status: result.status,
       },
     );
@@ -74,9 +78,9 @@ async function endJob(
 
 export async function handleRunJob(
   deps: RunJobDeps,
-  { jobId }: QueuedWork["run-job"],
+  { runId: jobId }: QueuedWork["run-task"],
   signal?: AbortSignal,
-): Promise<JobResult | null> {
+): Promise<RunResult | null> {
   const { db } = deps;
   const job = await loadJob(db, jobId);
   const { project } = job.task;
@@ -100,14 +104,14 @@ export async function handleRunJob(
   }
 
   const sink = createEventSink({ db, publisher: deps.publisher }, jobId);
-  const emit = (event: JobEvent) => {
+  const emit = (event: RunEvent) => {
     sink.emit(event);
     record.observe(event);
   };
 
-  let result: JobResult;
+  let result: RunResult;
   try {
-    result = await runJob({
+    result = await runTask({
       runId: jobId,
       task: job.instruction,
       source: {

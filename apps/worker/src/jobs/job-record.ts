@@ -1,6 +1,6 @@
 import { runs, type Db } from "@codegenie/db";
-import type { JobResult } from "@codegenie/runner";
-import type { JobEvent } from "@codegenie/shared";
+import type { RunResult } from "@codegenie/runner";
+import type { RunEvent } from "@codegenie/shared";
 import { and, eq, inArray } from "drizzle-orm";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
@@ -10,16 +10,16 @@ export type JobFailure = { code: string; message: string };
 
 export type JobRecord = {
   start(environmentId: string): Promise<void>;
-  observe(event: JobEvent): void;
+  observe(event: RunEvent): void;
   flush(): Promise<void>;
   /** False when the job was already ended elsewhere (e.g. by the reaper). */
-  finish(result: JobResult): Promise<boolean>;
+  finish(result: RunResult): Promise<boolean>;
   fail(failure: JobFailure): Promise<boolean>;
 };
 
-type AgentResult = NonNullable<JobResult["agent"]>;
+type AgentResult = NonNullable<RunResult["agent"]>;
 
-export function jobFailure(result: JobResult): JobFailure | null {
+export function jobFailure(result: RunResult): JobFailure | null {
   const agent: AgentResult | undefined = result.agent;
   if (result.status === "failed") {
     return {

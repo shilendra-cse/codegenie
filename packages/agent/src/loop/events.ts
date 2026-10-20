@@ -1,9 +1,9 @@
-import type { JobEvent } from "@codegenie/shared";
+import type { RunEvent } from "@codegenie/shared";
 import type { TextStreamPart, ToolSet } from "ai";
 
 export const EVENT_OUTPUT_CHARS = 2_000;
 
-export type Emit = (event: JobEvent) => void;
+export type Emit = (event: RunEvent) => void;
 
 function preview(value: unknown) {
   const text = typeof value === "string" ? value : JSON.stringify(value);
@@ -12,20 +12,20 @@ function preview(value: unknown) {
     : text;
 }
 
-export function toJobEvent(
+export function toRunEvent(
   part: TextStreamPart<ToolSet>,
-  jobId: string,
+  runId: string,
   ts: string = new Date().toISOString(),
-): JobEvent | null {
+): RunEvent | null {
   switch (part.type) {
     case "text-delta":
       return part.text
-        ? { type: "text_delta", jobId, ts, delta: part.text }
+        ? { type: "text_delta", runId, ts, delta: part.text }
         : null;
     case "tool-call":
       return {
         type: "tool_start",
-        jobId,
+        runId,
         ts,
         toolCallId: part.toolCallId,
         toolName: part.toolName,
@@ -34,7 +34,7 @@ export function toJobEvent(
     case "tool-result":
       return {
         type: "tool_end",
-        jobId,
+        runId,
         ts,
         toolCallId: part.toolCallId,
         toolName: part.toolName,
@@ -43,7 +43,7 @@ export function toJobEvent(
     case "tool-error":
       return {
         type: "tool_end",
-        jobId,
+        runId,
         ts,
         toolCallId: part.toolCallId,
         toolName: part.toolName,

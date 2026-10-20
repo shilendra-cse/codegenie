@@ -6,14 +6,14 @@ import {
   type ResolvedModel,
 } from "@codegenie/agent";
 import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
-import type { EnvironmentConfig, JobStage } from "@codegenie/shared";
+import type { EnvironmentConfig, RunStage } from "@codegenie/shared";
 import { collectDiff } from "../stages/changes/index.js";
 import { checkoutRepo, type RepoSource } from "../stages/checkout/index.js";
 import { runSetup } from "../stages/setup/index.js";
 import { runVerify } from "../stages/verify/index.js";
-import type { JobResult, JobStageName } from "./job-result.js";
+import type { RunResult, RunStageName } from "./run-result.js";
 
-export type RunJobOptions = {
+export type RunTaskOptions = {
   runId: string;
   task: string;
   source: RepoSource;
@@ -30,7 +30,7 @@ export type RunJobOptions = {
   afterCheckout?: (sandbox: Sandbox) => Promise<void>;
 };
 
-const EVENT_STAGE: Record<JobStageName, JobStage> = {
+const EVENT_STAGE: Record<RunStageName, RunStage> = {
   sandbox: "prepare",
   checkout: "checkout",
   setup: "setup",
@@ -42,23 +42,23 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export async function runJob(options: RunJobOptions): Promise<JobResult> {
+export async function runTask(options: RunTaskOptions): Promise<RunResult> {
   const { runId, signal } = options;
   const emit: Emit = options.emit ?? (() => {});
   const startedAt = Date.now();
-  const result: Omit<JobResult, "status" | "durationMs"> = {};
-  const finish = (status: JobResult["status"]): JobResult => ({
+  const result: Omit<RunResult, "status" | "durationMs"> = {};
+  const finish = (status: RunResult["status"]): RunResult => ({
     status,
     ...result,
     durationMs: Date.now() - startedAt,
   });
 
-  let stage = "sandbox" as JobStageName;
-  const enter = (next: JobStageName) => {
+  let stage = "sandbox" as RunStageName;
+  const enter = (next: RunStageName) => {
     stage = next;
     emit({
       type: "stage_changed",
-      jobId: runId,
+      runId,
       ts: new Date().toISOString(),
       stage: EVENT_STAGE[next],
     });
@@ -78,7 +78,7 @@ export async function runJob(options: RunJobOptions): Promise<JobResult> {
   result.sandboxId = sandbox.id;
   emit({
     type: "sandbox_created",
-    jobId: runId,
+    runId,
     ts: new Date().toISOString(),
     sandboxId: sandbox.id,
   });

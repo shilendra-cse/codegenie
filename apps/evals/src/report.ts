@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { TaskResult } from "./run/run-task.js";
+import type { TaskResult } from "./run/run-eval-task.js";
 
 function duration(ms: number) {
   const seconds = Math.round(ms / 1000);
@@ -40,7 +40,7 @@ export function formatReport(
     "|---|---|---|---|---|---|---|",
     ...results.map(
       (r) =>
-        `| ${label(r)} | ${SOLVED(r.solved)} | ${r.agent?.status ?? `${r.job.status} at ${r.job.failedStage ?? "?"}`} | ${checksCell(r.checks)} | ${r.agent?.steps ?? "—"} | ${duration(r.durationMs)} | ${r.agent ? `$${r.agent.costUsd.toFixed(4)}` : "—"} |`,
+        `| ${label(r)} | ${SOLVED(r.solved)} | ${r.agent?.status ?? `${r.run.status} at ${r.run.failedStage ?? "?"}`} | ${checksCell(r.checks)} | ${r.agent?.steps ?? "—"} | ${duration(r.durationMs)} | ${r.agent ? `$${r.agent.costUsd.toFixed(4)}` : "—"} |`,
     ),
   ];
 
@@ -56,7 +56,7 @@ export function formatReport(
   if (notSolved.length) lines.push("", "## Not solved or to review");
   for (const r of notSolved) {
     lines.push("", `### ${label(r)}`, "", "```", r.grade.detail, "```");
-    if (r.job.error) lines.push("", `Job error: ${r.job.error}`);
+    if (r.run.error) lines.push("", `Run error: ${r.run.error}`);
     if (r.agent?.summary) lines.push("", `Agent summary: ${r.agent.summary}`);
     if (r.diffFile) {
       lines.push("", `Diff: ${path.relative(run.resultsDir, r.diffFile)}`);

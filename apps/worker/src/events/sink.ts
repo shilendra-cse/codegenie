@@ -1,18 +1,18 @@
 import { runEvents, type Db } from "@codegenie/db";
-import { jobChannel, type JobEvent } from "@codegenie/shared";
+import { runChannel, type RunEvent } from "@codegenie/shared";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
 export type Publisher = {
   publish(channel: string, message: string): Promise<unknown>;
 };
 
-const LIVE_ONLY: ReadonlySet<JobEvent["type"]> = new Set([
+const LIVE_ONLY: ReadonlySet<RunEvent["type"]> = new Set([
   "text_delta",
   "agent_step",
 ]);
 
 export type EventSink = {
-  emit(event: JobEvent): void;
+  emit(event: RunEvent): void;
   /** Waits for every event so far; rejects with the first write that failed. */
   flush(): Promise<void>;
 };
@@ -25,10 +25,10 @@ export function createEventSink(
   let seq = 0;
   const writes = createSerialQueue();
 
-  const write = async (event: JobEvent) => {
-    const { type, jobId: _jobId, ts, seq: _seq, ...payload } = event;
+  const write = async (event: RunEvent) => {
+    const { type, runId: _runId, ts, seq: _seq, ...payload } = event;
     if (LIVE_ONLY.has(type)) {
-      await deps.publisher.publish(jobChannel(jobId), JSON.stringify(event));
+      await deps.publisher.publish(runChannel(jobId), JSON.stringify(event));
       return;
     }
     const numbered = { ...event, seq: seq + 1 };
@@ -40,7 +40,7 @@ export function createEventSink(
       createdAt: new Date(ts),
     });
     seq = numbered.seq;
-    await deps.publisher.publish(jobChannel(jobId), JSON.stringify(numbered));
+    await deps.publisher.publish(runChannel(jobId), JSON.stringify(numbered));
   };
 
   return {

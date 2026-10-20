@@ -1,5 +1,5 @@
 import type { AgentResult } from "@codegenie/agent";
-import type { JobResult, OnboardingResult } from "@codegenie/runner";
+import type { RunResult, OnboardingResult } from "@codegenie/runner";
 import { createStyle, plain } from "@codegenie/terminal";
 import { describe, expect, it } from "vitest";
 import {
@@ -29,7 +29,7 @@ describe("formatSummary", () => {
     messages: [],
   } satisfies AgentResult;
 
-  const result: JobResult = {
+  const result: RunResult = {
     status: "succeeded",
     agent,
     verify: {
@@ -117,7 +117,7 @@ describe("formatSummary", () => {
   });
 
   it("points to a saved patch instead of printing it, and explains failures", () => {
-    const failed: JobResult = {
+    const failed: RunResult = {
       status: "failed",
       failedStage: "checkout",
       error: "git clone failed: not found",
@@ -136,7 +136,7 @@ describe("formatSummary", () => {
 });
 
 describe("exitCode", () => {
-  it("maps job status to process exit codes", () => {
+  it("maps run status to process exit codes", () => {
     expect(exitCode("succeeded")).toBe(0);
     expect(exitCode("failed")).toBe(1);
     expect(exitCode("incomplete")).toBe(2);

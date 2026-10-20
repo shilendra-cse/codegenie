@@ -1,8 +1,8 @@
-import type { JobEvent } from "@codegenie/shared";
+import type { RunEvent } from "@codegenie/shared";
 import {
   clock,
   cost,
-  createJobReporter,
+  createRunReporter,
   LiveArea,
   plural,
   spinnerFrame,
@@ -20,10 +20,10 @@ const STAGE_LABEL: Record<string, string> = {
 type Stream = NodeJS.WritableStream & { isTTY?: boolean };
 
 /**
- * Live output for a job or an onboarding: event lines above, and in a terminal a
+ * Live output for a run or an onboarding: event lines above, and in a terminal a
  * spinner line below with what's happening now (steps and cost while the agent works).
  */
-export function createLiveJob(stream: Stream, style: Style) {
+export function createLiveRun(stream: Stream, style: Style) {
   let activity: string | null = null;
   let since = Date.now();
   let steps = 0;
@@ -36,7 +36,7 @@ export function createLiveJob(stream: Stream, style: Style) {
       `${style.accent(spinnerFrame())} ${activity}${style.dim(`${agent} · ${clock(Date.now() - since)}`)}`,
     ];
   });
-  const reporter = createJobReporter((text) => live.print(text), style);
+  const reporter = createRunReporter((text) => live.print(text), style);
 
   const setActivity = (label: string | null) => {
     activity = label;
@@ -49,7 +49,7 @@ export function createLiveJob(stream: Stream, style: Style) {
     live,
     print: (...lines: string[]) => live.print(...lines),
     setActivity,
-    onEvent(event: JobEvent) {
+    onEvent(event: RunEvent) {
       if (event.type === "stage_changed") {
         setActivity(STAGE_LABEL[event.stage] ?? event.stage);
       } else if (event.type === "agent_step") {

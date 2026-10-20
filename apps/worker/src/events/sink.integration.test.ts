@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { runEvents, type Db } from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import type { JobEvent, JobStage } from "@codegenie/shared";
+import type { RunEvent, RunStage } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { createEventSink, type Publisher } from "./sink.js";
@@ -9,11 +9,11 @@ import { createEventSink, type Publisher } from "./sink.js";
 const database = await testDatabaseOrSkip("event sink");
 
 function recordingPublisher(failOn?: (message: string) => boolean) {
-  const messages: { channel: string; event: JobEvent }[] = [];
+  const messages: { channel: string; event: RunEvent }[] = [];
   const publisher: Publisher = {
     async publish(channel, message) {
       if (failOn?.(message)) throw new Error("redis down");
-      messages.push({ channel, event: JSON.parse(message) as JobEvent });
+      messages.push({ channel, event: JSON.parse(message) as RunEvent });
       return 1;
     },
   };
@@ -21,9 +21,9 @@ function recordingPublisher(failOn?: (message: string) => boolean) {
 }
 
 const ts = "2026-10-20T10:00:00.000Z";
-const stage = (jobId: string, stage: JobStage): JobEvent => ({
+const stage = (jobId: string, stage: RunStage): RunEvent => ({
   type: "stage_changed",
-  jobId,
+  runId: jobId,
   ts,
   stage,
 });
@@ -52,7 +52,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
     sink.emit(stage(job.id, "setup"));
     sink.emit({
       type: "sandbox_created",
-      jobId: job.id,
+      runId: job.id,
       ts,
       sandboxId: "sb-1",
     });
@@ -81,9 +81,9 @@ describe.skipIf(!database)("event sink against Postgres", () => {
     ]);
     expect(messages.map((m) => [m.channel, m.event.seq, m.event.type])).toEqual(
       [
-        [`job:${job.id}`, 1, "stage_changed"],
-        [`job:${job.id}`, 2, "sandbox_created"],
-        [`job:${job.id}`, 3, "stage_changed"],
+        [`run:${job.id}`, 1, "stage_changed"],
+        [`run:${job.id}`, 2, "sandbox_created"],
+        [`run:${job.id}`, 3, "stage_changed"],
       ],
     );
   });
@@ -93,10 +93,10 @@ describe.skipIf(!database)("event sink against Postgres", () => {
     const { publisher, messages } = recordingPublisher();
     const sink = createEventSink({ db, publisher }, job.id);
 
-    sink.emit({ type: "text_delta", jobId: job.id, ts, delta: "Reading" });
+    sink.emit({ type: "text_delta", runId: job.id, ts, delta: "Reading" });
     sink.emit({
       type: "agent_step",
-      jobId: job.id,
+      runId: job.id,
       ts,
       steps: 1,
       costUsd: 0.001,
@@ -123,7 +123,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
     for (let i = 0; i < 40; i++) {
       sink.emit({
         type: "sandbox_created",
-        jobId: job.id,
+        runId: job.id,
         ts,
         sandboxId: `sb-${i}`,
       });
@@ -148,7 +148,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
 
     sink.emit({
       type: "sandbox_created",
-      jobId: job.id,
+      runId: job.id,
       ts,
       sandboxId: "sb-broken",
     });
