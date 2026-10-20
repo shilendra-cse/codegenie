@@ -57,15 +57,17 @@ async function main() {
     concurrency: config.concurrency,
   });
 
-  let stopping = false;
+  let stoppingSince: number | null = null;
   const stop = async (signal: NodeJS.Signals) => {
-    if (stopping) {
+    if (stoppingSince !== null) {
+      // Wrappers like pnpm pass a Ctrl-C on as well, so the same press can arrive twice within milliseconds.
+      if (Date.now() - stoppingSince < 1000) return;
       log("warn", "Stopping now; work in progress is left to the reaper", {
         signal,
       });
       process.exit(1);
     }
-    stopping = true;
+    stoppingSince = Date.now();
     log("info", "Stopping after the work in progress (again to stop now)", {
       signal,
     });

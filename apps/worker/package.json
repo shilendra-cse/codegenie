@@ -5,9 +5,10 @@
   "description": "Worker: consumes queued task runs and project onboarding, and runs them in a sandbox",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node --import tsx src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
+    "enqueue": "tsx src/dev/enqueue.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
