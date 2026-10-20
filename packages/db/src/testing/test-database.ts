@@ -72,6 +72,8 @@ export async function testDatabaseOrSkip(
     db,
     url: testUrl.toString(),
     async drop() {
+      // FORCE can cut off connections that are still closing; those errors are expected here.
+      pool.on("error", () => {});
       await pool.end();
       await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
       await admin.end();
