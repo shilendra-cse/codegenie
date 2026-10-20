@@ -1,0 +1,177 @@
+import { execFileSync } from "node:child_process";
+import { scriptedModel } from "@codegenie/agent/testing";
+import { DbEnvironmentStore, runEvents, runs, type Db } from "@codegenie/db";
+import { testDatabaseOrSkip } from "@codegenie/db/testing";
+import { DockerSandbox } from "@codegenie/sandbox";
+import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { WORK_QUEUE, type RunEvent } from "@codegenie/shared";
+import { Queue, QueueEvents } from "bullmq";
+import { asc, eq } from "drizzle-orm";
+import { afterAll, describe, expect, it } from "vitest";
+import { startConsumer } from "./consumer.js";
+import { enqueueOnboarding, enqueueRun, ensureProject } from "./dev/work.js";
+import { handleOnboardProject } from "./handlers/onboard-project.js";
+import { handleRunTask } from "./handlers/run-task.js";
+import { testRedisOrSkip } from "./testing/test-redis.js";
+
+const database = await testDatabaseOrSkip("worker end to end");
+const redis = await testRedisOrSkip("worker end to end");
+const probe = await dockerSandboxOrSkip("worker end to end");
+await probe?.destroy();
+
+describe.skipIf(!database || !redis || !probe)(
+  "worker end to end: queue → handlers → Docker → Postgres and Redis",
+  () => {
+    const db = database?.db as Db;
+    const { prefix, connect } = redis!;
+    const queue = new Queue(WORK_QUEUE, { connection: connect(), prefix });
+    const queueEvents = new QueueEvents(WORK_QUEUE, {
+      connection: connect(),
+      prefix,
+    });
+    const sandboxIds: string[] = [];
+    const published = new Map<string, unknown[]>();
+
+    afterAll(async () => {
+      await queue.close();
+      await queueEvents.close();
+      await redis?.close();
+      await database?.drop();
+    });
+
+    it("onboards a public repository, then runs a task on it", async () => {
+      const listener = connect();
+      listener.on("pmessage", (_pattern, channel, message) => {
+        published.set(channel, [
+          ...(published.get(channel) ?? []),
+          JSON.parse(message),
+        ]);
+      });
+      await listener.psubscribe("run:*", "project:*");
+
+      const onboardingModel = scriptedModel([
+        {
+          toolCalls: [
+            {
+              toolName: "finish_setup",
+              input: {
+                steps: [],
+                checks: [],
+                notes: ["A README only; nothing to install or check."],
+              },
+            },
+          ],
+        },
+      ]);
+      const runModel = scriptedModel([
+        {
+          toolCalls: [
+            {
+              toolName: "finish_task",
+              input: { summary: "Looked around; nothing to change." },
+            },
+          ],
+        },
+      ]);
+      const deps = {
+        db,
+        publisher: connect(),
+        log: () => {},
+        createSandbox: async () => {
+          const sandbox = await DockerSandbox.create();
+          sandboxIds.push(sandbox.id);
+          return sandbox;
+        },
+      };
+      const consumer = await startConsumer({
+        connection: connect(),
+        subscriber: connect(),
+        concurrency: 2,
+        log: () => {},
+        prefix,
+        handlers: {
+          "run-task": (data, signal) =>
+            handleRunTask({ ...deps, model: runModel.resolved }, data, signal),
+          "onboard-project": (data, signal) =>
+            handleOnboardProject(
+              { ...deps, model: onboardingModel.resolved },
+              data,
+              signal,
+            ),
+        },
+      });
+
+      try {
+        const project = await ensureProject(db, {
+          owner: "octocat",
+          repo: "Hello-World",
+          githubId: 1296269,
+          defaultBranch: "master",
+        });
+        const onboarding = await enqueueOnboarding(queue, project.id);
+        await onboarding.waitUntilFinished(queueEvents);
+
+        const environment = await new DbEnvironmentStore(db).load(project.id);
+        expect(environment).toMatchObject({
+          version: 1,
+          source: "ai",
+          config: { steps: [], checks: [] },
+        });
+        expect(
+          published.get(`project:${project.id}:onboarding`)?.at(-1),
+        ).toEqual({ type: "done", status: "approved", version: 1 });
+
+        const { run, job } = await enqueueRun(db, queue, {
+          project,
+          instruction: "Look around the repository",
+          model: "scripted",
+        });
+        await job.waitUntilFinished(queueEvents);
+
+        const [row] = await db.select().from(runs).where(eq(runs.id, run.id));
+        expect(row).toMatchObject({
+          status: "succeeded",
+          environmentId: environment!.id,
+          summary: "Looked around; nothing to change.",
+          startedAt: expect.any(Date),
+          finishedAt: expect.any(Date),
+        });
+        expect(row!.sandboxId).toMatch(/^cg-/);
+
+        const stored = await db
+          .select()
+          .from(runEvents)
+          .where(eq(runEvents.runId, run.id))
+          .orderBy(asc(runEvents.seq));
+        expect(stored.map((e) => e.seq)).toEqual(stored.map((_, i) => i + 1));
+        expect(stored.at(-1)).toMatchObject({
+          type: "done",
+          payload: { status: "succeeded" },
+        });
+
+        const live = (published.get(`run:${run.id}`) ?? []) as RunEvent[];
+        expect(
+          live.filter((e) => e.seq !== undefined).map((e) => e.seq),
+        ).toEqual(stored.map((e) => e.seq));
+        expect(live.at(-1)).toMatchObject({
+          type: "done",
+          status: "succeeded",
+        });
+      } finally {
+        await consumer.close();
+      }
+
+      expect(sandboxIds.length).toBeGreaterThanOrEqual(3);
+      const left = execFileSync(
+        "docker",
+        [
+          "ps",
+          "-aq",
+          ...sandboxIds.flatMap((id) => ["--filter", `name=^${id}$`]),
+        ],
+        { encoding: "utf8" },
+      );
+      expect(left.trim()).toBe("");
+    }, 300_000);
+  },
+);

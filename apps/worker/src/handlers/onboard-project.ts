@@ -1,0 +1,87 @@
+import { DbEnvironmentStore, projects, type Db } from "@codegenie/db";
+import {
+  autoChannel,
+  runOnboarding,
+  type OnboardingResult,
+  type RunOnboardingOptions,
+} from "@codegenie/runner";
+import {
+  onboardingChannel,
+  type OnboardingMessage,
+  type QueuedWork,
+} from "@codegenie/shared";
+import { eq } from "drizzle-orm";
+import type { Publisher } from "../events/sink.js";
+import type { Log } from "../lib/log.js";
+import { createSerialQueue } from "../lib/serial-queue.js";
+
+export type OnboardProjectDeps = {
+  db: Db;
+  publisher: Publisher;
+  log: Log;
+} & Pick<RunOnboardingOptions, "model" | "agentLimits" | "createSandbox">;
+
+export async function handleOnboardProject(
+  deps: OnboardProjectDeps,
+  { projectId }: QueuedWork["onboard-project"],
+  signal?: AbortSignal,
+): Promise<OnboardingResult> {
+  const { db } = deps;
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+  if (!project) throw new Error(`Project ${projectId} doesn't exist.`);
+  const repo = `${project.repoOwner}/${project.repoName}`;
+
+  const publishes = createSerialQueue();
+  const publish = (message: OnboardingMessage) =>
+    publishes.add(async () => {
+      await deps.publisher.publish(
+        onboardingChannel(projectId),
+        JSON.stringify(message),
+      );
+    });
+
+  const result = await runOnboarding({
+    runId: `onboard-${projectId}`,
+    source: {
+      type: "git",
+      url: `https://github.com/${repo}.git`,
+      ref: project.defaultBranch,
+    },
+    model: deps.model,
+    agentLimits: deps.agentLimits,
+    createSandbox: deps.createSandbox,
+    channel: autoChannel((message) => publish({ type: "info", message })),
+    emit: (event) => publish({ type: "event", event }),
+    signal,
+  });
+
+  const saved =
+    result.status === "approved" && result.config
+      ? await new DbEnvironmentStore(db).save(
+          projectId,
+          result.config,
+          result.config.meta.source,
+        )
+      : null;
+  publish({
+    type: "done",
+    status: result.status,
+    ...(saved ? { version: saved.version } : {}),
+    ...(result.error ? { error: result.error } : {}),
+  });
+  try {
+    await publishes.drain();
+  } catch (error) {
+    deps.log("warn", "Some onboarding messages weren't published", {
+      projectId,
+      error: String(error),
+    });
+  }
+
+  if (result.status === "failed") {
+    throw new Error(`Onboarding ${repo} failed: ${result.error}`);
+  }
+  return result;
+}

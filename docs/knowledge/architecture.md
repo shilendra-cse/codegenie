@@ -93,7 +93,15 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/r
 - Writes rows and enqueues; does no long-running work.
 
 ### apps/worker
-Consumes the BullMQ queue and runs the pipeline in §5: `run-task` (one run of a task) and `onboard-project` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Configurable concurrency; cancellation through a Redis message aborts the run and removes its sandbox. Also runs a periodic **reaper** that fails stalled runs and deletes orphaned sandboxes. Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
+Consumes the BullMQ queue `codegenie-work` and runs the pipeline in §5. Details and commands: [apps/worker/README.md](../../apps/worker/README.md).
+
+- **Work kinds:** `run-task { runId }` (one run of a task) and `onboard-project { projectId }` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Onboarding progress is published live on `project:{id}:onboarding` and not stored; a failed onboarding fails its queue item.
+- **Concurrency:** `WORKER_CONCURRENCY` items at once per process (default 3), each in its own sandbox; more throughput means more processes.
+- **Cancellation:** a queued run is marked `cancelled` in the database, and the worker skips it. A running one gets a `run-cancel` message carrying its id; every worker process hears it, and the one running it aborts the run's signal.
+- **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money). The **reaper** (Phase 2, branch 5) fails the run row and deletes orphaned sandboxes.
+- **Shutdown:** the first SIGINT/SIGTERM stops taking work and waits for the work in progress; a second one a second or more later exits at once and leaves the rest to the reaper.
+
+Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
 
 ### packages/agent
 Details: **[agent.md](./agent.md)**.
@@ -217,11 +225,11 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Failure | Handling |
 |---|---|
-| Worker crash mid-run | BullMQ stalled detection → reaper marks `failed`, deletes sandbox by `sandboxId`/label. No auto-retry once the agent has started. |
+| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (`maxStalledCount: 0`, never retried); the reaper marks the run `failed` and deletes its sandbox by `sandboxId`/label. |
 | Sandbox create fails | Retry with backoff (nothing has happened yet). |
 | Dependency install fails | Continue; agent is told setup failed and may fix it. |
 | LLM error / rate limit | Backoff retry inside loop; fail after N attempts. |
-| User cancels | `POST /api/runs/:id/cancel` → abort signal → sandbox destroyed → `cancelled`. |
+| User cancels | `POST /api/runs/:id/cancel`: a queued run is marked `cancelled` directly; a running one gets a `run-cancel` message → abort signal → sandbox destroyed → `cancelled`. |
 | Push rejected / branch protection | `error` event with reason; diff saved as an artifact. |
 
 ---

@@ -73,6 +73,7 @@ export type {
   SetupQuestion,
   SetupAnswer,
   UserChannel,
+  OnboardingStatus,
 } from "./types/environment.js";
 
 export { checkKey } from "./types/environment.js";
@@ -81,6 +82,7 @@ export {
   CANCEL_CHANNEL,
   WORK_QUEUE,
   onboardingChannel,
+  type OnboardingMessage,
   type QueuedWork,
   type QueuedWorkKind,
 } from "./types/queue.js";

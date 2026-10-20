@@ -74,9 +74,14 @@ pnpm install
 log "Environment files"
 copy_env_if_missing apps/server/.env.example apps/server/.env
 copy_env_if_missing apps/cli/.env.example apps/cli/.env
+copy_env_if_missing apps/worker/.env.example apps/worker/.env
 
 if grep -q 'your-openai-api-key' apps/cli/.env; then
   warn "Set OPENAI_API_KEY in apps/cli/.env before running the agent."
+fi
+
+if grep -q 'your-openai-api-key' apps/worker/.env; then
+  warn "Set OPENAI_API_KEY in apps/worker/.env before running the worker."
 fi
 
 if grep -q 'your-github-client-id' apps/server/.env; then
