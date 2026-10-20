@@ -1,6 +1,6 @@
 # Sandbox
 
-> Status: **Accepted** · Last updated: 2026-10-14 · Code: `packages/sandbox` · Related: [architecture.md](./architecture.md)
+> Status: **Accepted** · Last updated: 2026-10-20 · Code: `packages/sandbox` · Related: [architecture.md](./architecture.md)
 
 The sandbox is the isolated environment where the agent's work happens: the repository is cloned into it, dependencies are installed, files are edited and checks are run. Nothing the agent does runs on our machines or servers.
 
@@ -8,12 +8,12 @@ The sandbox is the isolated environment where the agent's work happens: the repo
 
 ```
 LLM ──tool call──► agent tools ──► Sandbox interface ──► DockerSandbox  ──► docker exec       ──► local container
-                                                     └─► DaytonaSandbox ──► Daytona API (phase 2) ──► cloud sandbox
+                                                     └─► DaytonaSandbox ──► Daytona API         ──► cloud sandbox
 ```
 
 - The LLM only requests tool calls; our tool code decides what runs.
 - Tools only know the `Sandbox` interface, never Docker or Daytona, so swapping providers changes no agent code.
-- Local development uses `DockerSandbox`; production uses `DaytonaSandbox` (phase 2). Selected by `createSandbox({ provider })`.
+- Local development uses `DockerSandbox`; production uses `DaytonaSandbox`. Selected by `createSandbox({ provider })`; the worker sets it with `SANDBOX_PROVIDER=docker|daytona`.
 
 ## 2. Interface
 
@@ -41,15 +41,16 @@ interface Sandbox {
 | Node version | Node 24 only (see TODO). |
 | Environment | `CI=true` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` for every command, so test runners and corepack never wait for input. |
 | User | Non-root `agent` user; git identity `CodeGenie <bot@codegenie.dev>`. |
-| Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). |
+| Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). Daytona: 2 CPUs, 4 GB, 10 GB disk, set on the snapshot. |
 | Network | Full internet access (needed for clone and package installs). |
 | Host access | No volume mounts, no Docker socket, no secrets in phase 1. Local folders are **copied** in, never mounted. |
 | Exec timeout | Default 2 min, max 10 min. Enforced **inside** the container with `timeout` (killing the host-side docker client would leave the process running). Host-side kill at timeout + 15 s as a backstop. |
 | Output cap | 1 MB per stream; over the cap, the first and last 512 KB are kept and `truncated: true`. |
 | readFile limit | 10 MB; larger files throw instead of returning truncated content (writing that back would corrupt the file). |
 | writeFile | Content sent via stdin, never in the command line: no quoting or injection issues. |
-| Lifecycle | One container per run. `destroy()` in `finally`. Containers labelled `codegenie=1`. Main process is `sleep 7200`, so a container exits by itself after 2 h even if cleanup never runs. |
-| Errors | `SandboxUnavailableError` (Docker not running / image missing), `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`. |
+| Lifecycle | One sandbox per run (two per onboarding). `destroy()` in `finally`. Docker: main process is `sleep 7200`, so a container exits by itself after 2 h even if cleanup never runs. Daytona: see §7. |
+| Labels | Every sandbox has `codegenie=1`, plus what the caller passes: the worker adds `kind=run, runId` or `kind=onboarding, projectId`, so the reaper can find sandboxes whose work is over. |
+| Errors | `SandboxUnavailableError` (Docker not running / image missing / Daytona key rejected), `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`. |
 
 ## 4. Code layout
 
@@ -61,16 +62,24 @@ packages/sandbox/
     ├── create-sandbox.ts           createSandbox() — picks the provider
     ├── core/                       contract shared by every provider
     │   ├── types.ts                Sandbox interface and option/result types
-    │   └── errors.ts               SandboxError and subclasses
+    │   ├── errors.ts               SandboxError and subclasses
+    │   └── limits.ts               exec timeouts, readFile limit, lifetime
     ├── lib/                        provider-agnostic helpers
     │   ├── capped-buffer.ts        head + tail output cap
-    │   └── run-process.ts          spawn with stdin, timeout and output cap
-    └── providers/
-        ├── docker/
-        │   ├── docker-sandbox.ts   DockerSandbox
-        │   ├── docker-cli.ts       docker CLI wrapper, "container gone" detection
-        │   └── constants.ts        image, label, resource defaults, timeouts, limits
-        └── daytona/                phase 2
+    │   ├── run-process.ts          spawn with stdin, timeout and output cap
+    │   ├── find-files.ts           listFiles' find arguments and output parsing
+    │   └── workspace.ts            paths relative to /workspace
+    ├── providers/
+    │   ├── docker/
+    │   │   ├── docker-sandbox.ts   DockerSandbox
+    │   │   ├── docker-cli.ts       docker CLI wrapper, "container gone" detection
+    │   │   └── constants.ts        image, label, resource defaults, timeouts
+    │   └── daytona/
+    │       ├── daytona-sandbox.ts  DaytonaSandbox
+    │       ├── exec-script.ts      the exec wrapper and its output parser
+    │       └── constants.ts        snapshot, labels, auto-stop, timeouts
+    └── scripts/
+        └── build-snapshot.ts       pnpm sandbox:build-snapshot
 ```
 
 Tests sit next to the code: `*.test.ts` are fast unit tests, `*.integration.test.ts` need Docker.
@@ -80,22 +89,39 @@ Tests sit next to the code: `*.test.ts` are fast unit tests, `*.integration.test
 | Command | What it does |
 |---|---|
 | `pnpm sandbox:build-image` | Build `codegenie-base` (needed once, and after Dockerfile changes) |
-| `pnpm sandbox:clean` | Remove any leftover containers labelled `codegenie=1` |
+| `pnpm sandbox:build-snapshot` | Build the `codegenie-base` snapshot on Daytona from the same Dockerfile, then check a sandbox made from it (needed once per account, and `--replace` after Dockerfile changes). Reads `DAYTONA_*` from `apps/worker/.env`. |
+| `pnpm sandbox:clean` | Remove any leftover Docker containers labelled `codegenie=1` |
 | `docker exec -it <id> bash` | Inspect a running sandbox (e.g. one kept with `--keep`) |
 
 ## 6. Testing
 
 Unit tests (`src/lib/*.test.ts`) need nothing. Integration tests (`src/providers/docker/docker-sandbox.integration.test.ts`) run against real Docker. Locally they skip (with a warning) if Docker isn't running or the image isn't built; in CI they fail instead. CI builds the image before running tests.
 
-## 7. Mapping to Daytona (phase 2)
+Daytona has **no automated tests against the real service**, by decision: every run would create billable sandboxes. `DaytonaSandbox` is tested with a fake client whose answers were recorded once from a real sandbox (`exec-script.test.ts`, `daytona-sandbox.test.ts`). The real service is checked by hand: `pnpm sandbox:build-snapshot` runs commands through `DaytonaSandbox`, and a worker run with `SANDBOX_PROVIDER=daytona` covers the rest (§7).
+
+## 7. Daytona
 
 | Method | DockerSandbox | DaytonaSandbox |
 |---|---|---|
-| create | `docker run codegenie-base` | create from `codegenie-base` snapshot |
-| exec | `docker exec … timeout … bash -lc` | process execute command |
-| readFile / writeFile | `docker exec cat` / stdin | filesystem download / upload |
-| listFiles | `docker exec find` | filesystem list / find |
-| destroy | `docker rm -f` | delete sandbox |
+| create | `docker run codegenie-base` | `daytona.create` from the `codegenie-base` snapshot |
+| exec | `docker exec … timeout … bash -lc` | one `process.executeCommand` running a wrapper (below) |
+| readFile / writeFile | `docker exec cat` / stdin | `fs.downloadFile` / `fs.uploadFile` (upload creates missing folders) |
+| listFiles | `docker exec find` | the same `find`, through `exec` |
+| destroy | `docker rm -f` | `sandbox.delete()`; "already gone" is ignored |
+
+Decisions, from a probe of the real API (SDK 0.225):
+
+| Area | Decision |
+|---|---|
+| Snapshot | `codegenie-base`, built on Daytona from **the same Dockerfile** as the Docker image, so both providers have the same tools, `agent` user and writable `/workspace` (checked on a real sandbox). 2 CPUs, 4 GB, 10 GB disk. Daytona's default snapshot (1 CPU, 1 GB, no `/workspace`) isn't used. |
+| exec | Daytona returns stdout and stderr **mixed together**, but `diff` and `search` parse stdout. So exec sends a wrapper: the command goes in the env var `CG_CMD` (no quoting), runs under `timeout -k` like Docker, with stderr redirected to a temp file; the wrapper then prints a random marker, the exit code and the stderr file, and the provider splits on the marker. |
+| Timeouts | Same limits as Docker: exit 124 means timed out. The SDK's own timeout (ours + 20 s) is a backstop; its timeout error becomes `timedOut: true`, not a failure. |
+| Output | Daytona doesn't cap output; the provider applies Docker's 1 MB head + tail cap. |
+| Safety nets | `ephemeral` (deleted as soon as it stops), `ttlMinutes: 120` (destroyed after 2 h whatever happens), `autoStopInterval: 30` (stopped, and so deleted, after 30 idle minutes). An orphaned sandbox removes itself. |
+| Errors | Key rejected → `SandboxUnavailableError`; other create failures → `SandboxCreateError`; missing file → `SandboxFileError`; sandbox no longer exists → `SandboxGoneError` (later calls fail without contacting Daytona). |
+| Connection | `apiKey`, `apiUrl` and `target` are passed explicitly (`createSandbox({ provider: "daytona", connection })`): the SDK refuses a `DAYTONA_API_URL` it can only find in a `.env` file. |
+
+Measured on `octocat/Hello-World` (2026-10-20): onboarding 22 s and a run 23 s (5 agent steps, $0.0004 model cost), sandboxes deleted afterwards. A sandbox from Daytona's default snapshot starts in about 1.3 s.
 
 ## 8. TODO (post-MVP or when evals show the need)
 

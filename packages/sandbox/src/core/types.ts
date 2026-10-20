@@ -40,7 +40,19 @@ export type SandboxResources = {
   memoryGb?: number;
 };
 
-export type CreateSandboxOptions = {
-  provider: "docker";
-  resources?: SandboxResources;
+/** Lets the reaper find sandboxes whose run or onboarding is over. */
+export type SandboxLabels = Record<string, string>;
+
+export type DaytonaConnection = {
+  apiKey: string;
+  apiUrl?: string;
+  target?: string;
 };
+
+export type CreateSandboxOptions =
+  | { provider: "docker"; resources?: SandboxResources; labels?: SandboxLabels }
+  | {
+      provider: "daytona";
+      connection: DaytonaConnection;
+      labels?: SandboxLabels;
+    };

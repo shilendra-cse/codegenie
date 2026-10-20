@@ -3,7 +3,7 @@
 Takes work off the Redis queue and runs it in a sandbox: task runs (`run-task`) and project onboarding (`onboard-project`). Design: [docs/knowledge/architecture.md](../../docs/knowledge/architecture.md) §3 and §5.
 
 ```
-pnpm worker:enqueue / API ──► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox
+pnpm worker:enqueue / API ──► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
                                                                    │            │
                                      "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, project_environments
                                                                                 └──► Redis: run:{id}, project:{id}:onboarding
@@ -11,7 +11,7 @@ pnpm worker:enqueue / API ──► Redis queue "codegenie-work" ──► consu
 
 ## Running it
 
-Postgres and Redis come from `apps/server/docker-compose.yml` (`pnpm setup` starts them), and the sandbox image from `pnpm sandbox:build-image`.
+Postgres and Redis come from `apps/server/docker-compose.yml` (`pnpm setup` starts them). Sandboxes come from Docker (`pnpm sandbox:build-image`) or Daytona (`SANDBOX_PROVIDER=daytona`, after `pnpm sandbox:build-snapshot` once per account).
 
 ```bash
 cp apps/worker/.env.example apps/worker/.env   # pnpm setup does this; then set OPENAI_API_KEY
@@ -23,9 +23,14 @@ pnpm dev:worker
 | `OPENAI_API_KEY` | required | |
 | `AGENT_MODEL` | `openai:gpt-6-luna` | must be in the model catalog |
 | `WORKER_CONCURRENCY` | `3` | items worked on at once, each in its own sandbox |
+| `SANDBOX_PROVIDER` | `docker` | `docker` (local containers) or `daytona` (cloud sandboxes) |
+| `DAYTONA_API_KEY` | required for `daytona` | |
+| `DAYTONA_API_URL`, `DAYTONA_TARGET` | Daytona's defaults | endpoint and region |
 | `DATABASE_URL` | built from `DB_*`, same defaults as the server | |
 | `REDIS_URL` | `redis://localhost:6380` | |
 | `LOG_LEVEL` | `info` | |
+
+**Logs:** each piece of work logs `Work started`, its outcome (`Run finished` with status, steps and cost, or `Onboarding finished` with status and version) and `Work finished` with its duration; failures log `Work failed`.
 
 **Stopping:** Ctrl-C stops taking new work and waits for the work in progress (a run can take up to 30 minutes). Ctrl-C again, a second or more later, exits at once; anything unfinished is left for the reaper. There's no watch mode, because a restart would kill the runs in progress.
 

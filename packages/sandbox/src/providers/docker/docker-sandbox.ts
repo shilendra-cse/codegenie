@@ -14,20 +14,25 @@ import {
   type FileEntry,
   type ListFilesOptions,
   type Sandbox,
+  type SandboxLabels,
   type SandboxResources,
 } from "../../core/types.js";
 import { runProcess, type RunProcessResult } from "../../lib/run-process.js";
 import {
-  COPY_IN_TIMEOUT_MS,
-  DEFAULT_CPUS,
   DEFAULT_EXEC_TIMEOUT_MS,
-  DEFAULT_IMAGE,
-  DEFAULT_MEMORY_GB,
-  HOST_TIMEOUT_MARGIN_MS,
   KILL_GRACE_SECONDS,
   MAX_EXEC_TIMEOUT_MS,
   MAX_LIFETIME_SECONDS,
   MAX_READ_FILE_BYTES,
+} from "../../core/limits.js";
+import { findArgs, parseFindOutput } from "../../lib/find-files.js";
+import { resolveInWorkspace } from "../../lib/workspace.js";
+import {
+  COPY_IN_TIMEOUT_MS,
+  DEFAULT_CPUS,
+  DEFAULT_IMAGE,
+  DEFAULT_MEMORY_GB,
+  HOST_TIMEOUT_MARGIN_MS,
   PIDS_LIMIT,
   SANDBOX_LABEL,
 } from "./constants.js";
@@ -36,11 +41,8 @@ import { docker, isContainerGone } from "./docker-cli.js";
 export type DockerSandboxOptions = {
   resources?: SandboxResources;
   image?: string;
+  labels?: SandboxLabels;
 };
-
-function resolveInSandbox(p: string) {
-  return path.posix.resolve(WORKSPACE_DIR, p);
-}
 
 export class DockerSandbox implements Sandbox {
   private destroyed = false;
@@ -84,6 +86,10 @@ export class DockerSandbox implements Sandbox {
       id,
       "--label",
       SANDBOX_LABEL,
+      ...Object.entries(options.labels ?? {}).flatMap(([key, value]) => [
+        "--label",
+        `${key}=${value}`,
+      ]),
       "--memory",
       `${memoryGb}g`,
       "--cpus",
@@ -122,7 +128,7 @@ export class DockerSandbox implements Sandbox {
       [
         "exec",
         "-w",
-        options.cwd ? resolveInSandbox(options.cwd) : WORKSPACE_DIR,
+        options.cwd ? resolveInWorkspace(options.cwd) : WORKSPACE_DIR,
         ...envArgs,
         this.id,
         "timeout",
@@ -155,7 +161,7 @@ export class DockerSandbox implements Sandbox {
 
   async readFile(filePath: string): Promise<string> {
     this.assertAlive();
-    const abs = resolveInSandbox(filePath);
+    const abs = resolveInWorkspace(filePath);
     const result = await docker(["exec", this.id, "cat", "--", abs], {
       maxOutputBytes: MAX_READ_FILE_BYTES,
     });
@@ -178,7 +184,7 @@ export class DockerSandbox implements Sandbox {
 
   async writeFile(filePath: string, content: string): Promise<void> {
     this.assertAlive();
-    const abs = resolveInSandbox(filePath);
+    const abs = resolveInWorkspace(filePath);
     // Content goes through stdin, never the command line: no quoting or injection issues.
     const result = await docker(
       [
@@ -207,27 +213,12 @@ export class DockerSandbox implements Sandbox {
     options: ListFilesOptions = {},
   ): Promise<FileEntry[]> {
     this.assertAlive();
-    const abs = resolveInSandbox(dirPath);
+    const abs = resolveInWorkspace(dirPath);
     const result = await docker([
       "exec",
       this.id,
       "find",
-      abs,
-      "-mindepth",
-      "1",
-      "-maxdepth",
-      String(options.maxDepth ?? 2),
-      "(",
-      "-name",
-      "node_modules",
-      "-o",
-      "-name",
-      ".git",
-      ")",
-      "-prune",
-      "-o",
-      "-printf",
-      "%y\t%s\t%p\n",
+      ...findArgs(abs, options.maxDepth ?? 2),
     ]);
     this.throwIfGone(result);
     if (result.code !== 0) {
@@ -237,19 +228,7 @@ export class DockerSandbox implements Sandbox {
       );
     }
 
-    return result.stdout
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const [type, size, ...rest] = line.split("\t");
-        const isDirectory = type === "d";
-        return {
-          path: rest.join("\t"),
-          isDirectory,
-          size: isDirectory ? 0 : Number(size),
-        };
-      })
-      .sort((a, b) => a.path.localeCompare(b.path));
+    return parseFindOutput(result.stdout);
   }
 
   async copyIn(localDir: string): Promise<void> {

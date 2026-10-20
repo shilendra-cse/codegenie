@@ -7,6 +7,7 @@ import {
   type Db,
 } from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
+import type { SandboxLabels } from "@codegenie/sandbox";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
@@ -75,6 +76,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     };
     const logs: string[] = [];
     let sandboxes = 0;
+    const labels: SandboxLabels[] = [];
     const depsFor = (script: ScriptedStep[], sandbox = fakeSandbox()) => {
       const { model, resolved } = scriptedModel(script);
       const value: RunTaskDeps = {
@@ -82,8 +84,9 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
         publisher,
         log: (_level, message) => logs.push(message),
         model: resolved,
-        createSandbox: async () => {
+        createSandbox: async (l) => {
           sandboxes += 1;
+          labels.push(l);
           return sandbox;
         },
       };
@@ -96,6 +99,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       logs,
       depsFor,
       sandboxes: () => sandboxes,
+      labels,
     };
   }
 
@@ -109,7 +113,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       .orderBy(asc(runEvents.seq));
 
   it("runs a run with the project's environment and records everything", async () => {
-    const { project, run, published, depsFor } = await setUp({
+    const { project, run, published, depsFor, labels, logs } = await setUp({
       environment: environment(),
       message: "Add a GET /health endpoint",
     });
@@ -118,6 +122,8 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     const result = await handleRunTask(deps, { runId: run.id });
 
     expect(result?.status).toBe("succeeded");
+    expect(labels).toEqual([{ kind: "run", runId: run.id }]);
+    expect(logs).toContain("Run finished");
     expect(JSON.stringify(model.doStreamCalls[0]!.prompt)).toContain(
       "Add a GET /health endpoint",
     );

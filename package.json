@@ -17,6 +17,7 @@
     "build:worker": "pnpm --filter @codegenie/worker build",
     "worker:enqueue": "pnpm --filter @codegenie/worker enqueue",
     "sandbox:build-image": "pnpm --filter @codegenie/sandbox build-image",
+    "sandbox:build-snapshot": "pnpm --filter @codegenie/sandbox build-snapshot",
     "sandbox:clean": "pnpm --filter @codegenie/sandbox clean",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",

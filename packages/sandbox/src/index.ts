@@ -6,3 +6,7 @@ export {
   type DockerSandboxOptions,
 } from "./providers/docker/docker-sandbox.js";
 export { DEFAULT_IMAGE, SANDBOX_LABEL } from "./providers/docker/constants.js";
+export {
+  DaytonaSandbox,
+  type DaytonaSandboxOptions,
+} from "./providers/daytona/daytona-sandbox.js";

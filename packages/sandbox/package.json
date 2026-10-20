@@ -21,16 +21,21 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "build-image": "docker build -t codegenie-base -f images/base/Dockerfile images/base",
+    "build-snapshot": "node --env-file-if-exists=../../apps/worker/.env --import tsx src/scripts/build-snapshot.ts",
     "clean": "ids=$(docker ps -aq --filter label=codegenie=1); [ -z \"$ids\" ] || docker rm -f $ids"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^24.5.2",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.8.3",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.59.3",
-    "@types/node": "^24.5.2"
+    "typescript-eslint": "^8.59.3"
+  },
+  "dependencies": {
+    "@daytonaio/sdk": "^0.225.0"
   }
 }

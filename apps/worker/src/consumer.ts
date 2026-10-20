@@ -54,6 +54,8 @@ export async function startConsumer(
   const handle = async (job: Job) => {
     const item = { name: job.name, data: job.data } as QueuedItem;
     const controller = new AbortController();
+    const started = Date.now();
+    log("info", "Work started", { kind: job.name, id: job.id, ...item.data });
     switch (item.name) {
       case "run-task":
         runs.set(item.data.runId, controller);
@@ -62,13 +64,18 @@ export async function startConsumer(
         } finally {
           runs.delete(item.data.runId);
         }
-        return;
+        break;
       case "onboard-project":
         await handlers["onboard-project"](item.data, controller.signal);
-        return;
+        break;
       default:
         throw new Error(`Unknown work kind "${job.name}".`);
     }
+    log("info", "Work finished", {
+      kind: job.name,
+      id: job.id,
+      durationMs: Date.now() - started,
+    });
   };
 
   const worker = new Worker(WORK_QUEUE, handle, {
