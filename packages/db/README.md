@@ -26,12 +26,29 @@ pnpm --filter @codegenie/db studio        # browse the data
 
 The commands use the development database from `apps/server/docker-compose.yml`, configured in `apps/server/.env` (`DATABASE_URL`, or `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD`).
 
+## Tests
+
+Tests that need Postgres get their own database:
+
+```ts
+import { testDatabaseOrSkip } from "@codegenie/db/testing";
+
+const database = await testDatabaseOrSkip("my suite"); // fresh and migrated; null without Postgres
+describe.skipIf(!database)("…", () => {
+  afterAll(() => database?.drop());
+});
+```
+
+It's created on the `TEST_DATABASE_URL` server, or next to the development database, and dropped afterwards. CI runs a Postgres service, so the tests are required there.
+
 ## Layout
 
 ```
 src/
-├── client.ts     createDb(url, poolOptions?)
-├── schema/       one file per table group; index.ts exports them all
-└── index.ts      createDb, every table, and the tables as `schema`
+├── client.ts         createDb(url, poolOptions?)
+├── environments.ts   DbEnvironmentStore: project environment versions
+├── testing/          testDatabaseOrSkip (the @codegenie/db/testing export)
+├── schema/           one file per table group; index.ts exports them all
+└── index.ts          createDb, DbEnvironmentStore, every table, and the tables as `schema`
 drizzle/          migrations and their snapshots (generated)
 ```
