@@ -84,16 +84,20 @@ A project's environment config: how to install the repository and which checks t
 | `source` | enum `environment_source` (`detected`, `ai`, `user`, `mixed`) | how this version was created |
 | `status` | enum `environment_status` (`active`, `superseded`) | |
 | `health` | enum `environment_health` (`ok`, `needs_attention`) | set by jobs when a setup step fails or an uncovered project folder appears |
-| `health_reason` | text null | e.g. `step "install client" failed in job …` |
-| `verified_commit` | text | commit onboarding verified the config on |
+| `health_reasons` | jsonb (string list), default `[]` | why it needs attention, e.g. `admin/ has its own package.json but isn't covered by the environment.` |
+| `health_updated_at` | timestamptz null | when health was last set |
+| `verified_commit` | text null | commit onboarding verified the config on (from `config.meta.commit`) |
 | `created_by_user_id` | text FK → `user.id` null | null when created automatically |
 | `created_at` | timestamptz | |
 
 Constraints and indexes:
 - **unique (`project_id`, `version`)**
 - **Partial unique** on (`project_id`) `WHERE status = 'active'`: at most one active config per project.
+- (`project_id`, `created_at`).
 
-Lifecycle: onboarding (or a user edit) inserts version N+1 as `active` and marks the previous one `superseded` in the same transaction; rollback reactivates an older version.
+Lifecycle: onboarding (or a user edit) inserts version N+1 as `active` and marks the previous one `superseded` in the same transaction; rollback reactivates an older version (Phase 4).
+
+Code: `DbEnvironmentStore` in `packages/db` (`load`, `list`, `save`, `markHealth`, keyed by project id; the same `EnvironmentStore` interface as the CLI's file store). `save` locks the project row, so concurrent saves for one project get versions 1, 2, 3 in turn.
 
 ### `tasks`
 A unit of work on a project.
@@ -202,7 +206,9 @@ Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced
 
 The schema, client and migrations live in `packages/db`, shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
 
-Pending (Phase 2, branch 2): add `project_environments` and `jobs.environment_id`, and drop `projects.setup_config`. Until then the CLI stores environment configs in local files ([environment.md](./environment.md)).
+`0001_project_environments` added `project_environments` and `jobs.environment_id`, and dropped `projects.setup_config`.
+
+**Tests** that need Postgres use `testDatabaseOrSkip` from `@codegenie/db/testing`: a fresh, migrated database per run, created next to the development one (or on `TEST_DATABASE_URL`) and dropped afterwards; skipped without Postgres, required in CI (which runs a Postgres service).
 
 ## 6. Post-MVP
 

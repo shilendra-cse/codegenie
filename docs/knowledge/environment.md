@@ -228,7 +228,7 @@ interface EnvironmentStore {
 
 | Where | Store | Notes |
 |---|---|---|
-| Product (worker + website) | **Database**, `project_environments` ([database.md](./database.md)) | versions, one active per project, health, `jobs.environment_id` records which version each job used (phase 2) |
+| Product (worker + website) | `DbEnvironmentStore` (`packages/db`): **database** table `project_environments` ([database.md](./database.md)), keyed by project id | every version kept, one active per project, health with reasons; `jobs.environment_id` records which version each job used (set by the worker) |
 | CLI (built) | `FileEnvironmentStore` (`apps/cli/src/store/`): `~/.codegenie/environments/<repo-key>.json`, or under `$CODEGENIE_HOME` | the last 5 versions in one file, numbered on; written through a temporary file; configs validated on load |
 
 **Repo key** (`repo-key.ts`): git URLs become host/path, lowercased, without protocol, user or `.git` (`github.com/acme/app`), so every URL form of a repository matches. A local folder uses its `origin` remote when it is the repository's top level, so a clone and its URL share one environment; otherwise (no remote, or a folder inside another repository) it is `local:<absolute path>`.

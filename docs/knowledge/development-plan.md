@@ -70,9 +70,9 @@ Branches, each built in small batches (see Ways of working):
 - [x] **1. `refactor/db-package`** — move only, no behavior change.
   1. `packages/db`: Drizzle schema, migrations, `drizzle.config` and `createDb(url)` moved from `apps/server/src/db/`; the server imports `@codegenie/db`; db scripts run from the package. (Planned as two batches; one, since a half-moved schema doesn't compile.)
   2. Docs.
-- [ ] **2. `feat/db-environments`** — environments in Postgres, the same `EnvironmentStore` as the CLI's file store, keyed by project id ([database.md](./database.md)).
+- [x] **2. `feat/db-environments`** — environments in Postgres, the same `EnvironmentStore` as the CLI's file store, keyed by project id ([database.md](./database.md)).
   1. Schema + migration: `project_environments`, `jobs.environment_id`, drop `projects.setup_config` if present.
-  2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests against Postgres in Docker (skipped without it).
+  2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests on a fresh Postgres database per run (`@codegenie/db/testing`), and a Postgres service in CI.
   3. Docs.
 - [ ] **3. `feat/worker-queue`** — the worker, on Docker sandboxes.
   1. Queue contract in `shared`: queue name, job kinds (`run-job`, `onboard-project`), payloads.

@@ -4,6 +4,7 @@ import { githubInstallations } from "./github-installations-schema";
 import { jobEvents } from "./job-events-schema";
 import { jobs } from "./jobs-schema";
 import { messages } from "./messages-schema";
+import { projectEnvironments } from "./project-environments-schema";
 import { projects } from "./projects-schema";
 import { tasks } from "./tasks-schema";
 
@@ -25,7 +26,23 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     references: [githubInstallations.id],
   }),
   tasks: many(tasks),
+  environments: many(projectEnvironments),
 }));
+
+export const projectEnvironmentsRelations = relations(
+  projectEnvironments,
+  ({ one, many }) => ({
+    project: one(projects, {
+      fields: [projectEnvironments.projectId],
+      references: [projects.id],
+    }),
+    createdBy: one(user, {
+      fields: [projectEnvironments.createdByUserId],
+      references: [user.id],
+    }),
+    jobs: many(jobs),
+  }),
+);
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, {
@@ -42,6 +59,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 
 export const jobsRelations = relations(jobs, ({ one, many }) => ({
   task: one(tasks, { fields: [jobs.taskId], references: [tasks.id] }),
+  environment: one(projectEnvironments, {
+    fields: [jobs.environmentId],
+    references: [projectEnvironments.id],
+  }),
   events: many(jobEvents),
   messages: many(messages),
 }));

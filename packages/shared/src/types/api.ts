@@ -17,14 +17,6 @@ export type GithubInstallation = {
 
 // --- Projects (projects table) ---
 
-export type ProjectSetupConfig = {
-  install?: string;
-  lint?: string;
-  typecheck?: string;
-  test?: string;
-  build?: string;
-};
-
 export type Project = {
   id: string;
   userId: string;
@@ -33,7 +25,6 @@ export type Project = {
   repoOwner: string;
   repoName: string;
   defaultBranch: string;
-  setupConfig: ProjectSetupConfig | null;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
