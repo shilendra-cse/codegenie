@@ -37,7 +37,7 @@ pnpm eval --onboard                           # onboard the repositories again f
 
 ```
 the repository's saved environment (onboarded once with the recommended answers)
-  → runJob: sandbox → checkout → pin commit + task patch → setup → baseline → agent → diff → verify
+  → runTask: sandbox → checkout → pin commit + task patch → setup → baseline → agent → diff → verify
   → grade in the same sandbox → destroy it
   → solved = graded as passed and no check regressed
 ```
@@ -109,14 +109,14 @@ apps/evals/src/
 │   └── environments.ts     saved environment, or onboarding (also when the commit changed)
 ├── run/                    how it runs
 │   ├── run-evals.ts        onboarding per repository, then tasks with a concurrency limit
-│   └── run-task.ts         one attempt: runJob (sandbox kept) → grade → diff saved
+│   └── run-task.ts         one attempt: runTask (sandbox kept) → grade → diff saved
 └── graders/                how it's graded
     ├── grade.ts            picks the grader
     ├── hidden-tests.ts
     └── checks.ts
 ```
 
-The runner gained one option for this: `afterCheckout` (in `runJob` and `runOnboarding`) runs right after checkout, where the harness pins the commit and applies the task's patch.
+The runner gained one option for this: `afterCheckout` (in `runTask` and `runOnboarding`) runs right after checkout, where the harness pins the commit and applies the task's patch.
 
 ## 5. Results
 
@@ -146,5 +146,5 @@ What it shows:
 
 - [ ] Harder tasks: vaguer, ticket-like descriptions; features across several files; bugs that need investigation; manually graded BuyerBook tasks.
 - [ ] `--repeat 3` runs to see whether results are stable.
-- [ ] Faster tasks once jobs get faster (setup snapshots, reused baselines; see the "Not in the MVP" list in [environment.md](./environment.md)): the eval run time is mostly setup.
+- [ ] Faster tasks once runs get faster (setup snapshots, reused baselines; see the "Not in the MVP" list in [environment.md](./environment.md)): the eval run time is mostly setup.
 - [ ] Rerun after every change to the agent's prompt, tools or model, and compare with the baseline above.

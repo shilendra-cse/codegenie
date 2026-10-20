@@ -6,7 +6,7 @@ import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { ensureEnvironment } from "../suite/environments.js";
 import { loadTasks } from "../suite/tasks.js";
-import { runTask } from "./run-task.js";
+import { runEvalTask } from "./run-eval-task.js";
 
 const probe = await dockerSandboxOrSkip("evals");
 await probe?.destroy();
@@ -32,7 +32,7 @@ describe.skipIf(!probe)("eval harness against DockerSandbox", () => {
     ]);
     expect(existsSync(path.join(work, "environment.json"))).toBe(true);
 
-    const fixed = await runTask(task!, {
+    const fixed = await runEvalTask(task!, {
       attempt: 1,
       environment,
       resultsDir: work,
@@ -67,7 +67,7 @@ describe.skipIf(!probe)("eval harness against DockerSandbox", () => {
       "(page - 1) * pageSize",
     );
 
-    const untouched = await runTask(task!, {
+    const untouched = await runEvalTask(task!, {
       attempt: 2,
       environment,
       resultsDir: work,

@@ -6,12 +6,12 @@ See [architecture.md](./architecture.md) for how these tables are used by the se
 
 ---
 
-## 1. Core concept: Task vs Job
+## 1. Core concept: Task vs Run
 
 - **Task** — a unit of work. Owns the conversation, the branch and the PR. ("Add dark mode.")
-- **Job** — one agent execution against a task. The initial run, a follow-up message and a PR review-comment response are all separate jobs on the **same task**: same branch, same PR.
+- **Run** — one agent execution against a task. The initial run, a follow-up message and a PR review-comment response are all separate runs on the **same task**: same branch, same PR.
 
-This keeps follow-ups simple: a new job finds its branch and PR on its task, with no job-to-job chains.
+This keeps follow-ups simple: a new run finds its branch and PR on its task, with no run-to-run chains.
 
 ---
 
@@ -25,10 +25,10 @@ user ─┬─< session                       (Better Auth)
               │
               ├─< project_environments            (environment config versions)
               │         ▲
-              │         └─────────────┐  jobs.environment_id (version a job used)
-              └─< tasks ─┬─< messages │  (messages.job_id nullable)
-                         └─< jobs ────┘
-                               └─< job_events
+              │         └─────────────┐  runs.environment_id (version a run used)
+              └─< tasks ─┬─< messages │  (messages.run_id nullable)
+                         └─< runs ────┘
+                               └─< run_events
 
 webhook_deliveries                      (standalone, idempotency)
 ```
@@ -73,7 +73,7 @@ Constraints: **unique (`user_id`, `repo_github_id`)**. Index: (`user_id`, `creat
 How to install and check the repository lives in `project_environments` (versioned), not on the project.
 
 ### `project_environments`
-A project's environment config: how to install the repository and which checks to run ([environment.md](./environment.md)). Created by onboarding; every job replays the active version.
+A project's environment config: how to install the repository and which checks to run ([environment.md](./environment.md)). Created by onboarding; every run replays the active version.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -83,7 +83,7 @@ A project's environment config: how to install the repository and which checks t
 | `config` | jsonb | the `EnvironmentConfig` (steps, checks, meta) |
 | `source` | enum `environment_source` (`detected`, `ai`, `user`, `mixed`) | how this version was created |
 | `status` | enum `environment_status` (`active`, `superseded`) | |
-| `health` | enum `environment_health` (`ok`, `needs_attention`) | set by jobs when a setup step fails or an uncovered project folder appears |
+| `health` | enum `environment_health` (`ok`, `needs_attention`) | set by runs when a setup step fails or an uncovered project folder appears |
 | `health_reasons` | jsonb (string list), default `[]` | why it needs attention, e.g. `admin/ has its own package.json but isn't covered by the environment.` |
 | `health_updated_at` | timestamptz null | when health was last set |
 | `verified_commit` | text null | commit onboarding verified the config on (from `config.meta.commit`) |
@@ -112,7 +112,7 @@ A unit of work on a project.
 | `source_ref` | text null | e.g. Jira key `ABC-123` |
 | `source_url` | text null | |
 | `base_branch` | text | |
-| `branch_name` | text null | set on first job |
+| `branch_name` | text null | set on first run |
 | `pr_number` | integer null | set on delivery |
 | `pr_url` | text null | |
 | `status` | enum `task_status` (`open`, `pr_open`, `merged`, `closed`) | PR states updated by webhooks |
@@ -120,19 +120,19 @@ A unit of work on a project.
 
 Index: (`project_id`, `created_at`).
 
-### `jobs`
+### `runs`
 One agent execution.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | also used as the BullMQ job id |
 | `task_id` | uuid FK → `tasks.id` | cascade |
-| `trigger` | enum `job_trigger` (`initial`, `follow_up`, `pr_comment`, `retry`) | |
-| `status` | enum `job_status` (`queued`, `running`, `succeeded`, `failed`, `cancelled`) | |
-| `stage` | enum `job_stage` (`prepare`, `checkout`, `setup`, `agent`, `verify`, `deliver`) null | current pipeline stage, for UI |
+| `trigger` | enum `run_trigger` (`initial`, `follow_up`, `pr_comment`, `retry`) | |
+| `status` | enum `run_status` (`queued`, `running`, `succeeded`, `incomplete`, `failed`, `cancelled`) | |
+| `stage` | enum `run_stage` (`prepare`, `checkout`, `setup`, `agent`, `verify`, `deliver`) null | current pipeline stage, for UI |
 | `sandbox_id` | text null | Daytona id; used by the reaper |
-| `environment_id` | uuid FK → `project_environments.id` null | the environment config version this job replayed; set null on delete |
-| `model` | text | model that ran the job |
+| `environment_id` | uuid FK → `project_environments.id` null | the environment config version this run replayed; set null on delete |
+| `model` | text | model the run used |
 | `commit_sha` | text null | |
 | `checks_passed` | boolean null | lint + tests outcome |
 | `summary` | text null | agent's final summary; PR body and follow-up context |
@@ -147,7 +147,7 @@ One agent execution.
 
 Indexes:
 - (`task_id`, `queued_at`)
-- **Partial unique** on (`task_id`) `WHERE status IN ('queued','running')` — at most one active job per task, so two workers can never push to the same branch.
+- **Partial unique** on (`task_id`) `WHERE status IN ('queued','running')` — at most one active run per task, so two workers can never push to the same branch.
 - Partial on (`status`) `WHERE status = 'running'` — reaper scans.
 
 ### `messages`
@@ -157,7 +157,7 @@ The conversation thread on a task.
 |---|---|---|
 | `id` | uuid PK | |
 | `task_id` | uuid FK → `tasks.id` | cascade |
-| `job_id` | uuid FK → `jobs.id` null | job this message triggered or produced; set null on delete |
+| `run_id` | uuid FK → `runs.id` null | run this message triggered or produced; set null on delete |
 | `role` | enum `message_role` (`user`, `assistant`, `system`) | |
 | `author_user_id` | text FK → `user.id` null | null for assistant / PR-comment authored messages |
 | `content` | text | |
@@ -165,18 +165,18 @@ The conversation thread on a task.
 
 Index: (`task_id`, `created_at`).
 
-### `job_events`
+### `run_events`
 Live stream source and audit log.
 
 | Column | Type | Notes |
 |---|---|---|
-| `job_id` | uuid FK → `jobs.id` | cascade |
-| `seq` | integer | 1, 2, 3… per job, assigned by the worker |
-| `type` | text | `tool_start`, `pr_opened`, … (see `JobEvent` in `packages/shared`) |
+| `run_id` | uuid FK → `runs.id` | cascade |
+| `seq` | integer | 1, 2, 3… per run, assigned by the worker |
+| `type` | text | `tool_start`, `pr_opened`, … (see `RunEvent` in `packages/shared`) |
 | `payload` | jsonb, default `{}` | |
 | `created_at` | timestamptz | |
 
-Primary key: **(`job_id`, `seq`)**. A job has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE job_id = $1 AND seq > $lastEventId`. `text_delta` and `agent_step` events are streamed live but **not** persisted.
+Primary key: **(`run_id`, `seq`)**. A run has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE run_id = $1 AND seq > $lastEventId`. `text_delta` and `agent_step` events are streamed live but **not** persisted.
 
 ### `webhook_deliveries`
 Idempotency for GitHub webhooks (GitHub retries deliveries).
@@ -196,8 +196,8 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 - **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
 - **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
-- **Deletion:** cascade `user → projects → tasks → jobs → job_events` and `projects → project_environments`; projects are archived (`archived_at`), not hard-deleted.
-- **Naming:** snake_case tables/columns; one kebab-case schema file per table in `packages/db/src/schema/` (e.g. `job-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
+- **Deletion:** cascade `user → projects → tasks → runs → run_events` and `projects → project_environments`; projects are archived (`archived_at`), not hard-deleted.
+- **Naming:** snake_case tables/columns; one kebab-case schema file per table in `packages/db/src/schema/` (e.g. `run-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
 - **Shared types:** `packages/shared/src/types/api.ts` mirrors these tables for the API and web app; change both together.
 
 ## 5. Migrations
@@ -206,12 +206,12 @@ Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced
 
 The schema, client and migrations live in `packages/db`, shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
 
-`0001_project_environments` added `project_environments` and `jobs.environment_id`, and dropped `projects.setup_config`.
+The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way.
 
 **Tests** that need Postgres use `testDatabaseOrSkip` from `@codegenie/db/testing`: a fresh, migrated database per run, created next to the development one (or on `TEST_DATABASE_URL`) and dropped afterwards; skipped without Postgres, required in CI (which runs a Postgres service).
 
 ## 6. Post-MVP
 
 - `integration_connections` — `user_id`, `provider` (`jira`, `notion`), encrypted tokens, external workspace id, for ticket intake.
-- Onboarding conversations on the website: modeled as a job of kind `environment_setup`, with questions and answers as `job_events` (`question_asked`, `question_answered`).
+- Onboarding conversations on the website: modeled as a run of kind `environment_setup`, with questions and answers as `run_events` (`question_asked`, `question_answered`).
 - Team access to projects (org members) — projects are single-owner in the MVP; nothing in this schema blocks adding a membership table later.

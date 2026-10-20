@@ -1,20 +1,20 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import {
   DbEnvironmentStore,
-  jobEvents,
-  jobs,
+  runEvents,
+  runs,
   messages,
   type Db,
 } from "@codegenie/db";
-import { insertJob, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig, JobEvent } from "@codegenie/shared";
+import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
-import { handleRunJob, type RunJobDeps } from "./run-job.js";
+import { handleRunTask, type RunTaskDeps } from "./run-task.js";
 
-const database = await testDatabaseOrSkip("run-job handler");
+const database = await testDatabaseOrSkip("run-task handler");
 
 const environment = (cwd = "."): EnvironmentConfig => ({
   version: 1,
@@ -43,14 +43,14 @@ function fakeSandbox(failOn?: string) {
   return sandbox;
 }
 
-describe.skipIf(!database)("run-job handler against Postgres", () => {
+describe.skipIf(!database)("run-task handler against Postgres", () => {
   const db = database?.db as Db;
   afterAll(() => database?.drop());
 
   async function setUp(
     options: { environment?: EnvironmentConfig; message?: string } = {},
   ) {
-    const { project, task, job } = await insertJob(db);
+    const { project, task, run } = await insertRun(db);
     if (options.environment) {
       await new DbEnvironmentStore(db).save(
         project.id,
@@ -61,15 +61,15 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     if (options.message) {
       await db.insert(messages).values({
         taskId: task.id,
-        jobId: job.id,
+        runId: run.id,
         role: "user",
         content: options.message,
       });
     }
-    const published: JobEvent[] = [];
+    const published: RunEvent[] = [];
     const publisher: Publisher = {
       async publish(_channel, message) {
-        published.push(JSON.parse(message) as JobEvent);
+        published.push(JSON.parse(message) as RunEvent);
         return 1;
       },
     };
@@ -77,7 +77,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     let sandboxes = 0;
     const depsFor = (script: ScriptedStep[], sandbox = fakeSandbox()) => {
       const { model, resolved } = scriptedModel(script);
-      const value: RunJobDeps = {
+      const value: RunTaskDeps = {
         db,
         publisher,
         log: (_level, message) => logs.push(message),
@@ -91,7 +91,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     };
     return {
       project,
-      job,
+      run,
       published,
       logs,
       depsFor,
@@ -99,30 +99,30 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     };
   }
 
-  const row = async (jobId: string) =>
-    (await db.select().from(jobs).where(eq(jobs.id, jobId)))[0]!;
-  const stored = (jobId: string) =>
+  const row = async (runId: string) =>
+    (await db.select().from(runs).where(eq(runs.id, runId)))[0]!;
+  const stored = (runId: string) =>
     db
       .select()
-      .from(jobEvents)
-      .where(eq(jobEvents.jobId, jobId))
-      .orderBy(asc(jobEvents.seq));
+      .from(runEvents)
+      .where(eq(runEvents.runId, runId))
+      .orderBy(asc(runEvents.seq));
 
-  it("runs a job with the project's environment and records everything", async () => {
-    const { project, job, published, depsFor } = await setUp({
+  it("runs a run with the project's environment and records everything", async () => {
+    const { project, run, published, depsFor } = await setUp({
       environment: environment(),
       message: "Add a GET /health endpoint",
     });
     const { deps, model } = depsFor([finish]);
 
-    const result = await handleRunJob(deps, { jobId: job.id });
+    const result = await handleRunTask(deps, { runId: run.id });
 
     expect(result?.status).toBe("succeeded");
     expect(JSON.stringify(model.doStreamCalls[0]!.prompt)).toContain(
       "Add a GET /health endpoint",
     );
     const active = await new DbEnvironmentStore(db).load(project.id);
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "succeeded",
       environmentId: active!.id,
       sandboxId: "fake-sandbox",
@@ -131,7 +131,7 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
       finishedAt: expect.any(Date),
     });
 
-    const events = await stored(job.id);
+    const events = await stored(run.id);
     expect(events.map((e) => e.seq)).toEqual(events.map((_, i) => i + 1));
     expect(events[0]).toMatchObject({
       type: "stage_changed",
@@ -147,21 +147,21 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     });
   });
 
-  it("uses the task title when the job has no message", async () => {
-    const { job, depsFor } = await setUp({ environment: environment() });
+  it("uses the task title when the run has no message", async () => {
+    const { run, depsFor } = await setUp({ environment: environment() });
     const { deps, model } = depsFor([finish]);
-    await handleRunJob(deps, { jobId: job.id });
+    await handleRunTask(deps, { runId: run.id });
     expect(JSON.stringify(model.doStreamCalls[0]!.prompt)).toContain(
       "Add a /health endpoint",
     );
   });
 
-  it("fails a job whose project hasn't been set up, without a sandbox", async () => {
-    const { job, depsFor, sandboxes } = await setUp();
+  it("fails a run whose project hasn't been set up, without a sandbox", async () => {
+    const { run, depsFor, sandboxes } = await setUp();
     expect(
-      await handleRunJob(depsFor([finish]).deps, { jobId: job.id }),
+      await handleRunTask(depsFor([finish]).deps, { runId: run.id }),
     ).toBeNull();
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "failed",
       errorCode: "no_environment",
       errorMessage:
@@ -170,35 +170,35 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     expect(sandboxes()).toBe(0);
   });
 
-  it("skips a job that isn't queued", async () => {
-    const { job, depsFor, logs, sandboxes } = await setUp({
+  it("skips a run that isn't queued", async () => {
+    const { run, depsFor, logs, sandboxes } = await setUp({
       environment: environment(),
     });
-    await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, job.id));
+    await db.update(runs).set({ status: "running" }).where(eq(runs.id, run.id));
     expect(
-      await handleRunJob(depsFor([finish]).deps, { jobId: job.id }),
+      await handleRunTask(depsFor([finish]).deps, { runId: run.id }),
     ).toBeNull();
-    expect(logs).toEqual(["Skipping a job that isn't queued"]);
+    expect(logs).toEqual(["Skipping a run that isn't queued"]);
     expect(sandboxes()).toBe(0);
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "running",
       startedAt: null,
     });
   });
 
   it("records a failed checkout with an error and a done event", async () => {
-    const { job, depsFor } = await setUp({ environment: environment() });
-    const result = await handleRunJob(
+    const { run, depsFor } = await setUp({ environment: environment() });
+    const result = await handleRunTask(
       depsFor([finish], fakeSandbox("git clone")).deps,
-      { jobId: job.id },
+      { runId: run.id },
     );
 
     expect(result?.status).toBe("failed");
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "failed",
       errorCode: "checkout_failed",
     });
-    const types = (await stored(job.id)).map((e) => [e.type, e.payload]);
+    const types = (await stored(run.id)).map((e) => [e.type, e.payload]);
     expect(types.slice(-2)).toEqual([
       [
         "error",
@@ -212,10 +212,10 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
   });
 
   it("marks the environment when setup reports a problem", async () => {
-    const { project, job, depsFor } = await setUp({
+    const { project, run, depsFor } = await setUp({
       environment: environment("api"),
     });
-    await handleRunJob(depsFor([finish]).deps, { jobId: job.id });
+    await handleRunTask(depsFor([finish]).deps, { runId: run.id });
     expect(
       (await new DbEnvironmentStore(db).load(project.id))!.health,
     ).toMatchObject({
@@ -226,11 +226,11 @@ describe.skipIf(!database)("run-job handler against Postgres", () => {
     });
   });
 
-  it("refuses a job that doesn't exist", async () => {
+  it("refuses a run that doesn't exist", async () => {
     const { depsFor } = await setUp();
     await expect(
-      handleRunJob(depsFor([finish]).deps, {
-        jobId: "00000000-0000-0000-0000-000000000000",
+      handleRunTask(depsFor([finish]).deps, {
+        runId: "00000000-0000-0000-0000-000000000000",
       }),
     ).rejects.toThrow("doesn't exist");
   });

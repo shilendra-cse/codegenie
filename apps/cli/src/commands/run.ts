@@ -1,11 +1,11 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
-import { parseEnvironmentConfig, runJob } from "@codegenie/runner";
+import { parseEnvironmentConfig, runTask } from "@codegenie/runner";
 import { UsageError } from "../args/common.js";
 import { parseCliArgs, RUN_USAGE } from "../args/run-args.js";
 import type { StoredEnvironment } from "@codegenie/shared";
 import { intro, line, oneLine, styleFor } from "@codegenie/terminal";
 import { loadModel } from "../config.js";
-import { createLiveJob } from "../live-job.js";
+import { createLiveRun } from "../live-run.js";
 import { FileEnvironmentStore } from "../store/file-store.js";
 import { repoKey } from "../store/repo-key.js";
 import {
@@ -90,7 +90,7 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     controller.abort();
   });
 
-  const live = options.json ? null : createLiveJob(process.stdout, style);
+  const live = options.json ? null : createLiveRun(process.stdout, style);
   if (live) {
     const where =
       options.source.type === "local"
@@ -114,7 +114,7 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     live.live.start();
   }
 
-  const result = await runJob({
+  const result = await runTask({
     runId: `cli-${Date.now().toString(36)}`,
     task,
     source: options.source,

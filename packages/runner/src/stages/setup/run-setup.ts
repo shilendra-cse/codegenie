@@ -35,7 +35,7 @@ export async function runSetup(
   options: RunSetupOptions,
 ): Promise<PreparedEnvironment> {
   const { runId, emit, environment } = options;
-  emit({ type: "setup_started", jobId: runId, ts: new Date().toISOString() });
+  emit({ type: "setup_started", runId, ts: new Date().toISOString() });
 
   const commit = await headCommit(sandbox);
   const draft = environment ? null : await draftEnvironment(sandbox);
@@ -97,7 +97,7 @@ export async function runSetup(
 
   emit({
     type: "setup_completed",
-    jobId: runId,
+    runId,
     ts: new Date().toISOString(),
     success: setup.health === "ok",
     steps: steps.map(({ name, cwd, status }) => ({ name, cwd, status })),

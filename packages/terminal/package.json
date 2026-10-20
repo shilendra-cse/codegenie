@@ -2,7 +2,7 @@
   "name": "@codegenie/terminal",
   "version": "0.0.0",
   "private": true,
-  "description": "Terminal output shared by the CLI and the evals: colors, layout, spinners, job events",
+  "description": "Terminal output shared by the CLI and the evals: colors, layout, spinners, run events",
   "type": "module",
   "exports": {
     ".": {

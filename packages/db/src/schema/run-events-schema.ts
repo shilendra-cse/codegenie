@@ -7,15 +7,15 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { jobs } from "./jobs-schema";
+import { runs } from "./runs-schema";
 
-export const jobEvents = pgTable(
-  "job_events",
+export const runEvents = pgTable(
+  "run_events",
   {
-    jobId: uuid("job_id")
-      .references(() => jobs.id, { onDelete: "cascade" })
+    runId: uuid("run_id")
+      .references(() => runs.id, { onDelete: "cascade" })
       .notNull(),
-    // 1, 2, 3… per job, assigned by the worker (the job's only writer). Used as the SSE event id.
+    // 1, 2, 3… per run, assigned by the worker (the run's only writer). Used as the SSE event id.
     seq: integer("seq").notNull(),
     type: text("type").notNull(),
     payload: jsonb("payload")
@@ -26,5 +26,5 @@ export const jobEvents = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [primaryKey({ columns: [table.jobId, table.seq] })],
+  (table) => [primaryKey({ columns: [table.runId, table.seq] })],
 );

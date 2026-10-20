@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDb } from "./client.js";
-import { jobs } from "./schema/index.js";
+import { runs } from "./schema/index.js";
 
 describe("createDb", () => {
   it("creates a pool from the url without connecting, with overridable options", async () => {
@@ -13,7 +13,7 @@ describe("createDb", () => {
       idleTimeoutMillis: 30_000,
     });
     expect(pool.totalCount).toBe(0);
-    expect(db.select().from(jobs).toSQL().sql).toContain('from "jobs"');
+    expect(db.select().from(runs).toSQL().sql).toContain('from "runs"');
     await pool.end();
   });
 });

@@ -42,45 +42,45 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 | ID | Story | Acceptance criteria |
 |---|---|---|
 | U4 | As a user, I describe a task on a project and start it. | Free-text prompt (+ optional base branch, default = repo default branch); task appears immediately with status `queued`. |
-| U5 | As a user, I watch the agent work live. | Job view shows stage, tool calls (files read/edited, commands run), streamed reasoning summary; refreshing mid-job resumes without losing history. |
+| U5 | As a user, I watch the agent work live. | Run view shows stage, tool calls (files read/edited, commands run), streamed reasoning summary; refreshing mid-run resumes without losing history. |
 | U6 | As a user, I get a PR when the agent finishes. | PR on branch `codegenie/…` with title, summary of changes and lint/type-check/test results; **draft** if checks fail, **ready** if they pass; link shown in the UI. If no changes were needed, no PR and the agent explains why. |
 | U7 | As a user, I can cancel a running task. | Cancel stops the agent within ~10 s, sandbox is destroyed, status `cancelled`, no PR pushed. |
-| U8 | As a user, I send a follow-up on a task. | Message starts a new job on the same branch; changes are pushed to the same PR. |
-| U9 | As a user, I see my history. | Project page lists tasks with status, PR link, duration and cost; task page shows conversation and all jobs. |
+| U8 | As a user, I send a follow-up on a task. | Message starts a new run on the same branch; changes are pushed to the same PR. |
+| U9 | As a user, I see my history. | Project page lists tasks with status, PR link, duration and cost; task page shows conversation and all runs. |
 
 ### Post-MVP (not required for MVP)
-PR review comments / `@codegenie` mentions triggering jobs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · BYO API key · billing.
+PR review comments / `@codegenie` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · BYO API key · billing.
 
 ## 5. Non-functional requirements
 
 ### Limits (defaults, configurable by env)
 | Limit | Default |
 |---|---|
-| Max wall time per job | 30 min |
-| Max agent steps per job | 150 |
-| Max LLM cost per job | $2 |
-| Concurrent running jobs per user | 1 |
-| Jobs per user per day | 10 (open-signup protection) |
-| Global concurrent jobs | set by worker capacity (start: 3) |
+| Max wall time per run | 30 min |
+| Max agent steps per run | 150 |
+| Max LLM cost per run | $2 |
+| Concurrent runs per user | 1 |
+| Runs per user per day | 10 (open-signup protection) |
+| Global concurrent runs | set by worker capacity (start: 3) |
 
-On hitting a per-job limit the agent stops gracefully and delivers a draft PR marked incomplete.
+On hitting a per-run limit the agent stops gracefully and delivers a draft PR marked incomplete.
 
 ### Security
 - User code runs **only** inside Daytona sandboxes, never on our servers.
 - Sandboxes receive only a repo-scoped GitHub installation token (~1 h TTL); no LLM keys, DB or Redis credentials.
 - The agent never pushes to the default branch or force-pushes.
 - GitHub webhooks are signature-verified; production refuses to start with default secrets.
-- Users can only see and act on their own projects, tasks and jobs.
+- Users can only see and act on their own projects, tasks and runs.
 
 ### Abuse & cost protection (open signup)
 - GitHub-only sign-in for MVP (email/password and Google disabled) — raises the bar for throwaway accounts and is required for the GitHub App anyway.
-- Per-user daily job quota and concurrency limit (above).
+- Per-user daily run quota and concurrency limit (above).
 - Global daily spend cap; when reached, new tasks are rejected with a clear message.
-- Sandboxes always destroyed at job end; auto-stop as backstop.
+- Sandboxes always destroyed at run end; auto-stop as backstop.
 
 ### Reliability
-- A job never stays `running` forever: stalled jobs are failed and their sandboxes deleted by the reaper.
-- Every job ends in exactly one terminal state (`succeeded`, `failed`, `cancelled`) with a reason on failure.
+- A run never stays `running` forever: stalled runs are failed and their sandboxes deleted by the reaper.
+- Every run ends in exactly one terminal state (`succeeded`, `incomplete`, `failed`, `cancelled`) with a reason on failure.
 - No work is silently lost: if push fails, the error is shown.
 
 ### Performance
@@ -89,8 +89,8 @@ On hitting a per-job limit the agent stops gracefully and delivers a draft PR ma
 - Sandbox ready (created, cloned, deps installed) within ~2 min for a typical repo.
 
 ### Observability
-- Per job: duration, steps, tokens, cost, model, outcome — stored and visible.
-- Structured logs with job id across server and worker.
+- Per run: duration, steps, tokens, cost, model, outcome — stored and visible.
+- Structured logs with run id across server and worker.
 
 ## 6. Success criteria (MVP is "done" when)
 
@@ -98,16 +98,16 @@ On hitting a per-job limit the agent stops gracefully and delivers a draft PR ma
 2. On the **eval set** (≥ 10 mid-sized tasks across ≥ 3 JS/TS repos: the author's own projects, e.g. DoDesk and BuyerBook, plus small fixture projects):
    - ≥ 60% produce a PR that is mergeable as-is or with light edits.
    - ≥ 80% end with lint, type-check and tests passing.
-3. Median job: ≤ 15 min and ≤ $1.
+3. Median run: ≤ 15 min and ≤ $1.
 4. The author uses CodeGenie for real tasks on their own projects.
 
 ## 7. Product decisions
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each job records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
-| Environment setup | **In the MVP:** a per-repository environment config created once by guided onboarding (rules → try → AI setup agent → multiple-choice questions → verify → approve) and replayed by every task job. | Setup is the foundation of every job; deterministic replay keeps jobs fast and predictable, and questions solve the cases rules and AI can't. |
-| Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files until the worker exists. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-job audit need the database. |
+| Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each run records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
+| Environment setup | **In the MVP:** a per-repository environment config created once by guided onboarding (rules → try → AI setup agent → multiple-choice questions → verify → approve) and replayed by every task run. | Setup is the foundation of every run; deterministic replay keeps runs fast and predictable, and questions solve the cases rules and AI can't. |
+| Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files until the worker exists. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-run audit need the database. |
 | Future model choice | Introduced together with whoever pays: **tiers** (fast / balanced / best, mapped server-side) with paid plans, and **free choice from the model catalog** with bring-your-own API key. | User choice is low-risk once users carry the cost. The agent already takes the model as a parameter, so no rework is needed. |
 
 ## 8. Open questions

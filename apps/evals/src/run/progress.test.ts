@@ -2,14 +2,14 @@ import { PassThrough } from "node:stream";
 import { plain } from "@codegenie/terminal";
 import { describe, expect, it } from "vitest";
 import { EvalProgress, reason } from "./progress.js";
-import type { TaskResult } from "./run-task.js";
+import type { TaskResult } from "./run-eval-task.js";
 
 const result = (overrides: Partial<TaskResult>): TaskResult => ({
   id: "ts-lib/paginate-bug",
   attempt: 1,
   solved: true,
   grade: { passed: true, detail: "Hidden tests passed." },
-  job: { status: "succeeded" },
+  run: { status: "succeeded" },
   checks: { fixed: 0, regressions: 0, failing: 0 },
   agent: { status: "succeeded", steps: 9, costUsd: 0.0041, summary: null },
   durationMs: 95_000,
@@ -45,19 +45,19 @@ describe("EvalProgress outside a terminal", () => {
     );
     progress.taskEvent("ts-lib/paginate-bug", {
       type: "stage_changed",
-      jobId: "j",
+      runId: "j",
       ts,
       stage: "setup",
     });
     progress.taskEvent("ts-lib/paginate-bug", {
       type: "stage_changed",
-      jobId: "j",
+      runId: "j",
       ts,
       stage: "agent",
     });
     progress.taskEvent("ts-lib/paginate-bug", {
       type: "agent_step",
-      jobId: "j",
+      runId: "j",
       ts,
       steps: 4,
       costUsd: 0.002,
@@ -110,7 +110,7 @@ describe("reason", () => {
         result({
           solved: false,
           agent: null,
-          job: { status: "failed", failedStage: "setup" },
+          run: { status: "failed", failedStage: "setup" },
         }),
       ),
     ).toBe("failed at setup");

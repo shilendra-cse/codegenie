@@ -14,14 +14,14 @@ import {
 import { projectEnvironments } from "./project-environments-schema";
 import { tasks } from "./tasks-schema";
 
-export const jobTriggerEnum = pgEnum("job_trigger", [
+export const runTriggerEnum = pgEnum("run_trigger", [
   "initial",
   "follow_up",
   "pr_comment",
   "retry",
 ]);
 
-export const jobStatusEnum = pgEnum("job_status", [
+export const runStatusEnum = pgEnum("run_status", [
   "queued",
   "running",
   "succeeded",
@@ -30,7 +30,7 @@ export const jobStatusEnum = pgEnum("job_status", [
   "cancelled",
 ]);
 
-export const jobStageEnum = pgEnum("job_stage", [
+export const runStageEnum = pgEnum("run_stage", [
   "prepare",
   "checkout",
   "setup",
@@ -39,16 +39,16 @@ export const jobStageEnum = pgEnum("job_stage", [
   "deliver",
 ]);
 
-export const jobs = pgTable(
-  "jobs",
+export const runs = pgTable(
+  "runs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     taskId: uuid("task_id")
       .references(() => tasks.id, { onDelete: "cascade" })
       .notNull(),
-    trigger: jobTriggerEnum("trigger").notNull(),
-    status: jobStatusEnum("status").notNull().default("queued"),
-    stage: jobStageEnum("stage"),
+    trigger: runTriggerEnum("trigger").notNull(),
+    status: runStatusEnum("status").notNull().default("queued"),
+    stage: runStageEnum("stage"),
     sandboxId: text("sandbox_id"),
     environmentId: uuid("environment_id").references(
       () => projectEnvironments.id,
@@ -73,12 +73,12 @@ export const jobs = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    index("jobs_task_id_queued_at_idx").on(table.taskId, table.queuedAt),
-    // At most one active job per task, so two workers never push to the same branch.
-    uniqueIndex("jobs_one_active_per_task_idx")
+    index("runs_task_id_queued_at_idx").on(table.taskId, table.queuedAt),
+    // At most one active run per task, so two workers never push to the same branch.
+    uniqueIndex("runs_one_active_per_task_idx")
       .on(table.taskId)
       .where(sql`${table.status} in ('queued', 'running')`),
-    index("jobs_running_idx")
+    index("runs_running_idx")
       .on(table.status)
       .where(sql`${table.status} = 'running'`),
   ],

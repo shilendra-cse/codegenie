@@ -7,7 +7,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
-import { jobs } from "./jobs-schema";
+import { runs } from "./runs-schema";
 import { tasks } from "./tasks-schema";
 
 export const messageRoleEnum = pgEnum("message_role", [
@@ -23,7 +23,7 @@ export const messages = pgTable(
     taskId: uuid("task_id")
       .references(() => tasks.id, { onDelete: "cascade" })
       .notNull(),
-    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    runId: uuid("run_id").references(() => runs.id, { onDelete: "set null" }),
     role: messageRoleEnum("role").notNull(),
     authorUserId: text("author_user_id").references(() => user.id, {
       onDelete: "set null",

@@ -1,30 +1,30 @@
-import { jobs, type Db } from "@codegenie/db";
-import type { JobResult } from "@codegenie/runner";
-import type { JobEvent } from "@codegenie/shared";
+import { runs, type Db } from "@codegenie/db";
+import type { RunResult } from "@codegenie/runner";
+import type { RunEvent } from "@codegenie/shared";
 import { and, eq, inArray } from "drizzle-orm";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
-export class JobStateError extends Error {}
+export class RunStateError extends Error {}
 
-export type JobFailure = { code: string; message: string };
+export type RunFailure = { code: string; message: string };
 
-export type JobRecord = {
+export type RunRecord = {
   start(environmentId: string): Promise<void>;
-  observe(event: JobEvent): void;
+  observe(event: RunEvent): void;
   flush(): Promise<void>;
-  /** False when the job was already ended elsewhere (e.g. by the reaper). */
-  finish(result: JobResult): Promise<boolean>;
-  fail(failure: JobFailure): Promise<boolean>;
+  /** False when the run was already ended elsewhere (e.g. by the reaper). */
+  finish(result: RunResult): Promise<boolean>;
+  fail(failure: RunFailure): Promise<boolean>;
 };
 
-type AgentResult = NonNullable<JobResult["agent"]>;
+type AgentResult = NonNullable<RunResult["agent"]>;
 
-export function jobFailure(result: JobResult): JobFailure | null {
+export function runFailure(result: RunResult): RunFailure | null {
   const agent: AgentResult | undefined = result.agent;
   if (result.status === "failed") {
     return {
       code: `${result.failedStage ?? "agent"}_failed`,
-      message: result.error ?? agent?.error ?? "The job failed.",
+      message: result.error ?? agent?.error ?? "The run failed.",
     };
   }
   if (result.status === "incomplete" && agent?.limitReached) {
@@ -36,36 +36,36 @@ export function jobFailure(result: JobResult): JobFailure | null {
   return null;
 }
 
-export function createJobRecord(db: Db, jobId: string): JobRecord {
+export function createRunRecord(db: Db, runId: string): RunRecord {
   const updates = createSerialQueue();
-  const update = (values: Partial<typeof jobs.$inferInsert>) =>
+  const update = (values: Partial<typeof runs.$inferInsert>) =>
     db
-      .update(jobs)
+      .update(runs)
       .set(values)
-      .where(eq(jobs.id, jobId))
+      .where(eq(runs.id, runId))
       .then(() => {});
 
   const end = async (
-    values: Partial<typeof jobs.$inferInsert>,
+    values: Partial<typeof runs.$inferInsert>,
     from: ("queued" | "running")[],
   ) => {
     const ended = await db
-      .update(jobs)
+      .update(runs)
       .set({ ...values, finishedAt: new Date() })
-      .where(and(eq(jobs.id, jobId), inArray(jobs.status, from)))
-      .returning({ id: jobs.id });
+      .where(and(eq(runs.id, runId), inArray(runs.status, from)))
+      .returning({ id: runs.id });
     return ended.length > 0;
   };
 
   return {
     async start(environmentId) {
       const started = await db
-        .update(jobs)
+        .update(runs)
         .set({ status: "running", startedAt: new Date(), environmentId })
-        .where(and(eq(jobs.id, jobId), eq(jobs.status, "queued")))
-        .returning({ id: jobs.id });
+        .where(and(eq(runs.id, runId), eq(runs.status, "queued")))
+        .returning({ id: runs.id });
       if (started.length === 0) {
-        throw new JobStateError(`Job ${jobId} isn't queued.`);
+        throw new RunStateError(`Run ${runId} isn't queued.`);
       }
     },
 
@@ -81,7 +81,7 @@ export function createJobRecord(db: Db, jobId: string): JobRecord {
 
     finish(result) {
       const agent = result.agent;
-      const failure = jobFailure(result);
+      const failure = runFailure(result);
       return end(
         {
           status: result.status,

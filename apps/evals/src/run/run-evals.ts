@@ -2,11 +2,11 @@ import { createWriteStream } from "node:fs";
 import path from "node:path";
 import type { ResolvedModel } from "@codegenie/agent";
 import type { EnvironmentConfig } from "@codegenie/shared";
-import { createJobReporter, plain } from "@codegenie/terminal";
+import { createRunReporter, plain } from "@codegenie/terminal";
 import { ensureEnvironment } from "../suite/environments.js";
 import type { EvalTask } from "../suite/tasks.js";
 import type { EvalProgress } from "./progress.js";
-import { artifactName, runTask, type TaskResult } from "./run-task.js";
+import { artifactName, runEvalTask, type TaskResult } from "./run-eval-task.js";
 
 export type RunEvalsOptions = {
   tasks: EvalTask[];
@@ -34,12 +34,12 @@ async function runLogged(
     `${artifactName(task.id, attempt)}.log`,
   );
   const log = createWriteStream(logFile);
-  const reporter = createJobReporter((line) => log.write(`${line}\n`), plain);
+  const reporter = createRunReporter((line) => log.write(`${line}\n`), plain);
   log.write(`${name}\nTask: ${task.task}\n\n`);
   options.progress.taskStarted(name, logFile);
 
   try {
-    const result = await runTask(task, {
+    const result = await runEvalTask(task, {
       attempt,
       model: options.model,
       environment,

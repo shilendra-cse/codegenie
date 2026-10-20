@@ -25,7 +25,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Cleanup: root `g`/`pnpm` deps, unused JWT/bcrypt config, stale README, web metadata.
 - [x] Package skeletons: `packages/sandbox`, `packages/agent`, `apps/worker`.
 - [x] New Drizzle schema per [database.md](./database.md); delete `0000`/`0001`; generate one clean initial migration.
-- [x] Update `packages/shared` types (Task, Job, Message, JobEvent, enums) to match the schema.
+- [x] Update `packages/shared` types (Task, Run, Message, RunEvent, enums) to match the schema.
 - [x] Remove `WORKSPACES_ROOT` / `lib/workspaces.ts`.
 
 **Done when:** CI is green on `main`; `pnpm setup` from scratch produces a migrated DB; `pnpm dev:*` runs.
@@ -38,9 +38,9 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Tools rebuilt on `Sandbox` in `packages/agent` ([agent.md](./agent.md)): `list_files`, `read_file`, `search`, `edit_file` (unique match), `write_file`, `bash`, `run_checks`, `finish_task`; output truncation.
 - [x] Agent loop: native SDK tool messages, model catalog (platform-controlled), step/time/cost limits with forced wrap-up, stop only on `finish_task`, `AbortSignal` cancellation, cache-friendly context compaction ([agent.md](./agent.md)).
 - [x] Environment setup in `packages/runner` (setup stage): pluggable ecosystem detection (Node), package manager, frozen-then-fallback install, lint/typecheck/test/build checks; result passed to the agent's prompt and `run_checks`; `AGENTS.md` read into the prompt ([runner.md](./runner.md)). `.codegenie.yml` deferred.
-- [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running the full job via the runner (`runJob`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
-- [x] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every job.
-  - [x] **A.** Config type + schema; `apply` / `validate`; jobs replay the config (`--environment`, `--save-environment`); baseline check run + before/after comparison in verify (`--no-baseline-checks`); files written by the first check run are part of the baseline, and the diff is taken before verify; rules-only draft, auto-approved inside the job. Standalone setup comes with D.
+- [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running a task end to end via the runner (`runTask`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
+- [x] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every run.
+  - [x] **A.** Config type + schema; `apply` / `validate`; runs replay the config (`--environment`, `--save-environment`); baseline check run + before/after comparison in verify (`--no-baseline-checks`); files written by the first check run are part of the baseline, and the diff is taken before verify; rules-only draft, auto-approved inside the run. Standalone setup comes with D.
   - [x] **B.** Multi-project draft rules (workspaces, independent sub-projects, orchestration-only root).
   - [x] **C.** Setup agent (`try_environment`, `ask_user`, `finish_setup`); onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>`.
     - [x] **C1.** Setup agent and its tools on a loop shared with the task agent.
@@ -56,13 +56,13 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 **Done when:** eval runs end-to-end locally and produces a baseline score. (Targets from requirements §6 are tracked from here on.)
 
 ### Phase 2 — Worker, queue, Daytona
-**Goal:** a queued job runs the full pipeline in a Daytona sandbox, with events persisted and published.
+**Goal:** a queued run goes through the full pipeline in a Daytona sandbox, with events persisted and published.
 
 Decisions:
 - The database code moves to `packages/db` so the server and the worker share one schema ([architecture.md](./architecture.md)).
 - The worker is built and tested with Docker sandboxes first; Daytona comes after it (needs a Daytona account and API key by then).
-- The worker can onboard a project (`onboard-project` job, recommended answers like `agent:setup --yes`): the only way to set a project up before the website. Interactive onboarding in the browser stays in Phase 4.
-- The worker side of cancellation (a Redis message aborts the job and removes the sandbox) comes now; the Cancel button and API in Phase 4.
+- The worker can onboard a project (`onboard-project` work, recommended answers like `agent:setup --yes`): the only way to set a project up before the website. Interactive onboarding in the browser stays in Phase 4.
+- The worker side of cancellation (a Redis message aborts the run and removes the sandbox) comes now; the Cancel button and API in Phase 4.
 - Public repositories only: private ones need the GitHub App token (Phase 3).
 
 Branches, each built in small batches (see Ways of working):
@@ -71,17 +71,17 @@ Branches, each built in small batches (see Ways of working):
   1. `packages/db`: Drizzle schema, migrations, `drizzle.config` and `createDb(url)` moved from `apps/server/src/db/`; the server imports `@codegenie/db`; db scripts run from the package. (Planned as two batches; one, since a half-moved schema doesn't compile.)
   2. Docs.
 - [x] **2. `feat/db-environments`** — environments in Postgres, the same `EnvironmentStore` as the CLI's file store, keyed by project id ([database.md](./database.md)).
-  1. Schema + migration: `project_environments`, `jobs.environment_id`, drop `projects.setup_config` if present.
+  1. Schema + migration: `project_environments`, `runs.environment_id`, drop `projects.setup_config` if present.
   2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests on a fresh Postgres database per run (`@codegenie/db/testing`), and a Postgres service in CI.
   3. Docs.
 - [ ] **3. `feat/worker-queue`** — the worker, on Docker sandboxes.
-  1. Queue contract in `shared`: queue name, job kinds (`run-job`, `onboard-project`), payloads.
-  2. Event sink: every event into `job_events` (`seq` 1, 2, 3…) and published on Redis `job:{id}`; `text_delta` and `agent_step` published only.
-  3. Job lifecycle: `jobs` status, stage, sandbox id, environment version, summary, usage, errors, timestamps.
-  4. `run-job` handler: load job, task, project and the active environment (clear error without one); `runJob`; record the result; mark health.
+  1. Queue contract in `shared`: queue name, work kinds (`run-task`, `onboard-project`), payloads.
+  2. Event sink: every event into `run_events` (`seq` 1, 2, 3…) and published on Redis `run:{id}`; `text_delta` and `agent_step` published only.
+  3. Run lifecycle: `runs` status, stage, sandbox id, environment version, summary, usage, errors, timestamps.
+  4. `run-task` handler: load run, task, project and the active environment (clear error without one); `runTask`; record the result; mark health.
   5. `onboard-project` handler: `runOnboarding` with recommended answers; save as the project's next environment version.
-  6. BullMQ consumer: concurrency, graceful shutdown, per-job limits (30 min / 150 steps / $2), cancellation via Redis.
-  7. `pnpm worker:enqueue`: create project, task and job rows for a public repository and queue them; Docker test of the whole loop with the scripted agent.
+  6. BullMQ consumer: concurrency, graceful shutdown, per-run limits (30 min / 150 steps / $2), cancellation via Redis.
+  7. `pnpm worker:enqueue`: create project, task and run rows for a public repository and queue them; Docker test of the whole loop with the scripted agent.
   8. Docs.
 - [ ] **4. `feat/daytona-sandbox`** — needs a Daytona account.
   1. `DaytonaSandbox` (exec, files, destroy) with a mocked SDK in tests.
@@ -90,11 +90,11 @@ Branches, each built in small batches (see Ways of working):
   4. Integration test against Daytona (skipped without a key).
   5. Docs (`sandbox.md`).
 - [ ] **5. `feat/reaper`**
-  1. Stalled jobs: running jobs whose worker died are marked `failed`.
-  2. Orphaned sandboxes (by job label, Docker and Daytona) with no running job are deleted.
+  1. Stalled runs: runs still `running` whose worker died are marked `failed`.
+  2. Orphaned sandboxes (by run label, Docker and Daytona) whose run is no longer running are deleted.
   3. Docs.
 
-**Done when:** a script-enqueued job runs in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill.
+**Done when:** a script-enqueued run executes in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill.
 **Needs:** Daytona account (branch 4).
 **Known issue:** production builds of the server and worker don't run yet (`tsc` keeps the `@/…` path aliases, which plain Node can't resolve; development runs through `tsx`). Fixed with the deploy work in Phase 5.
 
@@ -108,17 +108,17 @@ Branches, each built in small batches (see Ways of working):
 - [ ] Repo listing from installations.
 - [ ] Deliver stage: commit as `codegenie[bot]`, push, open draft/ready PR with summary + checks; no-diff path; `pull_request` webhook updates `tasks.status`.
 
-**Done when:** a job on a test repo opens a correct PR; uninstalling/suspending the App is reflected in the DB.
+**Done when:** a run on a test repo opens a correct PR; uninstalling/suspending the App is reflected in the DB.
 **Needs:** GitHub App (dev), smee.io or cloudflared tunnel.
 
 ### Phase 4 — API & UI
 **Goal:** the full prompt → PR flow from the browser. *(U3, U4, U5, U6, U7, U9, U10)*
 
-- [ ] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /jobs/:id`, `GET /jobs/:id/events` (SSE + replay), `POST /jobs/:id/cancel`; OpenAPI updated.
+- [ ] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /runs/:id`, `GET /runs/:id/events` (SSE + replay), `POST /runs/:id/cancel`; OpenAPI updated.
 - [ ] Authorization: users only access their own resources.
-- [ ] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live job view (stage, tool calls, summary, PR link, cancel), task page (conversation + jobs).
+- [ ] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live run view (stage, tool calls, summary, PR link, cancel), task page (conversation + runs).
 - [ ] API base URL via env; `/api/*` rewrite in Next.js.
-- [ ] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` job events); question cards; config panel with versions and rollback; "needs attention" banner.
+- [ ] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` run events); question cards; config panel with versions and rollback; "needs attention" banner.
 - [ ] Playwright smoke test (sign in → task → events → PR link) with a mocked model.
 
 **Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally.
@@ -126,9 +126,9 @@ Branches, each built in small batches (see Ways of working):
 ### Phase 5 — MVP launch
 **Goal:** live, protected, open for signup. *(U8 + non-functional requirements)*
 
-- [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` job on the same branch/PR. *(U8)*
-- [ ] Quotas: 1 concurrent job/user, 10 jobs/user/day, global daily spend cap with clear rejection message.
-- [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with job id.
+- [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same branch/PR. *(U8)*
+- [ ] Quotas: 1 concurrent run/user, 10 runs/user/day, global daily spend cap with clear rejection message.
+- [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with run id.
 - [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
 - [ ] Deploy: Vercel (web), Railway (api, worker, Postgres, Redis), prod GitHub App, custom domain, per-service secrets, migrations as release step.
 - [ ] Re-run eval against production config.
@@ -137,7 +137,7 @@ Branches, each built in small batches (see Ways of working):
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · faster jobs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk job, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
+PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
 
 ## 3. Ways of working
 
@@ -172,8 +172,8 @@ PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan ap
 | Risk | Mitigation |
 |---|---|
 | Agent unreliable on unfamiliar repos | Eval set from Phase 1; setup detection + `AGENTS.md`; iterate on tools/prompt against measured scores |
-| LLM cost from open signup | Per-job and per-user limits, global spend cap, GitHub-only sign-in |
+| LLM cost from open signup | Per-run and per-user limits, global spend cap, GitHub-only sign-in |
 | Environment setup failures | Restrict MVP to JS/TS without external services; surface setup errors to the agent |
-| Slow jobs (setup dominates) | Measured: 6–10 min per DoDesk job, mostly installs and checks. Post-MVP: setup snapshots and reused baselines ([environment.md](./environment.md)); meanwhile `--no-baseline-checks` |
+| Slow runs (setup dominates) | Measured: 6–10 min per DoDesk run, mostly installs and checks. Post-MVP: setup snapshots and reused baselines ([environment.md](./environment.md)); meanwhile `--no-baseline-checks` |
 | Sandbox leaks (cost) | Destroy in `finally`, auto-stop, reaper |
 | Scope creep | Requirements doc is the scope; anything else goes to Phase 6+ |

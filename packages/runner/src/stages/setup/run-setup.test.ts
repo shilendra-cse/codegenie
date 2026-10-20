@@ -1,5 +1,5 @@
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig, JobEvent } from "@codegenie/shared";
+import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
 import { runSetup } from "./run-setup.js";
 
@@ -26,9 +26,9 @@ function run(
   fake: FakeSandbox,
   extra: Partial<Parameters<typeof runSetup>[1]> = {},
 ) {
-  const events: JobEvent[] = [];
+  const events: RunEvent[] = [];
   const result = runSetup(fake, {
-    runId: "job-1",
+    runId: "run-1",
     emit: (e) => events.push(e),
     baselineChecks: true,
     ...extra,

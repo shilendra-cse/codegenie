@@ -1,5 +1,5 @@
 {
-  "id": "d7b0ee0f-4088-49b5-889a-6980fa1521e6",
+  "id": "cd7ce5a2-db87-4899-bf1d-0aa62b8f5700",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -445,12 +445,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "setup_config": {
-          "name": "setup_config",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "archived_at": {
           "name": "archived_at",
           "type": "timestamp with time zone",
@@ -534,6 +528,185 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_environments": {
+      "name": "project_environments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "environment_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "environment_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "health": {
+          "name": "health",
+          "type": "environment_health",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ok'"
+        },
+        "health_reasons": {
+          "name": "health_reasons",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "health_updated_at": {
+          "name": "health_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_commit": {
+          "name": "verified_commit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "project_environments_project_id_version_idx": {
+          "name": "project_environments_project_id_version_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "project_environments_one_active_idx": {
+          "name": "project_environments_one_active_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"project_environments\".\"status\" = 'active'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "project_environments_project_id_created_at_idx": {
+          "name": "project_environments_project_id_created_at_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "project_environments_project_id_projects_id_fk": {
+          "name": "project_environments_project_id_projects_id_fk",
+          "tableFrom": "project_environments",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "project_environments_created_by_user_id_user_id_fk": {
+          "name": "project_environments_created_by_user_id_user_id_fk",
+          "tableFrom": "project_environments",
+          "tableTo": "user",
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -691,8 +864,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.jobs": {
-      "name": "jobs",
+    "public.runs": {
+      "name": "runs",
       "schema": "",
       "columns": {
         "id": {
@@ -710,14 +883,14 @@
         },
         "trigger": {
           "name": "trigger",
-          "type": "job_trigger",
+          "type": "run_trigger",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
         "status": {
           "name": "status",
-          "type": "job_status",
+          "type": "run_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -725,7 +898,7 @@
         },
         "stage": {
           "name": "stage",
-          "type": "job_stage",
+          "type": "run_stage",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
@@ -733,6 +906,12 @@
         "sandbox_id": {
           "name": "sandbox_id",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "environment_id": {
+          "name": "environment_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -821,8 +1000,8 @@
         }
       },
       "indexes": {
-        "jobs_task_id_queued_at_idx": {
-          "name": "jobs_task_id_queued_at_idx",
+        "runs_task_id_queued_at_idx": {
+          "name": "runs_task_id_queued_at_idx",
           "columns": [
             {
               "expression": "task_id",
@@ -842,8 +1021,8 @@
           "method": "btree",
           "with": {}
         },
-        "jobs_one_active_per_task_idx": {
-          "name": "jobs_one_active_per_task_idx",
+        "runs_one_active_per_task_idx": {
+          "name": "runs_one_active_per_task_idx",
           "columns": [
             {
               "expression": "task_id",
@@ -853,13 +1032,13 @@
             }
           ],
           "isUnique": true,
-          "where": "\"jobs\".\"status\" in ('queued', 'running')",
+          "where": "\"runs\".\"status\" in ('queued', 'running')",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "jobs_running_idx": {
-          "name": "jobs_running_idx",
+        "runs_running_idx": {
+          "name": "runs_running_idx",
           "columns": [
             {
               "expression": "status",
@@ -869,16 +1048,16 @@
             }
           ],
           "isUnique": false,
-          "where": "\"jobs\".\"status\" = 'running'",
+          "where": "\"runs\".\"status\" = 'running'",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "jobs_task_id_tasks_id_fk": {
-          "name": "jobs_task_id_tasks_id_fk",
-          "tableFrom": "jobs",
+        "runs_task_id_tasks_id_fk": {
+          "name": "runs_task_id_tasks_id_fk",
+          "tableFrom": "runs",
           "tableTo": "tasks",
           "columnsFrom": [
             "task_id"
@@ -887,6 +1066,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "runs_environment_id_project_environments_id_fk": {
+          "name": "runs_environment_id_project_environments_id_fk",
+          "tableFrom": "runs",
+          "tableTo": "project_environments",
+          "columnsFrom": [
+            "environment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -913,8 +1105,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "job_id": {
-          "name": "job_id",
+        "run_id": {
+          "name": "run_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -983,12 +1175,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "messages_job_id_jobs_id_fk": {
-          "name": "messages_job_id_jobs_id_fk",
+        "messages_run_id_runs_id_fk": {
+          "name": "messages_run_id_runs_id_fk",
           "tableFrom": "messages",
-          "tableTo": "jobs",
+          "tableTo": "runs",
           "columnsFrom": [
-            "job_id"
+            "run_id"
           ],
           "columnsTo": [
             "id"
@@ -1016,12 +1208,12 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.job_events": {
-      "name": "job_events",
+    "public.run_events": {
+      "name": "run_events",
       "schema": "",
       "columns": {
-        "job_id": {
-          "name": "job_id",
+        "run_id": {
+          "name": "run_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1055,12 +1247,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "job_events_job_id_jobs_id_fk": {
-          "name": "job_events_job_id_jobs_id_fk",
-          "tableFrom": "job_events",
-          "tableTo": "jobs",
+        "run_events_run_id_runs_id_fk": {
+          "name": "run_events_run_id_runs_id_fk",
+          "tableFrom": "run_events",
+          "tableTo": "runs",
           "columnsFrom": [
-            "job_id"
+            "run_id"
           ],
           "columnsTo": [
             "id"
@@ -1070,10 +1262,10 @@
         }
       },
       "compositePrimaryKeys": {
-        "job_events_job_id_seq_pk": {
-          "name": "job_events_job_id_seq_pk",
+        "run_events_run_id_seq_pk": {
+          "name": "run_events_run_id_seq_pk",
           "columns": [
-            "job_id",
+            "run_id",
             "seq"
           ]
         }
@@ -1125,6 +1317,32 @@
         "organization"
       ]
     },
+    "public.environment_health": {
+      "name": "environment_health",
+      "schema": "public",
+      "values": [
+        "ok",
+        "needs_attention"
+      ]
+    },
+    "public.environment_source": {
+      "name": "environment_source",
+      "schema": "public",
+      "values": [
+        "detected",
+        "ai",
+        "user",
+        "mixed"
+      ]
+    },
+    "public.environment_status": {
+      "name": "environment_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "superseded"
+      ]
+    },
     "public.task_source": {
       "name": "task_source",
       "schema": "public",
@@ -1144,8 +1362,8 @@
         "closed"
       ]
     },
-    "public.job_stage": {
-      "name": "job_stage",
+    "public.run_stage": {
+      "name": "run_stage",
       "schema": "public",
       "values": [
         "prepare",
@@ -1156,19 +1374,20 @@
         "deliver"
       ]
     },
-    "public.job_status": {
-      "name": "job_status",
+    "public.run_status": {
+      "name": "run_status",
       "schema": "public",
       "values": [
         "queued",
         "running",
         "succeeded",
+        "incomplete",
         "failed",
         "cancelled"
       ]
     },
-    "public.job_trigger": {
-      "name": "job_trigger",
+    "public.run_trigger": {
+      "name": "run_trigger",
       "schema": "public",
       "values": [
         "initial",

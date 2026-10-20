@@ -66,25 +66,25 @@ export type CreateTaskRequest = {
 
 export type CreateTaskResponse = {
   taskId: string;
-  jobId: string;
+  runId: string;
   messageId: string;
 };
 
-/** Follow-up message on an existing task; starts a new job on the same branch/PR. */
+/** Follow-up message on an existing task; starts a new run on the same branch/PR. */
 export type CreateTaskMessageRequest = {
   content: string;
 };
 
 export type CreateTaskMessageResponse = {
-  jobId: string;
+  runId: string;
   messageId: string;
 };
 
-// --- Jobs (jobs table) ---
+// --- Runs (runs table) ---
 
-export type JobTrigger = "initial" | "follow_up" | "pr_comment" | "retry";
+export type RunTrigger = "initial" | "follow_up" | "pr_comment" | "retry";
 
-export type JobStatus =
+export type RunStatus =
   | "queued"
   | "running"
   | "succeeded"
@@ -92,7 +92,9 @@ export type JobStatus =
   | "failed"
   | "cancelled";
 
-export type JobStage =
+export type FinalRunStatus = Exclude<RunStatus, "queued" | "running">;
+
+export type RunStage =
   | "prepare"
   | "checkout"
   | "setup"
@@ -100,12 +102,12 @@ export type JobStage =
   | "verify"
   | "deliver";
 
-export type Job = {
+export type Run = {
   id: string;
   taskId: string;
-  trigger: JobTrigger;
-  status: JobStatus;
-  stage: JobStage | null;
+  trigger: RunTrigger;
+  status: RunStatus;
+  stage: RunStage | null;
   sandboxId: string | null;
   model: string;
   commitSha: string | null;
@@ -130,7 +132,7 @@ export type MessageRole = "user" | "assistant" | "system";
 export type Message = {
   id: string;
   taskId: string;
-  jobId: string | null;
+  runId: string | null;
   role: MessageRole;
   authorUserId: string | null;
   content: string;
@@ -145,64 +147,64 @@ export type ProjectDetail = Project & {
 
 export type TaskDetail = Task & {
   messages: Message[];
-  jobs: Job[];
+  runs: Run[];
 };
 
-// --- Job events audit (job_events table) ---
+// --- Run events audit (run_events table) ---
 
-export type JobEventRecord = {
-  jobId: string;
-  /** 1, 2, 3… per job; also the SSE event id. */
+export type RunEventRecord = {
+  runId: string;
+  /** 1, 2, 3… per run; also the SSE event id. */
   seq: number;
-  type: JobEvent["type"];
+  type: RunEvent["type"];
   payload: Record<string, unknown>;
   createdAt: string;
 };
 
-export type ListJobEventsResponse = {
-  events: JobEventRecord[];
+export type ListRunEventsResponse = {
+  events: RunEventRecord[];
   /** Pass as `after` to fetch the next page. */
   nextSeq?: number;
 };
 
-// --- Job events stream (Redis pub/sub + SSE) ---
+// --- Run events stream (Redis pub/sub + SSE) ---
 
-export type JobEventBase = {
-  jobId: string;
+export type RunEventBase = {
+  runId: string;
   /** Absent for events that are streamed but not persisted (text_delta). */
   seq?: number;
   ts: string;
 };
 
-export type JobEventStageChanged = JobEventBase & {
+export type RunEventStageChanged = RunEventBase & {
   type: "stage_changed";
-  stage: JobStage;
+  stage: RunStage;
 };
 
-export type JobEventSandboxCreated = JobEventBase & {
+export type RunEventSandboxCreated = RunEventBase & {
   type: "sandbox_created";
   sandboxId: string;
 };
 
-export type JobEventSetupStarted = JobEventBase & {
+export type RunEventSetupStarted = RunEventBase & {
   type: "setup_started";
 };
 
-export type JobEventSetupCompleted = JobEventBase & {
+export type RunEventSetupCompleted = RunEventBase & {
   type: "setup_completed";
   success: boolean;
   steps: { name: string; cwd: string; status: StepStatus }[];
   checks: { name: string; cwd: string; status?: CheckStatus }[];
 };
 
-export type JobEventToolStart = JobEventBase & {
+export type RunEventToolStart = RunEventBase & {
   type: "tool_start";
   toolCallId: string;
   toolName: string;
   input?: unknown;
 };
 
-export type JobEventToolEnd = JobEventBase & {
+export type RunEventToolEnd = RunEventBase & {
   type: "tool_end";
   toolCallId: string;
   toolName: string;
@@ -210,96 +212,95 @@ export type JobEventToolEnd = JobEventBase & {
 };
 
 /** After each model step: progress of the agent run so far. Streamed, not persisted. */
-export type JobEventAgentStep = JobEventBase & {
+export type RunEventAgentStep = RunEventBase & {
   type: "agent_step";
   steps: number;
   costUsd: number;
 };
 
-export type JobEventTextDelta = JobEventBase & {
+export type RunEventTextDelta = RunEventBase & {
   type: "text_delta";
   delta: string;
 };
 
-export type JobEventBranchCreated = JobEventBase & {
+export type RunEventBranchCreated = RunEventBase & {
   type: "branch_created";
   branchName: string;
 };
 
-export type JobEventLintCompleted = JobEventBase & {
+export type RunEventLintCompleted = RunEventBase & {
   type: "lint_completed";
   success: boolean;
 };
 
-export type JobEventTestStarted = JobEventBase & {
+export type RunEventTestStarted = RunEventBase & {
   type: "test_started";
 };
 
-export type JobEventTestPassed = JobEventBase & {
+export type RunEventTestPassed = RunEventBase & {
   type: "test_passed";
 };
 
-export type JobEventTestFailed = JobEventBase & {
+export type RunEventTestFailed = RunEventBase & {
   type: "test_failed";
   message?: string;
 };
 
-export type JobEventBuildCompleted = JobEventBase & {
+export type RunEventBuildCompleted = RunEventBase & {
   type: "build_completed";
   success: boolean;
 };
 
-export type JobEventGitPush = JobEventBase & {
+export type RunEventGitPush = RunEventBase & {
   type: "git_push";
   branchName: string;
   sha: string;
 };
 
-export type JobEventPrOpened = JobEventBase & {
+export type RunEventPrOpened = RunEventBase & {
   type: "pr_opened";
   prNumber: number;
   prUrl: string;
   draft: boolean;
 };
 
-export type JobEventPreviewReady = JobEventBase & {
+export type RunEventPreviewReady = RunEventBase & {
   type: "preview_ready";
   url: string;
 };
 
-export type JobEventError = JobEventBase & {
+export type RunEventError = RunEventBase & {
   type: "error";
   code?: string;
   message: string;
 };
 
-export type JobEventDone = JobEventBase & {
+export type RunEventDone = RunEventBase & {
   type: "done";
-  status: Exclude<JobStatus, "queued" | "running">;
+  status: FinalRunStatus;
 };
 
-export type JobEvent =
-  | JobEventStageChanged
-  | JobEventSandboxCreated
-  | JobEventSetupStarted
-  | JobEventSetupCompleted
-  | JobEventToolStart
-  | JobEventToolEnd
-  | JobEventTextDelta
-  | JobEventAgentStep
-  | JobEventBranchCreated
-  | JobEventLintCompleted
-  | JobEventTestStarted
-  | JobEventTestPassed
-  | JobEventTestFailed
-  | JobEventBuildCompleted
-  | JobEventGitPush
-  | JobEventPrOpened
-  | JobEventPreviewReady
-  | JobEventError
-  | JobEventDone;
+export type RunEvent =
+  | RunEventStageChanged
+  | RunEventSandboxCreated
+  | RunEventSetupStarted
+  | RunEventSetupCompleted
+  | RunEventToolStart
+  | RunEventToolEnd
+  | RunEventTextDelta
+  | RunEventAgentStep
+  | RunEventBranchCreated
+  | RunEventLintCompleted
+  | RunEventTestStarted
+  | RunEventTestPassed
+  | RunEventTestFailed
+  | RunEventBuildCompleted
+  | RunEventGitPush
+  | RunEventPrOpened
+  | RunEventPreviewReady
+  | RunEventError
+  | RunEventDone;
 
-/** Redis channel: `job:{jobId}` */
-export function jobChannel(jobId: string): string {
-  return `job:${jobId}`;
+export function runChannel(runId: string): string {
+  return `run:${runId}`;
 }
