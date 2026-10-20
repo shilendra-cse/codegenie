@@ -10,15 +10,15 @@ vi.mock("@codegenie/runner", () => ({
   }),
 }));
 
-const { handleRunJob } = await import("./run-job.js");
-const database = await testDatabaseOrSkip("run-job handler crash");
+const { handleRunTask } = await import("./run-task.js");
+const database = await testDatabaseOrSkip("run-task handler crash");
 
-describe.skipIf(!database)("run-job handler when runTask throws", () => {
+describe.skipIf(!database)("run-task handler when runTask throws", () => {
   const db = database?.db as Db;
   afterAll(() => database?.drop());
 
-  it("fails the job with the error and passes it on", async () => {
-    const { project, run: job } = await insertRun(db);
+  it("fails the run with the error and passes it on", async () => {
+    const { project, run } = await insertRun(db);
     await new DbEnvironmentStore(db).save(
       project.id,
       {
@@ -31,18 +31,18 @@ describe.skipIf(!database)("run-job handler when runTask throws", () => {
     );
 
     await expect(
-      handleRunJob(
+      handleRunTask(
         {
           db,
           publisher: { publish: async () => 1 },
           log: () => {},
           model: scriptedModel([]).resolved,
         },
-        { runId: job.id },
+        { runId: run.id },
       ),
     ).rejects.toThrow("runner bug");
 
-    const [row] = await db.select().from(runs).where(eq(runs.id, job.id));
+    const [row] = await db.select().from(runs).where(eq(runs.id, run.id));
     expect(row).toMatchObject({
       status: "failed",
       errorCode: "worker_error",

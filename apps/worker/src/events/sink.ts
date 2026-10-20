@@ -17,10 +17,10 @@ export type EventSink = {
   flush(): Promise<void>;
 };
 
-// The worker is a job's only writer, so it can number the events itself.
+// The worker is a run's only writer, so it can number the events itself.
 export function createEventSink(
   deps: { db: Db; publisher: Publisher },
-  jobId: string,
+  runId: string,
 ): EventSink {
   let seq = 0;
   const writes = createSerialQueue();
@@ -28,19 +28,19 @@ export function createEventSink(
   const write = async (event: RunEvent) => {
     const { type, runId: _runId, ts, seq: _seq, ...payload } = event;
     if (LIVE_ONLY.has(type)) {
-      await deps.publisher.publish(runChannel(jobId), JSON.stringify(event));
+      await deps.publisher.publish(runChannel(runId), JSON.stringify(event));
       return;
     }
     const numbered = { ...event, seq: seq + 1 };
     await deps.db.insert(runEvents).values({
-      runId: jobId,
+      runId,
       seq: numbered.seq,
       type,
       payload,
       createdAt: new Date(ts),
     });
     seq = numbered.seq;
-    await deps.publisher.publish(runChannel(jobId), JSON.stringify(numbered));
+    await deps.publisher.publish(runChannel(runId), JSON.stringify(numbered));
   };
 
   return {

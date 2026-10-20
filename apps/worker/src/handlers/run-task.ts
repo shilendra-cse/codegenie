@@ -12,79 +12,79 @@ import {
   type Publisher,
 } from "../events/sink.js";
 import {
-  createJobRecord,
-  jobFailure,
-  JobStateError,
-  type JobRecord,
-} from "../jobs/job-record.js";
+  createRunRecord,
+  runFailure,
+  RunStateError,
+  type RunRecord,
+} from "../runs/run-record.js";
 import type { Log } from "../lib/log.js";
 
-export type RunJobDeps = {
+export type RunTaskDeps = {
   db: Db;
   publisher: Publisher;
   log: Log;
 } & Pick<RunTaskOptions, "model" | "limits" | "createSandbox">;
 
-async function loadJob(db: Db, jobId: string) {
-  const job = await db.query.runs.findFirst({
-    where: eq(runs.id, jobId),
+async function loadRun(db: Db, runId: string) {
+  const run = await db.query.runs.findFirst({
+    where: eq(runs.id, runId),
     with: { task: { with: { project: true } } },
   });
-  if (!job) throw new Error(`Job ${jobId} doesn't exist.`);
+  if (!run) throw new Error(`Run ${runId} doesn't exist.`);
   const message = await db.query.messages.findFirst({
-    where: and(eq(messages.runId, jobId), eq(messages.role, "user")),
+    where: and(eq(messages.runId, runId), eq(messages.role, "user")),
     orderBy: desc(messages.createdAt),
   });
-  return { ...job, instruction: message?.content ?? job.task.title };
+  return { ...run, instruction: message?.content ?? run.task.title };
 }
 
-async function endJob(
-  deps: Pick<RunJobDeps, "log">,
-  job: {
+async function endRun(
+  deps: Pick<RunTaskDeps, "log">,
+  run: {
     id: string;
     emit: (event: RunEvent) => void;
-    record: JobRecord;
+    record: RunRecord;
     sink: EventSink;
   },
   result: RunResult,
 ) {
   const ts = new Date().toISOString();
-  const failure = jobFailure(result);
+  const failure = runFailure(result);
   if (result.status === "failed" && failure) {
-    job.emit({ type: "error", runId: job.id, ts, ...failure });
+    run.emit({ type: "error", runId: run.id, ts, ...failure });
   }
-  job.emit({ type: "done", runId: job.id, ts, status: result.status });
+  run.emit({ type: "done", runId: run.id, ts, status: result.status });
 
-  await job.record.flush();
+  await run.record.flush();
   try {
-    await job.sink.flush();
+    await run.sink.flush();
   } catch (error) {
-    deps.log("warn", "Some job events weren't saved or published", {
-      runId: job.id,
+    deps.log("warn", "Some run events weren't saved or published", {
+      runId: run.id,
       error: String(error),
     });
   }
-  if (!(await job.record.finish(result))) {
+  if (!(await run.record.finish(result))) {
     deps.log(
       "warn",
-      "The job was ended elsewhere; its result wasn't recorded",
+      "The run was ended elsewhere; its result wasn't recorded",
       {
-        runId: job.id,
+        runId: run.id,
         status: result.status,
       },
     );
   }
 }
 
-export async function handleRunJob(
-  deps: RunJobDeps,
-  { runId: jobId }: QueuedWork["run-task"],
+export async function handleRunTask(
+  deps: RunTaskDeps,
+  { runId }: QueuedWork["run-task"],
   signal?: AbortSignal,
 ): Promise<RunResult | null> {
   const { db } = deps;
-  const job = await loadJob(db, jobId);
-  const { project } = job.task;
-  const record = createJobRecord(db, jobId);
+  const run = await loadRun(db, runId);
+  const { project } = run.task;
+  const record = createRunRecord(db, runId);
   const environments = new DbEnvironmentStore(db);
 
   const environment = await environments.load(project.id);
@@ -98,12 +98,12 @@ export async function handleRunJob(
   try {
     await record.start(environment.id);
   } catch (error) {
-    if (!(error instanceof JobStateError)) throw error;
-    deps.log("warn", "Skipping a job that isn't queued", { jobId });
+    if (!(error instanceof RunStateError)) throw error;
+    deps.log("warn", "Skipping a run that isn't queued", { runId });
     return null;
   }
 
-  const sink = createEventSink({ db, publisher: deps.publisher }, jobId);
+  const sink = createEventSink({ db, publisher: deps.publisher }, runId);
   const emit = (event: RunEvent) => {
     sink.emit(event);
     record.observe(event);
@@ -112,12 +112,12 @@ export async function handleRunJob(
   let result: RunResult;
   try {
     result = await runTask({
-      runId: jobId,
-      task: job.instruction,
+      runId,
+      task: run.instruction,
       source: {
         type: "git",
         url: `https://github.com/${project.repoOwner}/${project.repoName}.git`,
-        ref: job.task.baseBranch,
+        ref: run.task.baseBranch,
       },
       model: deps.model,
       limits: deps.limits,
@@ -134,7 +134,7 @@ export async function handleRunJob(
     throw error;
   }
 
-  await endJob(deps, { id: jobId, emit, record, sink }, result);
+  await endRun(deps, { id: runId, emit, record, sink }, result);
   if (result.setup?.health === "needs_attention") {
     await environments.markHealth(
       project.id,

@@ -8,9 +8,9 @@ import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { RunResult } from "@codegenie/runner";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { createJobRecord, JobStateError } from "./job-record.js";
+import { createRunRecord, RunStateError } from "./run-record.js";
 
-const database = await testDatabaseOrSkip("job record");
+const database = await testDatabaseOrSkip("run record");
 
 type AgentResult = NonNullable<RunResult["agent"]>;
 const agent = (overrides: Partial<AgentResult> = {}): AgentResult => ({
@@ -30,15 +30,15 @@ const agent = (overrides: Partial<AgentResult> = {}): AgentResult => ({
   ...overrides,
 });
 
-describe.skipIf(!database)("job record against Postgres", () => {
+describe.skipIf(!database)("run record against Postgres", () => {
   const db = database?.db as Db;
   afterAll(() => database?.drop());
 
-  const row = async (jobId: string) =>
-    (await db.select().from(runs).where(eq(runs.id, jobId)))[0]!;
+  const row = async (runId: string) =>
+    (await db.select().from(runs).where(eq(runs.id, runId)))[0]!;
 
-  async function newJob() {
-    const { project, run: job } = await insertRun(db);
+  async function newRun() {
+    const { project, run } = await insertRun(db);
     await new DbEnvironmentStore(db).save(
       project.id,
       {
@@ -53,65 +53,65 @@ describe.skipIf(!database)("job record against Postgres", () => {
       where: eq(projectEnvironments.projectId, project.id),
     });
     return {
-      job,
-      record: createJobRecord(db, job.id),
+      run,
+      record: createRunRecord(db, run.id),
       environmentId: environment!.id,
     };
   }
 
-  async function startedJob() {
-    const created = await newJob();
+  async function startedRun() {
+    const created = await newRun();
     await created.record.start(created.environmentId);
     return created;
   }
 
-  it("starts a queued job once, with the environment version it replays", async () => {
-    const { job, record, environmentId } = await newJob();
+  it("starts a queued run once, with the environment version it replays", async () => {
+    const { run, record, environmentId } = await newRun();
     await record.start(environmentId);
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "running",
       environmentId,
       startedAt: expect.any(Date),
     });
-    await expect(record.start(environmentId)).rejects.toThrow(JobStateError);
+    await expect(record.start(environmentId)).rejects.toThrow(RunStateError);
   });
 
   it("records the stage and sandbox in the order they happen", async () => {
-    const { job, record } = await newJob();
+    const { run, record } = await newRun();
     record.observe({
       type: "stage_changed",
-      runId: job.id,
+      runId: run.id,
       ts: "",
       stage: "prepare",
     });
     record.observe({
       type: "sandbox_created",
-      runId: job.id,
+      runId: run.id,
       ts: "",
       sandboxId: "sb-1",
     });
     record.observe({
       type: "tool_start",
-      runId: job.id,
+      runId: run.id,
       ts: "",
       toolCallId: "1",
       toolName: "bash",
     });
     record.observe({
       type: "stage_changed",
-      runId: job.id,
+      runId: run.id,
       ts: "",
       stage: "agent",
     });
     await record.flush();
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       stage: "agent",
       sandboxId: "sb-1",
     });
   });
 
   it("finishes with the summary, usage, cost and check outcome", async () => {
-    const { job, record } = await startedJob();
+    const { run, record } = await startedRun();
     const recorded = await record.finish({
       status: "succeeded",
       agent: agent(),
@@ -120,7 +120,7 @@ describe.skipIf(!database)("job record against Postgres", () => {
     });
 
     expect(recorded).toBe(true);
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "succeeded",
       summary: "Added GET /health.",
       inputTokens: 12_000,
@@ -184,36 +184,36 @@ describe.skipIf(!database)("job record against Postgres", () => {
   ];
 
   it.each(endings)("finishes after %s", async (_name, result, expected) => {
-    const { job, record } = await startedJob();
+    const { run, record } = await startedRun();
     expect(await record.finish(result)).toBe(true);
-    expect(await row(job.id)).toMatchObject(expected);
+    expect(await row(run.id)).toMatchObject(expected);
   });
 
-  it("doesn't overwrite a job that was ended elsewhere", async () => {
-    const { job, record } = await startedJob();
+  it("doesn't overwrite a run that was ended elsewhere", async () => {
+    const { run, record } = await startedRun();
     await db
       .update(runs)
       .set({ status: "failed", errorCode: "stalled" })
-      .where(eq(runs.id, job.id));
+      .where(eq(runs.id, run.id));
 
     expect(await record.finish({ status: "succeeded", durationMs: 1 })).toBe(
       false,
     );
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "failed",
       errorCode: "stalled",
     });
   });
 
-  it("fails a job before it ran, with a reason", async () => {
-    const { job, record } = await newJob();
+  it("fails a run before it ran, with a reason", async () => {
+    const { run, record } = await newRun();
     expect(
       await record.fail({
         code: "no_environment",
         message: "Set the project up first.",
       }),
     ).toBe(true);
-    expect(await row(job.id)).toMatchObject({
+    expect(await row(run.id)).toMatchObject({
       status: "failed",
       errorCode: "no_environment",
       errorMessage: "Set the project up first.",
