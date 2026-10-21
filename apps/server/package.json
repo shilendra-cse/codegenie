@@ -44,7 +44,6 @@
     "@codegenie/db": "workspace:*",
     "@codegenie/github": "workspace:*",
     "@codegenie/shared": "workspace:*",
-    "@octokit/rest": "^22.0.1",
     "@types/swagger-ui-express": "^4.1.8",
     "better-auth": "^1.6.11",
     "cors": "^2.8.5",

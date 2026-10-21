@@ -9,6 +9,8 @@ export {
 export { GithubConfigError, parsePrivateKey } from "./private-key.js";
 export { verifyWebhookSignature } from "./webhook-signature.js";
 export {
+  listInstallationRepos,
   listUserInstallations,
+  type InstallationRepo,
   type UserInstallation,
 } from "./user-installations.js";

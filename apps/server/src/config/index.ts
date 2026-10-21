@@ -19,6 +19,8 @@ const envSchema = z.object({
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   GITHUB_WEBHOOK_SECRET: z.string().min(1),
+  GITHUB_APP_ID: z.string().min(1),
+  GITHUB_APP_PRIVATE_KEY: z.string().min(1),
 
   FRONTEND_URL: z.string().optional(),
 
@@ -117,6 +119,8 @@ const parseEnv = () => {
         clientId: env.GITHUB_CLIENT_ID,
         clientSecret: env.GITHUB_CLIENT_SECRET,
         webhookSecret: env.GITHUB_WEBHOOK_SECRET,
+        appId: env.GITHUB_APP_ID,
+        privateKey: env.GITHUB_APP_PRIVATE_KEY,
       },
     };
   } catch (error) {

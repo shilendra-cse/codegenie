@@ -138,14 +138,15 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/github/status:
+  /api/github/installations:
     get:
       tags: [GitHub]
-      summary: Whether the current user has linked GitHub
-      operationId: getGitHubLinkedStatus
+      summary: GitHub App installations the signed-in user can access
+      description: Through the user's own GitHub token. `installUrl` installs the App or changes which repositories it can access.
+      operationId: listGitHubInstallations
       responses:
         "200":
-          description: Link status
+          description: Installations and the install link
           content:
             application/json:
               schema:
@@ -155,25 +156,34 @@ paths:
                     properties:
                       data:
                         type: object
-                        required: [github]
+                        required: [installations, installUrl]
                         properties:
-                          github:
-                            type: object
-                            required: [isLinked]
-                            properties:
-                              isLinked:
-                                type: boolean
+                          installations:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GitHubInstallation"
+                          installUrl:
+                            type: string
+                            format: uri
+                            example: https://github.com/apps/codegenie-dev-app/installations/new
         "401":
-          $ref: "#/components/responses/Unauthorized"
+          $ref: "#/components/responses/GitHubSignInRequired"
 
-  /api/github/repositories:
+  /api/github/installations/{installationId}/repositories:
     get:
       tags: [GitHub]
-      summary: List GitHub repositories for the signed-in user
-      operationId: listGitHubRepositories
+      summary: Repositories of one installation that the signed-in user can access
+      description: Most recently updated first.
+      operationId: listGitHubInstallationRepositories
+      parameters:
+        - name: installationId
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         "200":
-          description: Repositories the user can access
+          description: Repositories
           content:
             application/json:
               schema:
@@ -183,16 +193,18 @@ paths:
                     properties:
                       data:
                         type: object
-                        required: [repos]
+                        required: [repositories]
                         properties:
-                          repos:
+                          repositories:
                             type: array
                             items:
                               $ref: "#/components/schemas/GitHubRepo"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          description: GitHub account is not linked
+          $ref: "#/components/responses/GitHubSignInRequired"
+        "404":
+          description: The user can't access this installation (`GITHUB_INSTALLATION_NOT_FOUND`)
           content:
             application/json:
               schema:
@@ -215,6 +227,12 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     ValidationError:
       description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    GitHubSignInRequired:
+      description: Not signed in, or no usable GitHub token (`GITHUB_SIGN_IN_REQUIRED`); sign in with GitHub again
       content:
         application/json:
           schema:
@@ -305,10 +323,26 @@ components:
           minLength: 1
           maxLength: 100
 
+    GitHubInstallation:
+      type: object
+      required: [id, accountLogin, accountType]
+      properties:
+        id:
+          type: integer
+          example: 173633971
+        accountLogin:
+          type: string
+          example: acme
+        accountType:
+          type: string
+          enum: [user, organization]
     GitHubRepo:
       type: object
-      required: [fullName, owner, name, defaultBranch, private, htmlUrl]
+      required: [id, fullName, owner, name, defaultBranch, private, htmlUrl, updatedAt]
       properties:
+        id:
+          type: integer
+          description: GitHub's repository id
         fullName:
           type: string
           example: octocat/Hello-World
@@ -324,6 +358,10 @@ components:
         htmlUrl:
           type: string
           format: uri
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
 
 security:
   - sessionCookie: []
