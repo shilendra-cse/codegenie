@@ -7,8 +7,8 @@ import type {
 } from "@codegenie/shared";
 import { and, desc, eq, max } from "drizzle-orm";
 import type { Db } from "./client.js";
-import { projectEnvironments } from "./schema/project-environments-schema.js";
-import { projects } from "./schema/projects-schema.js";
+import { projectEnvironments } from "./schema/projects/project-environments-schema.js";
+import { projects } from "./schema/projects/projects-schema.js";
 
 type Row = typeof projectEnvironments.$inferSelect;
 

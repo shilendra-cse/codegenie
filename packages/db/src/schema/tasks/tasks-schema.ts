@@ -7,8 +7,8 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-import { projects } from "./projects-schema";
+import { user } from "../auth/auth-schema";
+import { projects } from "../projects/projects-schema";
 
 export const taskSourceEnum = pgEnum("task_source", [
   "prompt",

@@ -6,7 +6,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
+import { user } from "../auth/auth-schema";
 
 export const installationAccountTypeEnum = pgEnum("installation_account_type", [
   "user",
