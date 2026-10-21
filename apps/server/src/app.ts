@@ -4,7 +4,9 @@ import { toNodeHandler } from "better-auth/node";
 import { config } from "./config/index.js";
 import "./routes"; //this imports all the routes
 import { routes } from "./lib/ApiRouter";
+import { db } from "./db/index.js";
 import { auth } from "./lib/auth.js";
+import { createGithubWebhookHandler } from "./resources/github/github.webhooks.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { httpLogger } from "./middleware/http-logger.js";
 import { logger } from "./lib/logger.js";
@@ -21,6 +23,17 @@ export const createApp = (): express.Express => {
 
   // Better Auth must run before express.json() or auth requests hang
   app.all("/api/auth/*splat", toNodeHandler(auth));
+
+  // GitHub signs the exact bytes it sends, so this route needs the raw body, not parsed JSON.
+  app.post(
+    "/api/github/webhooks",
+    express.raw({ type: "application/json" }),
+    createGithubWebhookHandler({
+      db,
+      secret: config.github.webhookSecret,
+      log: (level, message, data) => logger[level](data ?? {}, message),
+    }),
+  );
 
   app.use(express.json());
 

@@ -9,7 +9,10 @@ import {
   recordInstallation,
   setInstallationSuspended,
 } from "./installations-queries.js";
-import { recordWebhookDelivery } from "./webhook-deliveries-queries.js";
+import {
+  forgetWebhookDelivery,
+  recordWebhookDelivery,
+} from "./webhook-deliveries-queries.js";
 
 const database = await testDatabaseOrSkip("github queries");
 
@@ -95,6 +98,11 @@ describe.skipIf(!database)("github queries against Postgres", () => {
     );
     expect(await recordWebhookDelivery(db, deliveryId, "installation")).toBe(
       false,
+    );
+
+    await forgetWebhookDelivery(db, deliveryId);
+    expect(await recordWebhookDelivery(db, deliveryId, "installation")).toBe(
+      true,
     );
   });
 });

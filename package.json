@@ -12,6 +12,7 @@
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
     "dev:worker": "pnpm --filter @codegenie/worker dev",
+    "dev:webhooks": "pnpm --filter server webhooks",
     "build:web": "pnpm --filter web build",
     "build:server": "pnpm --filter server build",
     "build:worker": "pnpm --filter @codegenie/worker build",
