@@ -15,6 +15,13 @@
       "when": 1792516115895,
       "tag": "0001_run_diffs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792562094275,
+      "tag": "0002_installation_uninstalled_at",
+      "breakpoints": true
     }
   ]
 }

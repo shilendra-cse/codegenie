@@ -24,6 +24,7 @@ export const githubInstallations = pgTable("github_installations", {
     .references(() => user.id, { onDelete: "cascade" })
     .notNull(),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  uninstalledAt: timestamp("uninstalled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
