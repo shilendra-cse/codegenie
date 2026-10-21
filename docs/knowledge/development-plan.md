@@ -134,7 +134,7 @@ Branches, each built in small batches (see Ways of working):
   1. Runner deliver step: list the agent's changes (files, modes, blob hashes, deletions, parent, expected tree) and hand them to a callback; no changes → no branch. (Planned as a push from the sandbox; changed so no write token enters the sandbox after the agent ran.)
   2. Worker: commit through GitHub's API on `codegenie/<task>-<slug>` as the App (verified), open the PR (draft when checks failed or the run is incomplete; ready with a note where drafts aren't available) with the summary, check results and changed files; update the task (branch, PR number and URL, `pr_open`) and the run (`commit_sha`); `branch_created` / `git_push` / `pr_opened` events; `deliver_failed` on errors. The agent titles its change in `finish_task`. The run link in the PR comes with the web app's run page (Phase 4).
   3. Docs.
-- [ ] **5. `feat/pr-webhooks`**
+- [x] **5. `feat/pr-webhooks`** ([github.md](./github.md) §6)
   1. `pull_request` merged / closed / reopened → the task's status.
   2. Docs.
 

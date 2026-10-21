@@ -102,6 +102,8 @@ Webhooks:  GitHub → (smee in development) → POST /api/github/webhooks
              → signature over the raw body ✓ → delivery seen before? (webhook_deliveries) → skip
              → installation created / deleted / suspend / unsuspend → github_installations
                installation_repositories → logged (repositories are listed live)
+               pull_request → the task with that PR (repository id + number): open → pr_open,
+                              merged → merged, closed → closed; other PRs ignored
 
 Picker:    GET /api/github/installations                     → the user's installations + installUrl
            GET /api/github/installations/:id/repositories    → repositories the user can access
@@ -109,7 +111,7 @@ Picker:    GET /api/github/installations                     → the user's inst
 
 - **Sign-in is GitHub only**, through the App's OAuth. The user's GitHub token is read through Better Auth's `getAccessToken`, which refreshes it when it has expired (the App's user tokens last 8 hours); without one, the user signs in again (`GITHUB_SIGN_IN_REQUIRED`).
 - **The install callback checks ownership**: the installation id arrives in the URL, so it's recorded only if the user's own token can see it.
-- **Webhooks**: an installation by a GitHub user who hasn't signed in yet is skipped and recorded later by the callback. A delivery that fails is forgotten again and answered with 500, so GitHub's redelivery is processed. Uninstalling marks `uninstalled_at` instead of deleting, since projects cascade from the installation.
+- **Webhooks**: an installation by a GitHub user who hasn't signed in yet is skipped and recorded later by the callback. A delivery that fails is forgotten again and answered with 500, so GitHub's redelivery is processed. Uninstalling marks `uninstalled_at` instead of deleting, since projects cascade from the installation. A pull request's task status comes from the PR's state rather than the event's action, so repeated deliveries and actions like `synchronize` change nothing; deliveries arriving out of order (rare) can leave an older state.
 - **Repositories** are always listed live from GitHub through the user's token, so they reflect what the user can access right now.
 - **Code**: `apps/server/src/resources/github/` (routes, webhook handler and events, install callback, controllers); the raw body for signature checks is kept by `express.json({ verify: keepRawBody })`.
 
