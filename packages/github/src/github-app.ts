@@ -17,6 +17,8 @@ export type RepoPermissions = Partial<
 
 export type RepoToken = { token: string; expiresAt: Date };
 
+export type BotIdentity = { name: string; email: string };
+
 export type GithubApp = {
   repoToken(
     installationId: number,
@@ -29,6 +31,7 @@ export type GithubApp = {
     permissions: RepoPermissions,
   ): Promise<Octokit>;
   installationForRepo(owner: string, repo: string): Promise<number | null>;
+  botIdentity(): Promise<BotIdentity>;
 };
 
 export function createGithubApp(
@@ -63,6 +66,24 @@ export function createGithubApp(
     return { token: minted.token, expiresAt: new Date(minted.expiresAt) };
   };
 
+  const appHeaders = async () => {
+    const { token } = await auth({ type: "app" });
+    return { authorization: `bearer ${token}` };
+  };
+
+  const loadBotIdentity = async (): Promise<BotIdentity> => {
+    const { data: app } = await request("GET /app", {
+      headers: await appHeaders(),
+    });
+    if (!app?.slug) throw new Error("GitHub didn't return the App's slug.");
+    const name = `${app.slug}[bot]`;
+    const { data: user } = await request("GET /users/{username}", {
+      username: name,
+    });
+    return { name, email: `${user.id}+${name}@users.noreply.github.com` };
+  };
+  let botIdentity: Promise<BotIdentity> | undefined;
+
   return {
     repoToken,
 
@@ -72,17 +93,24 @@ export function createGithubApp(
     },
 
     async installationForRepo(owner, repo) {
-      const { token } = await auth({ type: "app" });
       try {
         const { data } = await request(
           "GET /repos/{owner}/{repo}/installation",
-          { owner, repo, headers: { authorization: `bearer ${token}` } },
+          { owner, repo, headers: await appHeaders() },
         );
         return data.id;
       } catch (error) {
         if (error instanceof RequestError && error.status === 404) return null;
         throw error;
       }
+    },
+
+    botIdentity() {
+      botIdentity ??= loadBotIdentity().catch((error: unknown) => {
+        botIdentity = undefined;
+        throw error;
+      });
+      return botIdentity;
     },
   };
 }

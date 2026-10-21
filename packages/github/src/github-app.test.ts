@@ -146,4 +146,42 @@ describe("createGithubApp", () => {
       createGithubApp({ appId: 123, privateKey: "not a key" }),
     ).toThrow(GithubConfigError);
   });
+
+  it("knows the bot's commit identity, looked up once", async () => {
+    const github = fakeGithub((call) =>
+      call.path === "/app"
+        ? { status: 200, body: { slug: "codegenie-dev" } }
+        : { status: 200, body: { id: 4242, login: "codegenie-dev[bot]" } },
+    );
+    const app = createGithubApp({ appId: 123, privateKey }, github);
+
+    const identity = await app.botIdentity();
+    await app.botIdentity();
+
+    expect(identity).toEqual({
+      name: "codegenie-dev[bot]",
+      email: "4242+codegenie-dev[bot]@users.noreply.github.com",
+    });
+    expect(github.calls.map((c) => c.path)).toEqual([
+      "/app",
+      "/users/codegenie-dev%5Bbot%5D",
+    ]);
+    expect(verifiedJwtPayload(github.calls[0]!.authorization)).toMatchObject({
+      iss: 123,
+    });
+  });
+
+  it("looks the bot up again after a failed attempt", async () => {
+    const github = fakeGithub((call, i) =>
+      i === 0
+        ? { status: 500, body: { message: "Server Error" } }
+        : call.path === "/app"
+          ? { status: 200, body: { slug: "codegenie-dev" } }
+          : { status: 200, body: { id: 4242 } },
+    );
+    const app = createGithubApp({ appId: 123, privateKey }, github);
+
+    await expect(app.botIdentity()).rejects.toThrow();
+    expect((await app.botIdentity()).name).toBe("codegenie-dev[bot]");
+  });
 });
