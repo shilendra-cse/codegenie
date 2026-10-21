@@ -2,11 +2,16 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
 import { messages, tasks } from "../../schema/index.js";
-import { insertProject, testDatabaseOrSkip } from "../../testing/index.js";
+import {
+  insertProject,
+  insertTask,
+  testDatabaseOrSkip,
+} from "../../testing/index.js";
 import {
   createTaskWithRun,
   setTaskBranch,
   setTaskPullRequest,
+  setTaskStatusForPullRequest,
 } from "./tasks-queries.js";
 
 const database = await testDatabaseOrSkip("tasks queries");
@@ -54,6 +59,37 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
       prUrl: "https://github.com/acme/app/pull/7",
       status: "pr_open",
     });
+  });
+
+  it("sets the status of the task with that pull request in that repository only", async () => {
+    const project = await insertProject(db);
+    const other = await insertProject(db);
+    const task = await insertTask(db, project, {
+      prNumber: 3,
+      status: "pr_open",
+    });
+    const sameNumberElsewhere = await insertTask(db, other, {
+      prNumber: 3,
+      status: "pr_open",
+    });
+
+    const changed = await setTaskStatusForPullRequest(
+      db,
+      { repoGithubId: project.repoGithubId, number: 3 },
+      "merged",
+    );
+    const unknown = await setTaskStatusForPullRequest(
+      db,
+      { repoGithubId: project.repoGithubId, number: 4 },
+      "closed",
+    );
+
+    expect(changed).toEqual([{ id: task.id }]);
+    expect(unknown).toEqual([]);
+    const status = async (id: string) =>
+      (await db.select().from(tasks).where(eq(tasks.id, id)))[0]!.status;
+    expect(await status(task.id)).toBe("merged");
+    expect(await status(sameNumberElsewhere.id)).toBe("pr_open");
   });
 
   it("creates nothing when part of it fails", async () => {

@@ -1,7 +1,18 @@
 import { createHmac, randomInt, randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
-import { account, type Db, ensureUser, getInstallation } from "@codegenie/db";
-import { testDatabaseOrSkip } from "@codegenie/db/testing";
+import {
+  account,
+  type Db,
+  ensureUser,
+  getInstallation,
+  tasks,
+} from "@codegenie/db";
+import {
+  insertProject,
+  insertTask,
+  testDatabaseOrSkip,
+} from "@codegenie/db/testing";
+import { eq } from "drizzle-orm";
 import express from "express";
 import { afterAll, describe, expect, it } from "vitest";
 import { keepRawBody } from "@/lib/raw-body";
@@ -171,6 +182,68 @@ describe.skipIf(!database)("GitHub webhook endpoint", () => {
     expect(failed.status).toBe(500);
     expect(redelivered.status).toBe(200);
     expect(await getInstallation(db, id)).not.toBeNull();
+  });
+
+  describe("pull requests", () => {
+    const pullRequest = (
+      action: string,
+      repoId: number,
+      number: number,
+      state: { state: "open" | "closed"; merged?: boolean },
+    ) => ({
+      action,
+      number,
+      pull_request: { number, merged: false, ...state },
+      repository: { id: repoId, full_name: "acme/app" },
+    });
+
+    async function taskWithPullRequest() {
+      const project = await insertProject(db);
+      const task = await insertTask(db, project, {
+        prNumber: 12,
+        status: "pr_open",
+      });
+      const status = async () => {
+        const [row] = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, task.id));
+        return row?.status;
+      };
+      return { repoId: project.repoGithubId, status };
+    }
+
+    it("follows a pull request being closed, reopened and merged", async () => {
+      const { repoId, status } = await taskWithPullRequest();
+      const send = (
+        action: string,
+        state: { state: "open" | "closed"; merged?: boolean },
+      ) => deliver("pull_request", pullRequest(action, repoId, 12, state));
+
+      expect((await send("closed", { state: "closed" })).status).toBe(200);
+      expect(await status()).toBe("closed");
+      await send("reopened", { state: "open" });
+      expect(await status()).toBe("pr_open");
+      await send("closed", { state: "closed", merged: true });
+      expect(await status()).toBe("merged");
+      expect(logs).toContain("Pull request status recorded");
+    });
+
+    it("keeps the status for other actions, and ignores pull requests CodeGenie didn't open", async () => {
+      const { repoId, status } = await taskWithPullRequest();
+
+      await deliver(
+        "pull_request",
+        pullRequest("synchronize", repoId, 12, { state: "open" }),
+      );
+      const unknown = await deliver(
+        "pull_request",
+        pullRequest("closed", repoId, 99, { state: "closed" }),
+      );
+
+      expect(await status()).toBe("pr_open");
+      expect(unknown.status).toBe(200);
+    });
   });
 
   it("accepts events it doesn't act on", async () => {
