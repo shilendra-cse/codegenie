@@ -1,13 +1,13 @@
 import { relations } from "drizzle-orm";
-import { user } from "./auth-schema";
-import { githubInstallations } from "./github-installations-schema";
-import { runDiffs } from "./run-diffs-schema";
-import { runEvents } from "./run-events-schema";
-import { runs } from "./runs-schema";
-import { messages } from "./messages-schema";
-import { projectEnvironments } from "./project-environments-schema";
-import { projects } from "./projects-schema";
-import { tasks } from "./tasks-schema";
+import { user } from "./auth/auth-schema";
+import { githubInstallations } from "./github/github-installations-schema";
+import { runDiffs } from "./runs/run-diffs-schema";
+import { runEvents } from "./runs/run-events-schema";
+import { runs } from "./runs/runs-schema";
+import { messages } from "./tasks/messages-schema";
+import { projectEnvironments } from "./projects/project-environments-schema";
+import { projects } from "./projects/projects-schema";
+import { tasks } from "./tasks/tasks-schema";
 
 export const githubInstallationsRelations = relations(
   githubInstallations,

@@ -6,8 +6,8 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-import { runs } from "./runs-schema";
+import { user } from "../auth/auth-schema";
+import { runs } from "../runs/runs-schema";
 import { tasks } from "./tasks-schema";
 
 export const messageRoleEnum = pgEnum("message_role", [

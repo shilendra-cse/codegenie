@@ -11,7 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
+import { user } from "../auth/auth-schema";
 import { projects } from "./projects-schema";
 
 export const environmentSourceEnum = pgEnum("environment_source", [

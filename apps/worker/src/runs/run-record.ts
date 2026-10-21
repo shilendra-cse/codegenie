@@ -1,7 +1,12 @@
-import { runs, saveRunDiff, type Db } from "@codegenie/db";
+import {
+  markRunEnded,
+  markRunStarted,
+  saveRunDiff,
+  updateRunProgress,
+  type Db,
+} from "@codegenie/db";
 import type { Diff, RunResult } from "@codegenie/runner";
 import type { RunEvent } from "@codegenie/shared";
-import { and, eq, inArray } from "drizzle-orm";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
 export class RunStateError extends Error {}
@@ -39,42 +44,21 @@ export function runFailure(result: RunResult): RunFailure | null {
 
 export function createRunRecord(db: Db, runId: string): RunRecord {
   const updates = createSerialQueue();
-  const update = (values: Partial<typeof runs.$inferInsert>) =>
-    db
-      .update(runs)
-      .set(values)
-      .where(eq(runs.id, runId))
-      .then(() => {});
-
-  const end = async (
-    values: Partial<typeof runs.$inferInsert>,
-    from: ("queued" | "running")[],
-  ) => {
-    const ended = await db
-      .update(runs)
-      .set({ ...values, finishedAt: new Date() })
-      .where(and(eq(runs.id, runId), inArray(runs.status, from)))
-      .returning({ id: runs.id });
-    return ended.length > 0;
-  };
 
   return {
     async start(environmentId) {
-      const started = await db
-        .update(runs)
-        .set({ status: "running", startedAt: new Date(), environmentId })
-        .where(and(eq(runs.id, runId), eq(runs.status, "queued")))
-        .returning({ id: runs.id });
-      if (started.length === 0) {
+      if (!(await markRunStarted(db, runId, environmentId))) {
         throw new RunStateError(`Run ${runId} isn't queued.`);
       }
     },
 
     observe(event) {
       if (event.type === "stage_changed") {
-        updates.add(() => update({ stage: event.stage }));
+        updates.add(() => updateRunProgress(db, runId, { stage: event.stage }));
       } else if (event.type === "sandbox_created") {
-        updates.add(() => update({ sandboxId: event.sandboxId }));
+        updates.add(() =>
+          updateRunProgress(db, runId, { sandboxId: event.sandboxId }),
+        );
       }
     },
 
@@ -83,7 +67,9 @@ export function createRunRecord(db: Db, runId: string): RunRecord {
     finish(result) {
       const agent = result.agent;
       const failure = runFailure(result);
-      return end(
+      return markRunEnded(
+        db,
+        runId,
         {
           status: result.status,
           summary: agent?.summary ?? null,
@@ -103,7 +89,9 @@ export function createRunRecord(db: Db, runId: string): RunRecord {
       saveRunDiff(db, runId, { patch, files, truncated }),
 
     fail(failure) {
-      return end(
+      return markRunEnded(
+        db,
+        runId,
         {
           status: "failed",
           errorCode: failure.code,

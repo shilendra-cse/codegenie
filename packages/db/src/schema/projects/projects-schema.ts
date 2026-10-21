@@ -7,8 +7,8 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth-schema";
-import { githubInstallations } from "./github-installations-schema";
+import { user } from "../auth/auth-schema";
+import { githubInstallations } from "../github/github-installations-schema";
 
 export const projects = pgTable(
   "projects",

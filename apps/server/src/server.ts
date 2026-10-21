@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import { config } from "@/config/index.js";
 import { db } from "@/db/index.js";
+import { pingDatabase } from "@codegenie/db";
 import { createApp } from "@/app.js";
 import { logger } from "./lib/logger.js";
 import { redis } from "./lib/redis.js";
@@ -13,7 +14,7 @@ export function getHttpServer(): Server | null {
 
 export const startServer = async (): Promise<void> => {
   try {
-    await db.execute("SELECT 1");
+    await pingDatabase(db);
     logger.info("✅ Database connected successfully");
 
     await redis.ping();

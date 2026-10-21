@@ -2,10 +2,10 @@ import type { EnvironmentConfig } from "@codegenie/shared";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import type { Db } from "./client.js";
-import { DbEnvironmentStore } from "./environments.js";
-import { projectEnvironments } from "./schema/index.js";
-import { insertProject, testDatabaseOrSkip } from "./testing/index.js";
+import type { Db } from "../../client.js";
+import { projectEnvironments } from "../../schema/index.js";
+import { insertProject, testDatabaseOrSkip } from "../../testing/index.js";
+import { DbEnvironmentStore } from "./environments-queries.js";
 
 const database = await testDatabaseOrSkip("DbEnvironmentStore");
 

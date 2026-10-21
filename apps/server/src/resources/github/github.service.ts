@@ -1,7 +1,6 @@
 import { db } from "@/db";
-import { account } from "@codegenie/db";
+import { getGithubAccount } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
-import { and, eq } from "drizzle-orm";
 import { Octokit } from "@octokit/rest";
 
 export type GitHubRepoSummary = {
@@ -14,9 +13,7 @@ export type GitHubRepoSummary = {
 };
 
 async function getGitHubAccessToken(userId: string): Promise<string> {
-  const row = await db.query.account.findFirst({
-    where: and(eq(account.userId, userId), eq(account.providerId, "github")),
-  });
+  const row = await getGithubAccount(db, userId);
 
   if (!row?.accessToken) {
     throw new HttpError(
@@ -54,8 +51,6 @@ export async function listRepos(userId: string): Promise<GitHubRepoSummary[]> {
 }
 
 export async function isGitHubLinked(userId: string): Promise<boolean> {
-  const row = await db.query.account.findFirst({
-    where: and(eq(account.userId, userId), eq(account.providerId, "github")),
-  });
+  const row = await getGithubAccount(db, userId);
   return Boolean(row?.accessToken);
 }

@@ -11,8 +11,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { projectEnvironments } from "./project-environments-schema";
-import { tasks } from "./tasks-schema";
+import { projectEnvironments } from "../projects/project-environments-schema";
+import { tasks } from "../tasks/tasks-schema";
 
 export const runTriggerEnum = pgEnum("run_trigger", [
   "initial",

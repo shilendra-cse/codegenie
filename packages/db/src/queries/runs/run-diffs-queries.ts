@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../../client.js";
-import { runDiffs } from "../../schema/run-diffs-schema.js";
+import { runDiffs } from "../../schema/runs/run-diffs-schema.js";
 
 export type RunDiff = Omit<typeof runDiffs.$inferInsert, "runId" | "createdAt">;
 
