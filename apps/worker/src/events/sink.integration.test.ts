@@ -88,6 +88,29 @@ describe.skipIf(!database)("event sink against Postgres", () => {
     );
   });
 
+  it("hides GitHub tokens before storing or publishing an event", async () => {
+    const { run } = await insertRun(db);
+    const { publisher, messages } = recordingPublisher();
+    const sink = createEventSink({ db, publisher }, run.id);
+    const token = "ghs_faketoken0123456789abcdefghij";
+
+    sink.emit({
+      type: "tool_end",
+      runId: run.id,
+      ts,
+      toolCallId: "call-1",
+      toolName: "bash",
+      output: `origin https://x-access-token:${token}@github.com/acme/app.git`,
+    });
+    await sink.flush();
+
+    const stored = JSON.stringify(await storedEvents(run.id));
+    const published = JSON.stringify(messages);
+    expect(stored).not.toContain(token);
+    expect(published).not.toContain(token);
+    expect(stored).toContain("x-access-token:ghs_***@github.com");
+  });
+
   it("only publishes text and step progress, without using a number", async () => {
     const { run } = await insertRun(db);
     const { publisher, messages } = recordingPublisher();

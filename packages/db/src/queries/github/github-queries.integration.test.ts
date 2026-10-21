@@ -5,6 +5,7 @@ import { testDatabaseOrSkip } from "../../testing/index.js";
 import { ensureUser } from "../auth/users-queries.js";
 import {
   getInstallation,
+  getInstallationById,
   markInstallationUninstalled,
   recordInstallation,
   setInstallationSuspended,
@@ -48,6 +49,10 @@ describe.skipIf(!database)("github queries against Postgres", () => {
       id: installation.id,
     });
     expect(await getInstallation(db, randomInt(1, 2 ** 31))).toBeNull();
+    expect(await getInstallationById(db, installation.id)).toMatchObject({
+      installationId: values.installationId,
+    });
+    expect(await getInstallationById(db, randomUUID())).toBeNull();
   });
 
   it("suspends and unsuspends an installation", async () => {

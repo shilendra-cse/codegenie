@@ -1,11 +1,17 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
-import { DbEnvironmentStore, type Db } from "@codegenie/db";
+import {
+  DbEnvironmentStore,
+  getInstallationById,
+  markInstallationUninstalled,
+  type Db,
+} from "@codegenie/db";
 import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { SandboxLabels } from "@codegenie/sandbox";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import type { OnboardingMessage } from "@codegenie/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
+import { fakeGithubApp } from "../testing/fake-github-app.js";
 import {
   handleOnboardProject,
   type OnboardProjectDeps,
@@ -74,6 +80,7 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       log: (_level, message, data) => logs.push({ message, data }),
       model: scriptedModel(script).resolved,
       createSandbox: createSandbox(handler, labels),
+      github: fakeGithubApp().github,
     };
     return {
       deps,
@@ -168,6 +175,26 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       status: "failed",
       error: expect.any(String),
     });
+  });
+
+  it("fails, and tells listeners, when the App was uninstalled", async () => {
+    const project = await insertProject(db);
+    const installation = await getInstallationById(db, project.installationId);
+    await markInstallationUninstalled(db, installation!.installationId);
+    const { deps, messages, labels } = depsFor();
+
+    await expect(
+      handleOnboardProject(deps, { projectId: project.id }),
+    ).rejects.toThrow("no longer installed");
+
+    expect(messages()).toEqual([
+      {
+        type: "done",
+        status: "failed",
+        error: expect.stringContaining("no longer installed"),
+      },
+    ]);
+    expect(labels).toEqual([]);
   });
 
   it("throws for a project that doesn't exist", async () => {

@@ -199,4 +199,40 @@ describe("createGithubApp", () => {
 
     expect(github.calls.filter((c) => c.path === "/app")).toHaveLength(1);
   });
+
+  it("finds an installed repository through a metadata-only token", async () => {
+    const github = fakeGithub((call) => {
+      if (call.path === "/repos/acme/secret/installation")
+        return { status: 200, body: { id: 42 } };
+      if (call.path === "/app/installations/42/access_tokens")
+        return tokenReply("ghs_meta", 60);
+      if (call.path === "/repos/acme/secret")
+        return {
+          status: 200,
+          body: {
+            id: 9001,
+            name: "secret",
+            owner: { login: "acme" },
+            default_branch: "develop",
+            private: true,
+          },
+        };
+      return { status: 404, body: { message: "Not Found" } };
+    });
+    const app = createGithubApp({ appId: 123, privateKey }, github);
+
+    expect(await app.findInstalledRepo("acme", "secret")).toEqual({
+      installationId: 42,
+      id: 9001,
+      owner: "acme",
+      name: "secret",
+      defaultBranch: "develop",
+      private: true,
+    });
+    expect(github.calls[1]).toMatchObject({
+      body: { repositories: ["secret"], permissions: { metadata: "read" } },
+    });
+    expect(github.calls[2]).toMatchObject({ authorization: "token ghs_meta" });
+    expect(await app.findInstalledRepo("acme", "elsewhere")).toBeNull();
+  });
 });

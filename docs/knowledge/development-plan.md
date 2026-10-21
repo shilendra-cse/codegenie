@@ -125,7 +125,7 @@ Branches, each built in small batches (see Ways of working):
   4. Install callback (setup URL): checks the user can access the installation, then records it.
   5. Repo listing API: the user's installations, their repositories, the install / adjust-access URL.
   6. Docs.
-- [ ] **3. `feat/private-clone`**: the worker.
+- [x] **3. `feat/private-clone`**: the worker ([github.md](./github.md) §7).
   1. A run's token: the project's installation → a read token for its repository.
   2. Clone with the token passed only to that command; the remote is the plain URL afterwards; the token is redacted from logs and events.
   3. `worker:enqueue` finds a repository's real installation through the App, so private repositories work from the script.

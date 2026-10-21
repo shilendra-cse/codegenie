@@ -3,6 +3,7 @@ export {
   type BotIdentity,
   type GithubApp,
   type GithubAppConfig,
+  type InstalledRepo,
   type RepoPermissions,
   type RepoToken,
 } from "./github-app.js";

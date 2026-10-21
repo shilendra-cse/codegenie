@@ -1,45 +1,31 @@
 import {
   createTaskWithRun,
-  ensureInstallation,
-  ensureUser,
+  getInstallation,
   markRunEnded,
   upsertProject,
   type Db,
 } from "@codegenie/db";
+import type { InstalledRepo } from "@codegenie/github";
 import { CANCEL_CHANNEL, type QueuedWork } from "@codegenie/shared";
 import type { Queue } from "bullmq";
 import type { Publisher } from "../events/sink.js";
 
-// Until sign-in and the GitHub App exist (phase 3), projects enqueued by hand belong to a dev user.
-export const DEV_USER = {
-  id: "codegenie-dev-user",
-  name: "CodeGenie dev",
-  email: "dev@codegenie.local",
-};
-const DEV_INSTALLATION_ID = 0;
+export class InstallationNotRecordedError extends Error {}
 
-export type RepoInfo = {
-  owner: string;
-  repo: string;
-  githubId: number;
-  defaultBranch: string;
-};
-
-export async function ensureProject(db: Db, info: RepoInfo) {
-  await ensureUser(db, DEV_USER);
-  const installation = await ensureInstallation(db, {
-    installationId: DEV_INSTALLATION_ID,
-    accountLogin: "codegenie-dev",
-    accountType: "user",
-    installedByUserId: DEV_USER.id,
-  });
+export async function ensureProject(db: Db, repo: InstalledRepo) {
+  const installation = await getInstallation(db, repo.installationId);
+  if (!installation || installation.uninstalledAt) {
+    throw new InstallationNotRecordedError(
+      `The GitHub App's installation for ${repo.owner}/${repo.name} isn't recorded here yet: sign in at the web app and install it from there.`,
+    );
+  }
   return upsertProject(db, {
-    userId: DEV_USER.id,
+    userId: installation.installedByUserId,
     installationId: installation.id,
-    repoGithubId: info.githubId,
-    repoOwner: info.owner,
-    repoName: info.repo,
-    defaultBranch: info.defaultBranch,
+    repoGithubId: repo.id,
+    repoOwner: repo.owner,
+    repoName: repo.name,
+    defaultBranch: repo.defaultBranch,
   });
 }
 

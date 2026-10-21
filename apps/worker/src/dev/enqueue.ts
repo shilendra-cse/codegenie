@@ -1,4 +1,5 @@
 import { createDb } from "@codegenie/db";
+import { createGithubApp, type GithubApp } from "@codegenie/github";
 import { WORK_QUEUE } from "@codegenie/shared";
 import { Queue } from "bullmq";
 import { config as loadDotenv } from "dotenv";
@@ -9,7 +10,7 @@ import {
   enqueueOnboarding,
   enqueueRun,
   ensureProject,
-  type RepoInfo,
+  InstallationNotRecordedError,
 } from "./work.js";
 
 const USAGE = `Usage:
@@ -19,31 +20,18 @@ const USAGE = `Usage:
 
 class UsageError extends Error {}
 
-async function lookUpRepo(fullName: string | undefined): Promise<RepoInfo> {
-  if (!fullName || !/^[\w.-]+\/[\w.-]+$/.test(fullName)) {
+async function lookUpRepo(app: GithubApp, fullName: string | undefined) {
+  const [owner, repo] = fullName?.split("/") ?? [];
+  if (!owner || !repo || !/^[\w.-]+\/[\w.-]+$/.test(fullName ?? "")) {
     throw new UsageError(`Expected <owner/repo>, got "${fullName ?? ""}".`);
   }
-  const response = await fetch(`https://api.github.com/repos/${fullName}`, {
-    headers: { accept: "application/vnd.github+json" },
-  });
-  if (response.status === 404) {
-    throw new UsageError(`${fullName} isn't a public GitHub repository.`);
+  const found = await app.findInstalledRepo(owner, repo);
+  if (!found) {
+    throw new UsageError(
+      `The GitHub App isn't installed on ${fullName}. Install it: https://github.com/apps/${await app.slug()}/installations/new`,
+    );
   }
-  if (!response.ok) {
-    throw new Error(`GitHub answered ${response.status} for ${fullName}.`);
-  }
-  const repo = (await response.json()) as {
-    id: number;
-    name: string;
-    default_branch: string;
-    owner: { login: string };
-  };
-  return {
-    owner: repo.owner.login,
-    repo: repo.name,
-    githubId: repo.id,
-    defaultBranch: repo.default_branch,
-  };
+  return found;
 }
 
 async function main() {
@@ -53,11 +41,15 @@ async function main() {
   const redis = new Redis(config.redisUrl, { maxRetriesPerRequest: null });
   const queue = new Queue(WORK_QUEUE, { connection: redis });
   const { db, pool } = createDb(config.databaseUrl);
+  const github = createGithubApp(config.github);
 
   try {
     switch (command) {
       case "onboard": {
-        const project = await ensureProject(db, await lookUpRepo(target));
+        const project = await ensureProject(
+          db,
+          await lookUpRepo(github, target),
+        );
         await enqueueOnboarding(queue, project.id);
         console.log(
           `Queued onboarding of ${project.repoOwner}/${project.repoName} (project ${project.id}).`,
@@ -66,7 +58,10 @@ async function main() {
       }
       case "run": {
         if (!instruction) throw new UsageError("The task is missing.");
-        const project = await ensureProject(db, await lookUpRepo(target));
+        const project = await ensureProject(
+          db,
+          await lookUpRepo(github, target),
+        );
         const { run } = await enqueueRun(db, queue, {
           project,
           instruction,
@@ -102,6 +97,8 @@ async function main() {
 main().catch((error: unknown) => {
   if (error instanceof UsageError) {
     console.error(`${error.message}\n\n${USAGE}`);
+  } else if (error instanceof InstallationNotRecordedError) {
+    console.error(error.message);
   } else if (error instanceof ConfigError) {
     console.error(`Invalid worker configuration:\n${error.message}`);
   } else {

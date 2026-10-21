@@ -20,6 +20,25 @@ describe("checkoutRepo", () => {
     );
   });
 
+  it("gives a token to the clone through its environment only", async () => {
+    const sandbox = new FakeSandbox();
+    await checkoutRepo(sandbox, {
+      type: "git",
+      url: "https://github.com/acme/private.git",
+      token: "ghs_secret",
+    });
+
+    const { command, options } = sandbox.execCalls[0]!;
+    expect(command).toBe(
+      "git clone --quiet --depth 1 'https://github.com/acme/private.git' .",
+    );
+    expect(options.env).toEqual({
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: "http.extraHeader",
+      GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from("x-access-token:ghs_secret").toString("base64")}`,
+    });
+  });
+
   it("reports clone failures", async () => {
     const sandbox = new FakeSandbox();
     sandbox.execHandler = () => ({

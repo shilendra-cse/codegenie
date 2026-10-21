@@ -21,6 +21,7 @@ pnpm dev:worker
 | Variable | Default | |
 |---|---|---|
 | `OPENAI_API_KEY` | required | |
+| `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` | required | the GitHub App's, for clone tokens ([github.md](../../docs/knowledge/github.md) §5) |
 | `AGENT_MODEL` | `openai:gpt-6-luna` | must be in the model catalog |
 | `WORKER_CONCURRENCY` | `3` | items worked on at once, each in its own sandbox |
 | `SANDBOX_PROVIDER` | `docker` | `docker` (local containers) or `daytona` (cloud sandboxes) |
@@ -40,7 +41,7 @@ pnpm dev:worker
 
 ## Giving it work
 
-Until the API exists (Phase 4), work is queued by hand, for public GitHub repositories:
+Until the API exists (Phase 4), work is queued by hand, for any repository the GitHub App is installed on, private ones included:
 
 ```bash
 pnpm worker:enqueue onboard octocat/Hello-World          # once per repository
@@ -48,7 +49,7 @@ pnpm worker:enqueue run octocat/Hello-World "Add a CONTRIBUTING.md"
 pnpm worker:enqueue cancel <runId>                        # queued: cancelled; running: stopped
 ```
 
-Projects created this way belong to a dev user with a placeholder GitHub installation. This code lives in `src/dev/` and moves to the API in Phase 4.
+The script finds the repository's installation through the App; if the App isn't installed there, it prints the install link. The installation must also be recorded here (sign in at the web app and install from there, or let the webhook record it); the project then belongs to whoever installed it. This code lives in `src/dev/` and moves to the API in Phase 4.
 
 Watching a run:
 

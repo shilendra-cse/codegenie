@@ -101,8 +101,7 @@ Consumes the BullMQ queue `codegenie-work` and runs the pipeline in §5. Details
 - **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money).
 - **Reaper:** a `reap` work item, every 5 minutes (one BullMQ job scheduler shared by all workers) and at startup. It fails runs nothing will finish: `running` with no active queue item (`worker_lost`), or `queued` for over 15 minutes with the item gone (`lost_in_queue`), adding `error` + `done` events. For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox (Daytona: stopped, kept 4 h for a future resume; Docker: deleted).
 - **Shutdown:** the first SIGINT/SIGTERM stops taking work and waits for the work in progress; a second one a second or more later exits at once and leaves the rest to the reaper.
-
-Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
+- **Clone:** with a read token for the project's repository from the GitHub App, passed only to the clone command ([github.md](./github.md) §7).
 
 ### packages/agent
 Details: **[agent.md](./agent.md)**.

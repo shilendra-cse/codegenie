@@ -30,6 +30,7 @@
   "dependencies": {
     "@codegenie/agent": "workspace:*",
     "@codegenie/db": "workspace:*",
+    "@codegenie/github": "workspace:*",
     "@codegenie/runner": "workspace:*",
     "@codegenie/sandbox": "workspace:*",
     "@codegenie/shared": "workspace:*",

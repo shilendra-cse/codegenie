@@ -1,15 +1,24 @@
-import { messages, runs, type Db } from "@codegenie/db";
+import { randomInt, randomUUID } from "node:crypto";
+import {
+  ensureUser,
+  markInstallationUninstalled,
+  messages,
+  recordInstallation,
+  runs,
+  type Db,
+} from "@codegenie/db";
+import type { InstalledRepo } from "@codegenie/github";
 import { testDatabaseOrSkip } from "@codegenie/db/testing";
 import { CANCEL_CHANNEL, WORK_QUEUE } from "@codegenie/shared";
 import { Queue } from "bullmq";
 import { eq } from "drizzle-orm";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   cancelRun,
-  DEV_USER,
   enqueueOnboarding,
   enqueueRun,
   ensureProject,
+  InstallationNotRecordedError,
 } from "./work.js";
 import type { Publisher } from "../events/sink.js";
 import { testRedisOrSkip } from "../testing/test-redis.js";
@@ -17,11 +26,14 @@ import { testRedisOrSkip } from "../testing/test-redis.js";
 const database = await testDatabaseOrSkip("enqueue");
 const redis = await testRedisOrSkip("enqueue");
 
-const helloWorld = {
+const installerId = randomUUID();
+const helloWorld: InstalledRepo = {
+  installationId: randomInt(1, 2 ** 31),
+  id: 1296269,
   owner: "octocat",
-  repo: "Hello-World",
-  githubId: 1296269,
+  name: "Hello-World",
   defaultBranch: "master",
+  private: false,
 };
 
 describe.skipIf(!database || !redis)(
@@ -30,6 +42,19 @@ describe.skipIf(!database || !redis)(
     const db = database?.db as Db;
     const { prefix, connect } = redis!;
     const queue = new Queue(WORK_QUEUE, { connection: connect(), prefix });
+    beforeAll(async () => {
+      await ensureUser(db, {
+        id: installerId,
+        name: "Ada",
+        email: `${installerId}@example.com`,
+      });
+      await recordInstallation(db, {
+        installationId: helloWorld.installationId,
+        accountLogin: "octocat",
+        accountType: "user",
+        installedByUserId: installerId,
+      });
+    });
     afterAll(async () => {
       await queue.close();
       await redis?.close();
@@ -45,11 +70,33 @@ describe.skipIf(!database || !redis)(
 
       expect(again.id).toBe(first.id);
       expect(again).toMatchObject({
-        userId: DEV_USER.id,
+        userId: installerId,
         repoOwner: "octocat",
         repoName: "Hello-World",
         defaultBranch: "main",
       });
+    });
+
+    it("refuses a repository whose installation isn't recorded, or was uninstalled", async () => {
+      const elsewhere = {
+        ...helloWorld,
+        installationId: randomInt(1, 2 ** 31),
+      };
+      await expect(ensureProject(db, elsewhere)).rejects.toBeInstanceOf(
+        InstallationNotRecordedError,
+      );
+
+      const gone = { ...helloWorld, installationId: randomInt(1, 2 ** 31) };
+      await recordInstallation(db, {
+        installationId: gone.installationId,
+        accountLogin: "octocat",
+        accountType: "user",
+        installedByUserId: installerId,
+      });
+      await markInstallationUninstalled(db, gone.installationId);
+      await expect(ensureProject(db, gone)).rejects.toBeInstanceOf(
+        InstallationNotRecordedError,
+      );
     });
 
     it("inserts the task, message and queued run, and queues the run by its id", async () => {

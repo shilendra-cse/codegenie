@@ -15,7 +15,7 @@ sandbox → checkout → setup → baseline → agent → verify → diff → (d
 | Stage | What it does | Status |
 |---|---|---|
 | sandbox | Create a fresh sandbox | built |
-| checkout | Git URL: shallow clone (public repos). Local folder: copy tracked and untracked-but-not-ignored files, so `node_modules`, build output and `.env` stay out | built |
+| checkout | Git URL: shallow clone; with a token, it's passed only to that command ([github.md](./github.md) §7). Local folder: copy tracked and untracked-but-not-ignored files, so `node_modules`, build output and `.env` stay out | built |
 | setup | Replay the given environment config, or draft one from the repository (rules) and apply it; failed steps flag the environment as needing attention ([environment.md](./environment.md)) | built |
 | baseline | Run every check once (passing / failing / broken / timed-out; broken and timed-out are dropped), then commit the state, so files the checks wrote belong to the baseline | built |
 | agent | `runAgent()` with the setup result | built |
@@ -174,6 +174,5 @@ sandbox + checkout → draft → try (install + checks)
 
 Moved into the MVP by environment onboarding ([environment.md](./environment.md)): several projects per repository, user-editable setup, baseline check run before the agent.
 
-- [ ] Private repositories (needs GitHub App tokens)
 - [ ] Node version selection (`.nvmrc`, `engines`) and toolchain checks; other languages via `mise`
 - [ ] yarn 2+ specifics, bun, private registries, git submodules and LFS

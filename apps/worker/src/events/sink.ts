@@ -1,5 +1,6 @@
 import { insertRunEvent, type Db } from "@codegenie/db";
 import { runChannel, type RunEvent } from "@codegenie/shared";
+import { redactGithubTokensIn } from "../lib/redact.js";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
 export type Publisher = {
@@ -27,7 +28,8 @@ export function createEventSink(
   let seq = lastSeq;
   const writes = createSerialQueue();
 
-  const write = async (event: RunEvent) => {
+  const write = async (unredacted: RunEvent) => {
+    const event = redactGithubTokensIn(unredacted);
     const { type, runId: _runId, ts, seq: _seq, ...payload } = event;
     if (LIVE_ONLY.has(type)) {
       await deps.publisher.publish(runChannel(runId), JSON.stringify(event));

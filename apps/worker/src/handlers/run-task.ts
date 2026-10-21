@@ -9,6 +9,7 @@ import {
   type RunResult,
   type RunTaskOptions,
 } from "@codegenie/runner";
+import type { GithubApp } from "@codegenie/github";
 import type { RunEvent, QueuedWork } from "@codegenie/shared";
 import {
   createEventSink,
@@ -21,6 +22,7 @@ import {
   RunStateError,
   type RunRecord,
 } from "../runs/run-record.js";
+import { GithubAccessError, repoReadToken } from "../github/repo-token.js";
 import type { Log } from "../lib/log.js";
 import type { SandboxFactory } from "../lib/sandbox-factory.js";
 
@@ -29,6 +31,7 @@ export type RunTaskDeps = {
   publisher: Publisher;
   log: Log;
   createSandbox: SandboxFactory;
+  github: Pick<GithubApp, "repoToken">;
 } & Pick<RunTaskOptions, "model" | "limits">;
 
 async function loadRun(db: Db, runId: string) {
@@ -105,6 +108,14 @@ export async function handleRunTask(
     });
     return null;
   }
+  let token: string;
+  try {
+    token = await repoReadToken(deps, project);
+  } catch (error) {
+    if (!(error instanceof GithubAccessError)) throw error;
+    await record.fail({ code: "github_access", message: error.message });
+    return null;
+  }
   try {
     await record.start(environment.id);
   } catch (error) {
@@ -128,6 +139,7 @@ export async function handleRunTask(
         type: "git",
         url: `https://github.com/${project.repoOwner}/${project.repoName}.git`,
         ref: run.task.baseBranch,
+        token,
       },
       model: deps.model,
       limits: deps.limits,
