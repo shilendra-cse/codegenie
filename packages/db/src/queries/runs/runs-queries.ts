@@ -67,10 +67,14 @@ export async function markRunEnded(
   return ended.length > 0;
 }
 
-/** Runs that haven't ended: queued or running. */
 export async function listUnfinishedRuns(db: Db) {
   return db
-    .select({ id: runs.id, status: runs.status, queuedAt: runs.queuedAt })
+    .select({
+      id: runs.id,
+      status: runs.status,
+      queuedAt: runs.queuedAt,
+      sandboxId: runs.sandboxId,
+    })
     .from(runs)
     .where(inArray(runs.status, ["queued", "running"]));
 }

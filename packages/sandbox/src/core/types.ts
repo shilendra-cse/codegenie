@@ -55,4 +55,9 @@ export type CreateSandboxOptions =
       provider: "daytona";
       connection: DaytonaConnection;
       labels?: SandboxLabels;
+      retentionHours?: number;
     };
+
+export type ConnectSandboxOptions =
+  | { provider: "docker"; id: string }
+  | { provider: "daytona"; connection: DaytonaConnection; id: string };

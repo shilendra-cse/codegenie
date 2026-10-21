@@ -109,6 +109,21 @@ export class DockerSandbox implements Sandbox {
     return new DockerSandbox(id);
   }
 
+  static async connect(id: string): Promise<DockerSandbox | null> {
+    const inspect = await docker([
+      "inspect",
+      "--format",
+      "{{.State.Running}}",
+      id,
+    ]);
+    if (inspect.code !== 0) return null;
+    if (inspect.stdout.trim() !== "true") {
+      const start = await docker(["start", id]);
+      if (start.code !== 0) return null;
+    }
+    return new DockerSandbox(id);
+  }
+
   async exec(command: string, options: ExecOptions = {}): Promise<ExecResult> {
     this.assertAlive();
     const timeoutMs = Math.min(

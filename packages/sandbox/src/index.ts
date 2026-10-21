@@ -1,6 +1,10 @@
 export * from "./core/types.js";
 export * from "./core/errors.js";
-export { createSandbox } from "./create-sandbox.js";
+export {
+  connectSandbox,
+  createSandbox,
+  parkSandbox,
+} from "./create-sandbox.js";
 export {
   DockerSandbox,
   type DockerSandboxOptions,

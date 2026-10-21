@@ -1,5 +1,11 @@
-import { getRunWithProject, insertRunEvent, type Db } from "@codegenie/db";
+import {
+  getRunDiff,
+  getRunWithProject,
+  insertRunEvent,
+  type Db,
+} from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { FakeSandbox } from "@codegenie/sandbox/testing";
 import { WORK_QUEUE, type RunEvent } from "@codegenie/shared";
 import { Queue, Worker } from "bullmq";
 import { afterAll, describe, expect, it } from "vitest";
@@ -23,7 +29,13 @@ describe.skipIf(!database || !redis)(
         return 1;
       },
     };
-    const deps = { db, queue, publisher, log: () => {} };
+    const deps = {
+      db,
+      queue,
+      publisher,
+      log: () => {},
+      connectSandbox: async () => null,
+    };
     const longAgo = () => new Date(Date.now() - QUEUED_GRACE_MS - 60_000);
 
     afterAll(async () => {
@@ -48,6 +60,7 @@ describe.skipIf(!database || !redis)(
         runId: run.id,
         status: "running",
         code: "worker_lost",
+        sandboxId: null,
       });
       expect(await row(run.id)).toMatchObject({
         status: "failed",
@@ -98,6 +111,7 @@ describe.skipIf(!database || !redis)(
         runId: old.id,
         status: "queued",
         code: "lost_in_queue",
+        sandboxId: null,
       });
       expect((await row(old.id)).status).toBe("failed");
       expect((await row(recent.id)).status).toBe("queued");
@@ -113,6 +127,75 @@ describe.skipIf(!database || !redis)(
       expect(failed.map((l) => l.runId)).not.toContain(run.id);
       expect((await row(run.id)).status).toBe("queued");
       await queue.resume();
+    });
+
+    const PATCH = "diff --git a/notes.md b/notes.md\n+half done\n";
+
+    function sandboxWithWork(options: { baseline: boolean }) {
+      const sandbox = new FakeSandbox();
+      let destroyed = false;
+      sandbox.destroy = async () => {
+        destroyed = true;
+      };
+      sandbox.execHandler = (command) => {
+        if (command.includes("git log"))
+          return { stdout: options.baseline ? "base123\n" : "" };
+        if (command.includes("--numstat"))
+          return { stdout: "1\t0\tnotes.md\n" };
+        if (command.includes("git diff")) return { stdout: PATCH };
+        return {};
+      };
+      return { sandbox, destroyed: () => destroyed };
+    }
+
+    it("keeps a lost run's work: saves its diff, then parks its sandbox", async () => {
+      const { run } = await insertRun(db, {
+        status: "running",
+        sandboxId: "cg-lost",
+      });
+      const { sandbox, destroyed } = sandboxWithWork({ baseline: true });
+      const connected: string[] = [];
+
+      await failLostRuns({
+        ...deps,
+        connectSandbox: async (id) => {
+          connected.push(id);
+          return sandbox;
+        },
+      });
+
+      expect(connected).toEqual(["cg-lost"]);
+      expect(await getRunDiff(db, run.id)).toMatchObject({
+        patch: PATCH,
+        files: [{ path: "notes.md", added: 1, removed: 0 }],
+      });
+      expect(destroyed()).toBe(true);
+      expect((await row(run.id)).status).toBe("failed");
+    });
+
+    it("saves nothing when the run died before the agent started, but still parks the sandbox", async () => {
+      const { run } = await insertRun(db, {
+        status: "running",
+        sandboxId: "cg-early",
+      });
+      const { sandbox, destroyed } = sandboxWithWork({ baseline: false });
+
+      await failLostRuns({ ...deps, connectSandbox: async () => sandbox });
+
+      expect(await getRunDiff(db, run.id)).toBeNull();
+      expect(destroyed()).toBe(true);
+    });
+
+    it("still fails the run when its sandbox is gone", async () => {
+      const { run } = await insertRun(db, {
+        status: "running",
+        sandboxId: "cg-gone",
+      });
+
+      await failLostRuns(deps);
+
+      expect((await row(run.id)).status).toBe("failed");
+      expect(await getRunDiff(db, run.id)).toBeNull();
     });
   },
 );

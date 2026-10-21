@@ -44,6 +44,7 @@ describe("parseConfig", () => {
     ).toEqual({
       provider: "daytona",
       connection: { apiKey: "dtn_test", apiUrl: undefined, target: "eu" },
+      retentionHours: 4,
     });
   });
 
@@ -54,6 +55,7 @@ describe("parseConfig", () => {
     [{ ...key, LOG_LEVEL: "loud" }, "LOG_LEVEL"],
     [{ ...key, SANDBOX_PROVIDER: "daytona" }, "DAYTONA_API_KEY is required"],
     [{ ...key, SANDBOX_PROVIDER: "e2b" }, "SANDBOX_PROVIDER"],
+    [{ ...key, SANDBOX_RETENTION_HOURS: "-1" }, "SANDBOX_RETENTION_HOURS"],
   ])("rejects %j", (env, message) => {
     expect(() => parseConfig(env)).toThrow(ConfigError);
     expect(() => parseConfig(env)).toThrow(message);

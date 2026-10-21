@@ -8,7 +8,6 @@ export async function insertRunEvent(db: Db, event: NewRunEvent) {
   await db.insert(runEvents).values(event);
 }
 
-/** 0 when the run has no stored events yet. */
 export async function getLastRunEventSeq(db: Db, runId: string) {
   const [row] = await db
     .select({ seq: max(runEvents.seq) })
