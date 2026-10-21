@@ -42,6 +42,7 @@ Every token is scoped to **one repository** and expires within an hour. `repoTok
 | `repoToken(installationId, repoId, permissions)` | A token for one repository with only those permissions, at least 5 minutes left |
 | `repoClient(installationId, repoId, permissions)` | An Octokit client authenticated with such a token |
 | `installationForRepo(owner, repo)` | The installation covering a repository, or `null` |
+| `findInstalledRepo(owner, repo)` | That installation plus the repository's id, default branch and visibility, or `null` |
 | `botIdentity()` | `{ name: "<slug>[bot]", email: "<id>+<slug>[bot]@users.noreply.github.com" }`: the commit author GitHub shows as the bot |
 | `verifyWebhookSignature(secret, rawBody, signature)` | Checks `X-Hub-Signature-256` over the raw request body |
 | `parsePrivateKey(value)` | The PEM key as downloaded, or on one line with `\n` |
@@ -112,3 +113,18 @@ Picker:    GET /api/github/installations                     → the user's inst
 - **Code**: `apps/server/src/resources/github/` (routes, webhook handler and events, install callback, controllers); the raw body for signature checks is kept by `express.json({ verify: keepRawBody })`.
 
 Development: run `pnpm dev:server` and `pnpm dev:webhooks` (forwards `GITHUB_WEBHOOK_PROXY_URL` to the local endpoint).
+
+## 7. The worker's clone
+
+```
+run-task / onboard-project
+  → the project's installation (github_installations) → uninstalled or suspended? → fail: github_access
+  → repoToken(installation, repository, { contents: "read" })
+  → git clone with GIT_CONFIG_COUNT / GIT_CONFIG_KEY_0=http.extraHeader / GIT_CONFIG_VALUE_0=AUTHORIZATION: basic …
+    in that one command's environment
+```
+
+- Git reads `GIT_CONFIG_*` as configuration for that command only, so the token never reaches `.git/config`, the remote URL, the command line or the sandbox's environment; the agent's shell can't find it.
+- A token that GitHub refuses fails the run at checkout (`checkout_failed`); a missing, uninstalled or suspended installation fails it before the sandbox is created (`github_access`). Onboarding reports the same through its `done` event.
+- Run events and logs go through `redactGithubTokens`, which keeps a token's prefix (`ghs_***`) and drops the rest, in case git or the agent ever prints one.
+- **Code**: `apps/worker/src/github/repo-token.ts`, `packages/runner/src/lib/git-auth.ts`.
