@@ -61,6 +61,7 @@ packages/
   runner/     runs a task end to end: checkout → setup → agent → verify → deliver (no AI logic)
   agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools
   sandbox/    Sandbox interface + DockerSandbox (+ DaytonaSandbox)
+  github/     GitHub App: repo-scoped installation tokens, bot identity, webhook signatures (github.md)
   db/         Postgres schema, client and migrations (Drizzle), shared by server and worker
   terminal/   terminal output for the CLI and evals
   shared/     types shared across apps and packages (API, events, setup)
