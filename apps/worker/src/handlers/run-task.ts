@@ -58,6 +58,16 @@ async function endRun(
   run.emit({ type: "done", runId: run.id, ts, status: result.status });
 
   await run.record.flush();
+  if (result.diff && result.diff.files.length > 0) {
+    try {
+      await run.record.saveDiff(result.diff);
+    } catch (error) {
+      deps.log("warn", "The run's changes weren't saved", {
+        runId: run.id,
+        error: String(error),
+      });
+    }
+  }
   try {
     await run.sink.flush();
   } catch (error) {

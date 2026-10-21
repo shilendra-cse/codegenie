@@ -6,5 +6,6 @@ export * from "./tasks-schema";
 export * from "./runs-schema";
 export * from "./messages-schema";
 export * from "./run-events-schema";
+export * from "./run-diffs-schema";
 export * from "./webhook-deliveries-schema";
 export * from "./relations";

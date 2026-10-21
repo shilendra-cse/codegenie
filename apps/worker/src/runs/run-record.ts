@@ -1,5 +1,5 @@
-import { runs, type Db } from "@codegenie/db";
-import type { RunResult } from "@codegenie/runner";
+import { runs, saveRunDiff, type Db } from "@codegenie/db";
+import type { Diff, RunResult } from "@codegenie/runner";
 import type { RunEvent } from "@codegenie/shared";
 import { and, eq, inArray } from "drizzle-orm";
 import { createSerialQueue } from "../lib/serial-queue.js";
@@ -15,6 +15,7 @@ export type RunRecord = {
   /** False when the run was already ended elsewhere (e.g. by the reaper). */
   finish(result: RunResult): Promise<boolean>;
   fail(failure: RunFailure): Promise<boolean>;
+  saveDiff(diff: Diff): Promise<void>;
 };
 
 type AgentResult = NonNullable<RunResult["agent"]>;
@@ -97,6 +98,9 @@ export function createRunRecord(db: Db, runId: string): RunRecord {
         ["running"],
       );
     },
+
+    saveDiff: ({ patch, files, truncated }) =>
+      saveRunDiff(db, runId, { patch, files, truncated }),
 
     fail(failure) {
       return end(

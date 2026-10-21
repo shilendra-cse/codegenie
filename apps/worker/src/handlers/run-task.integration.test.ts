@@ -1,6 +1,7 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import {
   DbEnvironmentStore,
+  getRunDiff,
   runEvents,
   runs,
   messages,
@@ -30,15 +31,22 @@ const finish: ScriptedStep = {
   ],
 };
 
-function fakeSandbox(failOn?: string) {
+const PATCH =
+  "diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md\n+# Contributing\n";
+
+function fakeSandbox(options: { failOn?: string; changed?: boolean } = {}) {
   const sandbox = new FakeSandbox({
     "package.json": JSON.stringify({ scripts: { test: "node --test" } }),
     "src/app.js": "export const a = 1;\n",
   });
   sandbox.execHandler = (command) => {
-    if (failOn && command.includes(failOn))
+    if (options.failOn && command.includes(options.failOn))
       return { exitCode: 128, stderr: "repository not found" };
     if (command.includes("git rev-parse HEAD")) return { stdout: "base123\n" };
+    if (options.changed && command.includes("git diff --cached --numstat"))
+      return { stdout: "1\t0\tCONTRIBUTING.md\n" };
+    if (options.changed && command.includes("git diff --cached --no-color"))
+      return { stdout: PATCH };
     return {};
   };
   return sandbox;
@@ -153,6 +161,25 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     });
   });
 
+  it("saves the run's changes, and nothing when there are none", async () => {
+    const changed = await setUp({ environment: environment() });
+    await handleRunTask(
+      changed.depsFor([finish], fakeSandbox({ changed: true })).deps,
+      { runId: changed.run.id },
+    );
+    const unchanged = await setUp({ environment: environment() });
+    await handleRunTask(unchanged.depsFor([finish]).deps, {
+      runId: unchanged.run.id,
+    });
+
+    expect(await getRunDiff(db, changed.run.id)).toMatchObject({
+      patch: PATCH,
+      files: [{ path: "CONTRIBUTING.md", added: 1, removed: 0 }],
+      truncated: false,
+    });
+    expect(await getRunDiff(db, unchanged.run.id)).toBeNull();
+  });
+
   it("uses the task title when the run has no message", async () => {
     const { run, depsFor } = await setUp({ environment: environment() });
     const { deps, model } = depsFor([finish]);
@@ -195,7 +222,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
   it("records a failed checkout with an error and a done event", async () => {
     const { run, depsFor } = await setUp({ environment: environment() });
     const result = await handleRunTask(
-      depsFor([finish], fakeSandbox("git clone")).deps,
+      depsFor([finish], fakeSandbox({ failOn: "git clone" })).deps,
       { runId: run.id },
     );
 
