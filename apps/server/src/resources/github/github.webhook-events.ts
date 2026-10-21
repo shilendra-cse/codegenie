@@ -4,6 +4,7 @@ import {
   markInstallationUninstalled,
   recordInstallation,
   setInstallationSuspended,
+  setTaskStatusForPullRequest,
 } from "@codegenie/db";
 import { z } from "zod";
 
@@ -32,6 +33,39 @@ const installationRepositoriesEvent = z.object({
   repositories_added: repositories,
   repositories_removed: repositories,
 });
+
+const pullRequestEvent = z.object({
+  action: z.string(),
+  pull_request: z.object({
+    number: z.number(),
+    state: z.enum(["open", "closed"]),
+    merged: z.boolean().nullish(),
+  }),
+  repository: z.object({ id: z.number(), full_name: z.string() }),
+});
+
+// The PR's state, not the action, so repeated or redelivered events set the same status again.
+async function handlePullRequest(
+  { db, log }: WebhookDeps,
+  event: z.infer<typeof pullRequestEvent>,
+) {
+  const pr = event.pull_request;
+  const status =
+    pr.state === "open" ? "pr_open" : pr.merged ? "merged" : "closed";
+  const changed = await setTaskStatusForPullRequest(
+    db,
+    { repoGithubId: event.repository.id, number: pr.number },
+    status,
+  );
+  if (changed.length === 0) return;
+  log("info", "Pull request status recorded", {
+    repo: event.repository.full_name,
+    number: pr.number,
+    action: event.action,
+    status,
+    taskIds: changed.map((t) => t.id),
+  });
+}
 
 async function handleInstallation(
   { db, log }: WebhookDeps,
@@ -85,6 +119,8 @@ export async function handleGithubEvent(
   switch (name) {
     case "installation":
       return handleInstallation(deps, installationEvent.parse(payload));
+    case "pull_request":
+      return handlePullRequest(deps, pullRequestEvent.parse(payload));
     case "installation_repositories": {
       const event = installationRepositoriesEvent.parse(payload);
       deps.log("info", "Installation repositories changed", {

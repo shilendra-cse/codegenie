@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../client.js";
+import { projects } from "../../schema/projects/projects-schema.js";
 import { runs } from "../../schema/runs/runs-schema.js";
 import { messages } from "../../schema/tasks/messages-schema.js";
 import { tasks } from "../../schema/tasks/tasks-schema.js";
@@ -50,4 +51,30 @@ export async function setTaskPullRequest(
       status: "pr_open",
     })
     .where(eq(tasks.id, taskId));
+}
+
+export type TaskStatus = (typeof tasks.$inferSelect)["status"];
+
+/** Sets the status of the task whose pull request this is; returns the tasks changed (none for a PR CodeGenie didn't open). */
+export async function setTaskStatusForPullRequest(
+  db: Db,
+  pullRequest: { repoGithubId: number; number: number },
+  status: TaskStatus,
+) {
+  return db
+    .update(tasks)
+    .set({ status })
+    .where(
+      and(
+        eq(tasks.prNumber, pullRequest.number),
+        inArray(
+          tasks.projectId,
+          db
+            .select({ id: projects.id })
+            .from(projects)
+            .where(eq(projects.repoGithubId, pullRequest.repoGithubId)),
+        ),
+      ),
+    )
+    .returning({ id: tasks.id });
 }
