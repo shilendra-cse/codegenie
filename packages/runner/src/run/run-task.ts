@@ -9,9 +9,10 @@ import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
 import type { EnvironmentConfig, RunStage } from "@codegenie/shared";
 import { collectDiff } from "../stages/changes/index.js";
 import { checkoutRepo, type RepoSource } from "../stages/checkout/index.js";
+import { listChanges, snapshotChanges } from "../stages/deliver/index.js";
 import { runSetup } from "../stages/setup/index.js";
 import { runVerify } from "../stages/verify/index.js";
-import type { RunResult, RunStageName } from "./run-result.js";
+import type { Deliver, RunResult, RunStageName } from "./run-result.js";
 
 export type RunTaskOptions = {
   runId: string;
@@ -28,6 +29,8 @@ export type RunTaskOptions = {
   createSandbox?: () => Promise<Sandbox>;
   /** Runs right after checkout, before setup (e.g. evals pin a commit or plant a bug). */
   afterCheckout?: (sandbox: Sandbox) => Promise<void>;
+  /** Called for a succeeded or incomplete run with changes, while the sandbox is still there. */
+  deliver?: Deliver;
 };
 
 const EVENT_STAGE: Record<RunStageName, RunStage> = {
@@ -36,6 +39,7 @@ const EVENT_STAGE: Record<RunStageName, RunStage> = {
   setup: "setup",
   agent: "agent",
   verify: "verify",
+  deliver: "deliver",
 };
 
 function errorMessage(error: unknown) {
@@ -118,7 +122,22 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
     enter("verify");
     // Before the checks run again, so files they write stay out of the diff.
     result.diff = await collectDiff(sandbox, gitBase);
+    const snapshot = options.deliver ? await snapshotChanges(sandbox) : null;
     result.verify = await runVerify(sandbox, setup.checks, setup.baseline);
+
+    const deliverable =
+      agent.status === "succeeded" || agent.status === "incomplete";
+    if (
+      options.deliver &&
+      snapshot &&
+      deliverable &&
+      result.diff.files.length > 0
+    ) {
+      if (signal?.aborted) return finish("cancelled");
+      enter("deliver");
+      const changes = await listChanges(sandbox, gitBase, snapshot);
+      result.delivery = await options.deliver(changes);
+    }
 
     return finish(agent.status);
   } catch (error) {

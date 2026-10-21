@@ -1,7 +1,8 @@
 import { scriptedModel } from "@codegenie/agent/testing";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
 import type { RunEvent } from "@codegenie/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { ChangeSet } from "../stages/deliver/index.js";
 import { runTask, type RunTaskOptions } from "./run-task.js";
 
 const repo = {
@@ -23,6 +24,13 @@ function fakeSandbox(failOn?: string) {
     if (command.includes("--numstat")) return { stdout: "1\t1\tsrc/app.js\n" };
     if (command.includes("--no-color"))
       return { stdout: "diff --git a/src/app.js\n" };
+    if (command.startsWith("git write-tree")) return { stdout: "tree123\n" };
+    if (command.startsWith("git rev-parse --verify"))
+      return { stdout: "parent123\n" };
+    if (command.startsWith("git diff-tree"))
+      return {
+        stdout: `:100644 100644 ${"a".repeat(40)} ${"b".repeat(40)} M\0src/app.js\0`,
+      };
     return {};
   };
   return { sandbox, destroyed: () => destroyed };
@@ -228,5 +236,85 @@ describe("runTask", () => {
     const verify = commands.findIndex((c) => c.includes("logs/verify-"));
     expect(diff).toBeGreaterThan(-1);
     expect(verify).toBeGreaterThan(diff);
+  });
+
+  describe("delivery", () => {
+    const delivered = { branchName: "codegenie/1-set-a", sha: "c0ffee" };
+
+    it("hands the changes over after verify, before the sandbox goes", async () => {
+      const { sandbox, destroyed } = fakeSandbox();
+      const events: RunEvent[] = [];
+      const deliver = vi.fn(async (changes: ChangeSet) => {
+        expect(destroyed()).toBe(0);
+        expect(changes).toMatchObject({
+          parent: "parent123",
+          writes: [{ path: "src/app.js", mode: "100644", sha: "b".repeat(40) }],
+          deletions: [],
+        });
+        return delivered;
+      });
+
+      const result = await runTask(
+        options(sandbox, { deliver, emit: (event) => events.push(event) }),
+      );
+
+      expect(deliver).toHaveBeenCalledOnce();
+      expect(result).toMatchObject({
+        status: "succeeded",
+        delivery: delivered,
+      });
+      expect(
+        events
+          .filter((e) => e.type === "stage_changed")
+          .map((e) => (e as { stage: string }).stage)
+          .slice(-2),
+      ).toEqual(["verify", "deliver"]);
+      const commands = sandbox.execCalls.map((c) => c.command);
+      expect(commands.indexOf("git write-tree")).toBeLessThan(
+        commands.findIndex((c) => c.includes("logs/verify-")),
+      );
+    });
+
+    it("delivers nothing without changes, or when the agent didn't finish its work", async () => {
+      const deliver = vi.fn(async () => delivered);
+
+      const { sandbox } = fakeSandbox();
+      const base = sandbox.execHandler;
+      sandbox.execHandler = (command, opts) =>
+        command.includes("--numstat") ? {} : base(command, opts);
+      const unchanged = await runTask(options(sandbox, { deliver }));
+
+      const failing = await runTask(
+        options(fakeSandbox().sandbox, {
+          deliver,
+          model: scriptedModel([
+            { error: new Error("The model provider is down") },
+          ]).resolved,
+        }),
+      );
+
+      expect(unchanged.status).toBe("succeeded");
+      expect(unchanged.delivery).toBeUndefined();
+      expect(failing.delivery).toBeUndefined();
+      expect(deliver).not.toHaveBeenCalled();
+    });
+
+    it("fails the run at deliver when the delivery fails", async () => {
+      const { sandbox, destroyed } = fakeSandbox();
+      const result = await runTask(
+        options(sandbox, {
+          deliver: async () => {
+            throw new Error("GitHub said no");
+          },
+        }),
+      );
+      expect(result).toMatchObject({
+        status: "failed",
+        failedStage: "deliver",
+        error: "GitHub said no",
+        agent: { status: "succeeded" },
+      });
+      expect(destroyed()).toBe(1);
+    });
   });
 });
