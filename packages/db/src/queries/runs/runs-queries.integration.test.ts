@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
-import { DbEnvironmentStore } from "../../environments.js";
+import { DbEnvironmentStore } from "../projects/environments-queries.js";
 import { insertRun, testDatabaseOrSkip } from "../../testing/index.js";
 import {
   getRunWithProject,

@@ -6,9 +6,9 @@ import type {
   StoredEnvironment,
 } from "@codegenie/shared";
 import { and, desc, eq, max } from "drizzle-orm";
-import type { Db } from "./client.js";
-import { projectEnvironments } from "./schema/projects/project-environments-schema.js";
-import { projects } from "./schema/projects/projects-schema.js";
+import type { Db } from "../../client.js";
+import { projectEnvironments } from "../../schema/projects/project-environments-schema.js";
+import { projects } from "../../schema/projects/projects-schema.js";
 
 type Row = typeof projectEnvironments.$inferSelect;
 

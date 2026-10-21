@@ -1,4 +1,4 @@
-import { DbEnvironmentStore, projects, type Db } from "@codegenie/db";
+import { DbEnvironmentStore, getProject, type Db } from "@codegenie/db";
 import {
   autoChannel,
   runOnboarding,
@@ -10,7 +10,6 @@ import {
   type OnboardingMessage,
   type QueuedWork,
 } from "@codegenie/shared";
-import { eq } from "drizzle-orm";
 import type { Publisher } from "../events/sink.js";
 import type { Log } from "../lib/log.js";
 import type { SandboxFactory } from "../lib/sandbox-factory.js";
@@ -29,9 +28,7 @@ export async function handleOnboardProject(
   signal?: AbortSignal,
 ): Promise<OnboardingResult> {
   const { db } = deps;
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
+  const project = await getProject(db, projectId);
   if (!project) throw new Error(`Project ${projectId} doesn't exist.`);
   const repo = `${project.repoOwner}/${project.repoName}`;
 

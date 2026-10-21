@@ -18,3 +18,8 @@ export function createDb(url: string, pool: PoolConfig = {}) {
   });
   return { db: drizzle({ client, schema }) as Db, pool: client };
 }
+
+/** Throws when the database can't be reached. */
+export async function pingDatabase(db: Db) {
+  await db.execute("SELECT 1");
+}
