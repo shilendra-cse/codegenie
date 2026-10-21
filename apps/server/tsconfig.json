@@ -21,9 +21,8 @@
       "noFallthroughCasesInSwitch": true,
       "allowJs": false,
       "types": ["node"],
-      "baseUrl": ".",
       "paths": {
-        "@/*": ["./src/*"],
+        "@/*": ["./src/*"]
       }
     },
     "include": ["src/**/*"],
