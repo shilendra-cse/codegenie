@@ -1,6 +1,14 @@
 import { execFileSync } from "node:child_process";
+import { randomInt, randomUUID } from "node:crypto";
 import { scriptedModel } from "@codegenie/agent/testing";
-import { DbEnvironmentStore, runEvents, runs, type Db } from "@codegenie/db";
+import {
+  DbEnvironmentStore,
+  ensureUser,
+  recordInstallation,
+  runEvents,
+  runs,
+  type Db,
+} from "@codegenie/db";
 import { testDatabaseOrSkip } from "@codegenie/db/testing";
 import { DockerSandbox } from "@codegenie/sandbox";
 import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
@@ -106,11 +114,26 @@ describe.skipIf(!database || !redis || !probe)(
       });
 
       try {
+        const installerId = randomUUID();
+        const installationId = randomInt(1, 2 ** 31);
+        await ensureUser(db, {
+          id: installerId,
+          name: "Ada",
+          email: `${installerId}@example.com`,
+        });
+        await recordInstallation(db, {
+          installationId,
+          accountLogin: "octocat",
+          accountType: "user",
+          installedByUserId: installerId,
+        });
         const project = await ensureProject(db, {
+          installationId,
+          id: 1296269,
           owner: "octocat",
-          repo: "Hello-World",
-          githubId: 1296269,
+          name: "Hello-World",
           defaultBranch: "master",
+          private: false,
         });
         const onboarding = await enqueueOnboarding(queue, project.id);
         await onboarding.waitUntilFinished(queueEvents);

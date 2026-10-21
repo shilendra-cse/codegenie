@@ -30,6 +30,15 @@ export type RepoToken = { token: string; expiresAt: Date };
 
 export type BotIdentity = { name: string; email: string };
 
+export type InstalledRepo = {
+  installationId: number;
+  id: number;
+  owner: string;
+  name: string;
+  defaultBranch: string;
+  private: boolean;
+};
+
 export type GithubApp = {
   repoToken(
     installationId: number,
@@ -42,6 +51,7 @@ export type GithubApp = {
     permissions: RepoPermissions,
   ): Promise<Octokit>;
   installationForRepo(owner: string, repo: string): Promise<number | null>;
+  findInstalledRepo(owner: string, repo: string): Promise<InstalledRepo | null>;
   slug(): Promise<string>;
   botIdentity(): Promise<BotIdentity>;
 };
@@ -91,6 +101,20 @@ export function createGithubApp(
     return app.slug;
   });
 
+  const installationForRepo = async (owner: string, repo: string) => {
+    try {
+      const { data } = await request("GET /repos/{owner}/{repo}/installation", {
+        owner,
+        repo,
+        headers: await appHeaders(),
+      });
+      return data.id;
+    } catch (error) {
+      if (error instanceof RequestError && error.status === 404) return null;
+      throw error;
+    }
+  };
+
   const botIdentity = cachedUnlessFailed(async (): Promise<BotIdentity> => {
     const name = `${await slug()}[bot]`;
     const { data: user } = await request("GET /users/{username}", {
@@ -107,17 +131,30 @@ export function createGithubApp(
       return new Octokit({ auth: token, request: requestOptions });
     },
 
-    async installationForRepo(owner, repo) {
-      try {
-        const { data } = await request(
-          "GET /repos/{owner}/{repo}/installation",
-          { owner, repo, headers: await appHeaders() },
-        );
-        return data.id;
-      } catch (error) {
-        if (error instanceof RequestError && error.status === 404) return null;
-        throw error;
-      }
+    installationForRepo,
+
+    async findInstalledRepo(owner, repo) {
+      const installationId = await installationForRepo(owner, repo);
+      if (!installationId) return null;
+      const { token } = await auth({
+        type: "installation",
+        installationId,
+        repositoryNames: [repo],
+        permissions: { metadata: "read" },
+      });
+      const { data } = await request("GET /repos/{owner}/{repo}", {
+        owner,
+        repo,
+        headers: { authorization: `token ${token}` },
+      });
+      return {
+        installationId,
+        id: Number(data.id),
+        owner: data.owner.login,
+        name: data.name,
+        defaultBranch: data.default_branch,
+        private: data.private,
+      };
     },
 
     slug,

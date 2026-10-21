@@ -4,16 +4,6 @@ import { githubInstallations } from "../../schema/github/github-installations-sc
 
 export type NewInstallation = typeof githubInstallations.$inferInsert;
 
-/** Creates the installation unless one with the same GitHub installation id exists; returns its row id. */
-export async function ensureInstallation(db: Db, values: NewInstallation) {
-  await db.insert(githubInstallations).values(values).onConflictDoNothing();
-  const [installation] = await db
-    .select({ id: githubInstallations.id })
-    .from(githubInstallations)
-    .where(eq(githubInstallations.installationId, values.installationId));
-  return installation!;
-}
-
 export type InstallationAccount = Pick<
   NewInstallation,
   "installationId" | "accountLogin" | "accountType" | "installedByUserId"
