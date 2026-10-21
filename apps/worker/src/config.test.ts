@@ -14,6 +14,7 @@ describe("parseConfig", () => {
       model: "openai:gpt-6-luna",
       concurrency: 3,
       sandbox: { provider: "docker" },
+      reaperIntervalMs: 5 * 60_000,
     });
   });
 
@@ -56,6 +57,7 @@ describe("parseConfig", () => {
     [{ ...key, SANDBOX_PROVIDER: "daytona" }, "DAYTONA_API_KEY is required"],
     [{ ...key, SANDBOX_PROVIDER: "e2b" }, "SANDBOX_PROVIDER"],
     [{ ...key, SANDBOX_RETENTION_HOURS: "-1" }, "SANDBOX_RETENTION_HOURS"],
+    [{ ...key, REAPER_INTERVAL_MINUTES: "0" }, "REAPER_INTERVAL_MINUTES"],
   ])("rejects %j", (env, message) => {
     expect(() => parseConfig(env)).toThrow(ConfigError);
     expect(() => parseConfig(env)).toThrow(message);

@@ -98,6 +98,7 @@ describe.skipIf(!database || !redis || !probe)(
               data,
               signal,
             ),
+          reap: async () => {},
         },
       });
 
