@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { githubSignIn, googleSignIn } from "@/lib/auth-client";
+import { githubSignIn } from "@/lib/auth-client";
 import Image from "next/image";
 
 export default function SignInPage() {
@@ -20,24 +20,6 @@ export default function SignInPage() {
             Welcome to Codegenie-AI
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="lg"
-          className="gap-2 w-64"
-          onClick={() => {
-            googleSignIn();
-          }}
-        >
-          <div className="overflow-hidden">
-            <Image
-              src="/google-icon-logo.svg"
-              alt="Google"
-              width={20}
-              height={20}
-            />
-          </div>
-          Continue with Google
-        </Button>
         <Button
           variant="outline"
           size="lg"

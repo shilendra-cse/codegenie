@@ -6,6 +6,17 @@ import { parsePrivateKey } from "./private-key.js";
 
 const MIN_TOKEN_LIFETIME_MS = 5 * 60_000;
 
+function cachedUnlessFailed<T>(load: () => Promise<T>): () => Promise<T> {
+  let value: Promise<T> | undefined;
+  return () => {
+    value ??= load().catch((error: unknown) => {
+      value = undefined;
+      throw error;
+    });
+    return value;
+  };
+}
+
 export type GithubAppConfig = {
   appId: number | string;
   privateKey: string;
@@ -31,6 +42,7 @@ export type GithubApp = {
     permissions: RepoPermissions,
   ): Promise<Octokit>;
   installationForRepo(owner: string, repo: string): Promise<number | null>;
+  slug(): Promise<string>;
   botIdentity(): Promise<BotIdentity>;
 };
 
@@ -71,18 +83,21 @@ export function createGithubApp(
     return { authorization: `bearer ${token}` };
   };
 
-  const loadBotIdentity = async (): Promise<BotIdentity> => {
+  const slug = cachedUnlessFailed(async () => {
     const { data: app } = await request("GET /app", {
       headers: await appHeaders(),
     });
     if (!app?.slug) throw new Error("GitHub didn't return the App's slug.");
-    const name = `${app.slug}[bot]`;
+    return app.slug;
+  });
+
+  const botIdentity = cachedUnlessFailed(async (): Promise<BotIdentity> => {
+    const name = `${await slug()}[bot]`;
     const { data: user } = await request("GET /users/{username}", {
       username: name,
     });
     return { name, email: `${user.id}+${name}@users.noreply.github.com` };
-  };
-  let botIdentity: Promise<BotIdentity> | undefined;
+  });
 
   return {
     repoToken,
@@ -105,12 +120,7 @@ export function createGithubApp(
       }
     },
 
-    botIdentity() {
-      botIdentity ??= loadBotIdentity().catch((error: unknown) => {
-        botIdentity = undefined;
-        throw error;
-      });
-      return botIdentity;
-    },
+    slug,
+    botIdentity,
   };
 }

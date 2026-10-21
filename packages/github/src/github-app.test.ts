@@ -184,4 +184,19 @@ describe("createGithubApp", () => {
     await expect(app.botIdentity()).rejects.toThrow();
     expect((await app.botIdentity()).name).toBe("codegenie-dev[bot]");
   });
+
+  it("looks the App's slug up once, shared with the bot identity", async () => {
+    const github = fakeGithub((call) =>
+      call.path === "/app"
+        ? { status: 200, body: { slug: "codegenie-dev" } }
+        : { status: 200, body: { id: 4242 } },
+    );
+    const app = createGithubApp({ appId: 123, privateKey }, github);
+
+    expect(await app.slug()).toBe("codegenie-dev");
+    await app.botIdentity();
+    await app.slug();
+
+    expect(github.calls.filter((c) => c.path === "/app")).toHaveLength(1);
+  });
 });

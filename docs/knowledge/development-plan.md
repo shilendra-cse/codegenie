@@ -114,11 +114,11 @@ Decisions:
 
 Branches, each built in small batches (see Ways of working):
 
-- [ ] **1. `feat/github-app`**: `@codegenie/github`, used by the server and the worker.
+- [x] **1. `feat/github-app`**: `@codegenie/github`, used by the server and the worker.
   1. Package and token minting: `createGithubApp({ appId, privateKey })`; `repoToken` / `repoClient` (one repository, given permissions, cached until near expiry); `installationForRepo`; private key parsing.
   2. Bot identity (`<slug>[bot]` and its noreply email, for commits) and webhook signature verification (`X-Hub-Signature-256`).
   3. Docs: `github.md` with the App registration guide (permissions, events, callback and setup URLs), the token model and the settings each app needs.
-- [ ] **2. `feat/github-install`**: the server.
+- [x] **2. `feat/github-install`**: the server ([github.md](./github.md) §6).
   1. GitHub-only sign-in through the App's OAuth.
   2. Webhook endpoint: raw body, signature check, `webhook_deliveries` dedupe.
   3. Installation events (`installation`, `installation_repositories`: created, repositories added/removed, suspended, deleted) → `github_installations`.

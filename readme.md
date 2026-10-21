@@ -41,7 +41,7 @@ pnpm setup
 
 This installs dependencies, creates `.env` files from the examples, starts Postgres and Redis, and runs database migrations. Then fill in the credentials it warns about:
 
-- `apps/server/.env`: GitHub and Google OAuth client ids and secrets
+- `apps/server/.env`: the GitHub App's client id and secret, App id, private key and webhook secret ([docs/knowledge/github.md](docs/knowledge/github.md))
 - `apps/cli/.env`: `OPENAI_API_KEY` (and optionally `AGENT_MODEL`)
 - `apps/worker/.env`: `OPENAI_API_KEY` (and optionally `AGENT_MODEL`, `WORKER_CONCURRENCY`)
 
@@ -51,6 +51,7 @@ Start each app in its own terminal:
 pnpm dev:server   # API at http://localhost:3001
 pnpm dev:web      # UI at http://localhost:3000
 pnpm dev:worker   # runs queued work; see apps/worker/README.md
+pnpm dev:webhooks # forwards GitHub webhooks from your smee channel (docs/knowledge/github.md)
 ```
 
 Run the agent on a repository:

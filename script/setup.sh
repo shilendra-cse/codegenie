@@ -85,11 +85,7 @@ if grep -q 'your-openai-api-key' apps/worker/.env; then
 fi
 
 if grep -q 'your-github-client-id' apps/server/.env; then
-  warn "Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in apps/server/.env before GitHub sign-in."
-fi
-
-if grep -q 'your-google-client-id' apps/server/.env; then
-  warn "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in apps/server/.env before Google sign-in."
+  warn "Set the GitHub App's settings in apps/server/.env (see docs/knowledge/github.md) before signing in."
 fi
 
 log "Starting Postgres and Redis"

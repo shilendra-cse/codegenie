@@ -1,4 +1,6 @@
 import { betterAuth } from "better-auth";
+import { fromNodeHeaders } from "better-auth/node";
+import type { Request } from "express";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
 import { schema } from "@codegenie/db";
@@ -13,22 +15,11 @@ export const auth = betterAuth({
     schema: schema,
   }),
 
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: false, //will set to true later when otp is implemented
-    minPasswordLength: 8,
-  },
-
   socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      redirectURI: `${process.env.BACKEND_URL || "http://localhost:3001"}/api/auth/callback/google`,
-    },
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID || "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-      redirectURI: `${process.env.BACKEND_URL || "http://localhost:3001"}/api/auth/callback/github`,
+      clientId: config.github.clientId,
+      clientSecret: config.github.clientSecret,
+      redirectURI: `${config.betterAuth.url}/api/auth/callback/github`,
     },
   },
 
@@ -40,3 +31,10 @@ export const auth = betterAuth({
 
   trustedOrigins: [process.env.FRONTEND_URL || "http://localhost:3000"],
 });
+
+export async function currentUserId(req: Request): Promise<string | null> {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  return session?.user.id ?? null;
+}

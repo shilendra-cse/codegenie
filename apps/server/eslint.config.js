@@ -13,6 +13,7 @@ export default tseslint.config(
       "node_modules/**",
       "drizzle.config.ts",
       "eslint.config.js",
+      "vitest.config.ts",
     ],
   },
   eslint.configs.recommended,

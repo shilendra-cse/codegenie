@@ -1,0 +1,1 @@
+ALTER TABLE "github_installations" ADD COLUMN "uninstalled_at" timestamp with time zone;

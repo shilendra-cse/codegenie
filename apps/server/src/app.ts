@@ -9,6 +9,7 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { httpLogger } from "./middleware/http-logger.js";
 import { logger } from "./lib/logger.js";
 import { registerOpenApiDocs } from "./lib/openapi.js";
+import { keepRawBody } from "./lib/raw-body.js";
 
 export const createApp = (): express.Express => {
   const app = express();
@@ -22,7 +23,7 @@ export const createApp = (): express.Express => {
   // Better Auth must run before express.json() or auth requests hang
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
-  app.use(express.json());
+  app.use(express.json({ verify: keepRawBody }));
 
   registerOpenApiDocs(app);
 
