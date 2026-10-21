@@ -78,6 +78,7 @@ export function createRunRecord(db: Db, runId: string): RunRecord {
           steps: agent?.steps ?? 0,
           costUsd: (agent?.usage.costUsd ?? 0).toFixed(4),
           checksPassed: result.verify?.passed ?? null,
+          commitSha: result.delivery?.sha ?? null,
           errorCode: failure?.code ?? null,
           errorMessage: failure?.message ?? null,
         },

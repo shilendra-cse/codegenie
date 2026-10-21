@@ -1,6 +1,7 @@
 export { runTask, type RunTaskOptions } from "./run/run-task.js";
 export type {
   Deliver,
+  DeliverableRun,
   Delivery,
   RunResult,
   RunStageName,

@@ -14,8 +14,17 @@ export type RunStageName =
 
 export type Delivery = { branchName: string; sha: string };
 
+export type DeliverableRun = {
+  agent: AgentResult;
+  verify: VerifyResult;
+  diff: Diff;
+};
+
 /** Turns the change set into a commit outside the sandbox, which never sees a write token. */
-export type Deliver = (changes: ChangeSet) => Promise<Delivery>;
+export type Deliver = (
+  changes: ChangeSet,
+  run: DeliverableRun,
+) => Promise<Delivery>;
 
 export type RunResult = {
   status: FinalRunStatus;

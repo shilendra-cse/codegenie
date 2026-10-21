@@ -3,7 +3,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
 import { messages, tasks } from "../../schema/index.js";
 import { insertProject, testDatabaseOrSkip } from "../../testing/index.js";
-import { createTaskWithRun } from "./tasks-queries.js";
+import {
+  createTaskWithRun,
+  setTaskBranch,
+  setTaskPullRequest,
+} from "./tasks-queries.js";
 
 const database = await testDatabaseOrSkip("tasks queries");
 
@@ -31,6 +35,25 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
     expect(
       await db.select().from(messages).where(eq(messages.taskId, task.id)),
     ).toMatchObject([{ runId: run.id, role: "user", content: "Add a README" }]);
+  });
+
+  it("records the task's branch, then its pull request", async () => {
+    const project = await insertProject(db);
+    const { task } = await createTaskWithRun(db, values(project));
+
+    await setTaskBranch(db, task.id, "codegenie/1234abcd-add-a-readme");
+    await setTaskPullRequest(db, task.id, {
+      number: 7,
+      url: "https://github.com/acme/app/pull/7",
+    });
+
+    const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    expect(row).toMatchObject({
+      branchName: "codegenie/1234abcd-add-a-readme",
+      prNumber: 7,
+      prUrl: "https://github.com/acme/app/pull/7",
+      status: "pr_open",
+    });
   });
 
   it("creates nothing when part of it fails", async () => {

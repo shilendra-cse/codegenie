@@ -16,6 +16,7 @@ export type RunOutcome = Pick<Run, "status"> &
       | "steps"
       | "costUsd"
       | "checksPassed"
+      | "commitSha"
       | "errorCode"
       | "errorMessage"
     >

@@ -136,7 +136,11 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
       if (signal?.aborted) return finish("cancelled");
       enter("deliver");
       const changes = await listChanges(sandbox, gitBase, snapshot);
-      result.delivery = await options.deliver(changes);
+      result.delivery = await options.deliver(changes, {
+        agent,
+        verify: result.verify,
+        diff: result.diff,
+      });
     }
 
     return finish(agent.status);

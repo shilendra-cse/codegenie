@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { runs } from "../../schema/runs/runs-schema.js";
 import { messages } from "../../schema/tasks/messages-schema.js";
@@ -26,4 +27,27 @@ export async function createTaskWithRun(db: Db, values: NewTaskWithRun) {
     });
     return { task: task!, run: run! };
   });
+}
+
+export async function setTaskBranch(
+  db: Db,
+  taskId: string,
+  branchName: string,
+) {
+  await db.update(tasks).set({ branchName }).where(eq(tasks.id, taskId));
+}
+
+export async function setTaskPullRequest(
+  db: Db,
+  taskId: string,
+  pullRequest: { number: number; url: string },
+) {
+  await db
+    .update(tasks)
+    .set({
+      prNumber: pullRequest.number,
+      prUrl: pullRequest.url,
+      status: "pr_open",
+    })
+    .where(eq(tasks.id, taskId));
 }
