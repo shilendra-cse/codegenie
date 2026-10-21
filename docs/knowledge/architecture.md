@@ -87,7 +87,7 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/r
 
 ### apps/server
 - Better Auth (GitHub sign-in through the App, sessions).
-- GitHub App: install callback, webhook receiver (`installation`, `installation_repositories`, `pull_request_review_comment`, `issue_comment`), signature verification.
+- GitHub App ([github.md](./github.md) §6): install callback, webhook receiver with signature verification and delivery dedupe (`installation`, `installation_repositories` now; `pull_request`, `pull_request_review_comment`, `issue_comment` later), repo picker API (installations and their repositories, through the user's token).
 - REST: projects, tasks, task messages (follow-ups), runs, cancel.
 - `GET /api/runs/:id/events` — SSE replay + live.
 - Writes rows and enqueues; does no long-running work.

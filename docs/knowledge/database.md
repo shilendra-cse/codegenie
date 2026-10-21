@@ -51,8 +51,11 @@ One row per GitHub App installation.
 | `account_login` | text | user or org login |
 | `account_type` | enum `installation_account_type` (`user`, `organization`) | |
 | `installed_by_user_id` | text FK → `user.id` | cascade |
-| `suspended_at` | timestamptz null | set via `installation` webhook |
+| `suspended_at` | timestamptz null | set and cleared by the `installation` webhook (`suspend` / `unsuspend`) |
+| `uninstalled_at` | timestamptz null | set when the App is uninstalled; the row is kept, because projects cascade from it. A reinstall clears it. |
 | `created_at`, `updated_at` | timestamptz | |
+
+Recorded by the install callback (after checking the user can access the installation) or by the `installation.created` webhook (when the installer has signed in).
 
 ### `projects`
 A repository connected by a user.
@@ -201,7 +204,7 @@ Idempotency for GitHub webhooks (GitHub retries deliveries).
 | `event` | text | |
 | `received_at` | timestamptz | |
 
-Insert first; on conflict, skip processing. Rows older than 30 days can be pruned.
+Insert first; on conflict, skip processing. If processing fails, the row is deleted again so GitHub's redelivery is processed. Rows older than 30 days can be pruned.
 
 ---
 

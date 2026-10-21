@@ -59,10 +59,10 @@ On GitHub: **Settings → Developer settings → GitHub Apps → New GitHub App*
 | Callback URL | `http://localhost:3001/api/auth/callback/github` (sign-in) |
 | Expire user authorization tokens | checked |
 | Request user authorization (OAuth) during installation | unchecked |
-| Setup URL | the server's install callback (added with the install flow; leave empty until then) |
+| Setup URL | `http://localhost:3001/api/github/installations/callback` |
 | Redirect on update | checked |
 | Webhook → Active | checked |
-| Webhook URL | your smee.io channel (or tunnel) URL, forwarded to the server's webhook endpoint |
+| Webhook URL | a smee.io channel (create one at https://smee.io/new); `pnpm dev:webhooks` forwards it to the server |
 | Webhook secret | a long random string (`openssl rand -hex 32`) |
 | Repository permissions | **Contents: Read and write**, **Pull requests: Read and write**, Metadata: Read-only (required) |
 | Account permissions | **Email addresses: Read-only** (sign-in needs the user's email) |
@@ -77,11 +77,38 @@ After **Create GitHub App**:
 
 ## 5. Settings
 
-| Setting | Server | Worker | Added with |
-|---|---|---|---|
-| `GITHUB_APP_ID` | ✓ | ✓ | install flow / private clone |
-| `GITHUB_APP_PRIVATE_KEY` (the `.pem` contents; one line with `\n` is fine) | ✓ | ✓ | install flow / private clone |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (the App's, for sign-in) | ✓ | | install flow |
-| `GITHUB_WEBHOOK_SECRET` | ✓ | | install flow |
+| Setting | Server | Worker |
+|---|---|---|
+| `GITHUB_APP_ID` | ✓ | ✓ (private clone) |
+| `GITHUB_APP_PRIVATE_KEY` (the `.pem` contents; one line with `\n` is fine) | ✓ | ✓ (private clone) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (the App's, for sign-in) | ✓ | |
+| `GITHUB_WEBHOOK_SECRET` (the same value as in the App's webhook settings) | ✓ | |
+| `GITHUB_WEBHOOK_PROXY_URL` (development: the smee channel, for `pnpm dev:webhooks`) | ✓ | |
 
 Keep the private key and secrets in the git-ignored `.env` files only.
+
+## 6. The server's GitHub flows
+
+```
+Sign in:   web "Continue with Github" → Better Auth (the App's client id) → session + the user's GitHub token
+
+Install:   installUrl → GitHub → Setup URL: GET /api/github/installations/callback?installation_id=…
+             → signed in? the user's token lists their installations → is this one of them? → github_installations
+             → back to the web app (/build?github=installed | not-found | requested | cancelled)
+
+Webhooks:  GitHub → (smee in development) → POST /api/github/webhooks
+             → signature over the raw body ✓ → delivery seen before? (webhook_deliveries) → skip
+             → installation created / deleted / suspend / unsuspend → github_installations
+               installation_repositories → logged (repositories are listed live)
+
+Picker:    GET /api/github/installations                     → the user's installations + installUrl
+           GET /api/github/installations/:id/repositories    → repositories the user can access
+```
+
+- **Sign-in is GitHub only**, through the App's OAuth. The user's GitHub token is read through Better Auth's `getAccessToken`, which refreshes it when it has expired (the App's user tokens last 8 hours); without one, the user signs in again (`GITHUB_SIGN_IN_REQUIRED`).
+- **The install callback checks ownership**: the installation id arrives in the URL, so it's recorded only if the user's own token can see it.
+- **Webhooks**: an installation by a GitHub user who hasn't signed in yet is skipped and recorded later by the callback. A delivery that fails is forgotten again and answered with 500, so GitHub's redelivery is processed. Uninstalling marks `uninstalled_at` instead of deleting, since projects cascade from the installation.
+- **Repositories** are always listed live from GitHub through the user's token, so they reflect what the user can access right now.
+- **Code**: `apps/server/src/resources/github/` (routes, webhook handler and events, install callback, controllers); the raw body for signature checks is kept by `express.json({ verify: keepRawBody })`.
+
+Development: run `pnpm dev:server` and `pnpm dev:webhooks` (forwards `GITHUB_WEBHOOK_PROXY_URL` to the local endpoint).

@@ -51,6 +51,7 @@ Start each app in its own terminal:
 pnpm dev:server   # API at http://localhost:3001
 pnpm dev:web      # UI at http://localhost:3000
 pnpm dev:worker   # runs queued work; see apps/worker/README.md
+pnpm dev:webhooks # forwards GitHub webhooks from your smee channel (docs/knowledge/github.md)
 ```
 
 Run the agent on a repository:
