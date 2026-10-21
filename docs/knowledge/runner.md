@@ -1,6 +1,6 @@
 # Runner
 
-> Status: **In progress** (everything except deliver built) · Last updated: 2026-10-18 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
+> Status: **Built** · Last updated: 2026-10-18 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
 The runner executes a coding task end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
 
@@ -21,12 +21,12 @@ sandbox → checkout → setup → baseline → agent → verify → diff → (d
 | agent | `runAgent()` with the setup result | built |
 | diff | Patch and per-file changes against the baseline, taken before verify so the final check run can't add files. Known gap: files the agent's own `run_checks` writes outside `.gitignore` show up in the diff | built |
 | verify | Run the checks again and compare with the baseline: passing / fixed / regressed / still failing | built |
-| deliver | Commit, push, open the PR | planned (needs the GitHub App) |
+| deliver | For a succeeded or incomplete run with changes: list them (files, modes, blob hashes, deletions, the cloned commit as parent, the expected tree) from a snapshot taken before verify, and hand them to the caller's `deliver` callback, which commits outside the sandbox ([github.md](./github.md) §8). Without a callback (CLI, evals) nothing is delivered | built |
 | cleanup | Destroy the sandbox, always (unless asked to keep it) | built |
 
-`runTask()` never throws for run problems. It returns a `RunResult`: `status` (the agent's status, or `failed` with `failedStage` and `error` when an earlier stage broke), plus the checkout, setup, agent, verify and diff results that exist. `checksPassed` is the verify outcome (`null` when there are no checks); failing checks don't change the agent's status.
+`runTask()` never throws for run problems. It returns a `RunResult`: `status` (the agent's status, or `failed` with `failedStage` and `error` when an earlier stage broke), plus the checkout, setup, agent, verify and diff results that exist, and `delivery` (`branchName`, `sha`) when the changes were delivered. `checksPassed` is the verify outcome (`null` when there are no checks); failing checks don't change the agent's status.
 
-Events: `stage_changed` (prepare, checkout, setup, agent, verify), `sandbox_created`, and the setup and agent events.
+Events: `stage_changed` (prepare, checkout, setup, agent, verify, deliver), `sandbox_created`, and the setup and agent events. A delivery failure is `failedStage: "deliver"`.
 
 ```
 packages/runner/src/

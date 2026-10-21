@@ -130,9 +130,9 @@ Branches, each built in small batches (see Ways of working):
   2. Clone with the token passed only to that command; the remote is the plain URL afterwards; the token is redacted from logs and events.
   3. `worker:enqueue` finds a repository's real installation through the App, so private repositories work from the script.
   4. Docs.
-- [ ] **4. `feat/delivery`**
-  1. Runner deliver step: branch `codegenie/<task>-<slug>`, commit as the bot, push with a write token passed only to that command; no changes → no branch.
-  2. Worker: open the PR (draft when checks failed or the run is incomplete) with the summary, check results and a run link; update the task (branch, PR number and URL, `pr_open`) and the run (`commit_sha`); `branch_created` / `git_push` / `pr_opened` events; `deliver_failed` on errors.
+- [x] **4. `feat/delivery`** ([github.md](./github.md) §8)
+  1. Runner deliver step: list the agent's changes (files, modes, blob hashes, deletions, parent, expected tree) and hand them to a callback; no changes → no branch. (Planned as a push from the sandbox; changed so no write token enters the sandbox after the agent ran.)
+  2. Worker: commit through GitHub's API on `codegenie/<task>-<slug>` as the App (verified), open the PR (draft when checks failed or the run is incomplete; ready with a note where drafts aren't available) with the summary, check results and changed files; update the task (branch, PR number and URL, `pr_open`) and the run (`commit_sha`); `branch_created` / `git_push` / `pr_opened` events; `deliver_failed` on errors. The agent titles its change in `finish_task`. The run link in the PR comes with the web app's run page (Phase 4).
   3. Docs.
 - [ ] **5. `feat/pr-webhooks`**
   1. `pull_request` merged / closed / reopened → the task's status.

@@ -116,7 +116,7 @@ A unit of work on a project.
 | `source_ref` | text null | e.g. Jira key `ABC-123` |
 | `source_url` | text null | |
 | `base_branch` | text | |
-| `branch_name` | text null | set on first run |
+| `branch_name` | text null | set when the first delivery creates the branch |
 | `pr_number` | integer null | set on delivery |
 | `pr_url` | text null | |
 | `status` | enum `task_status` (`open`, `pr_open`, `merged`, `closed`) | PR states updated by webhooks |

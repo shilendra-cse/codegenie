@@ -68,7 +68,7 @@ Tests sit next to the code: `*.test.ts` need nothing, `*.integration.test.ts` ne
 | `write_file` | Create or overwrite a file; parent folders created |
 | `bash` | Shell command in `/workspace`; 2 min default, 10 min max; stdout + stderr combined |
 | `run_checks` | Runs the repo's checks (from setup), each in its own folder; ✓/✗ per check plus the end of failing output |
-| `finish_task` | Ends the run with a summary (used in the PR description) |
+| `finish_task` | Ends the run with an optional short title (the commit subject and PR title) and a summary (used in the PR description) |
 
 Shared rules:
 - **Paths:** resolved against `/workspace`; anything outside is refused; writes inside `.git` are refused. The container is the real security boundary.
@@ -101,6 +101,7 @@ Details:
 ```ts
 AgentResult {
   status: "succeeded" | "incomplete" | "failed" | "cancelled";
+  title: string | null;        // from finish_task: first line, null when none
   summary: string | null;      // from finish_task
   error?: string;              // why it failed or ended early
   limitReached?: "steps" | "time" | "cost";
