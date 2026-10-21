@@ -15,6 +15,7 @@ const RULE = (title: string) =>
 describe("formatSummary", () => {
   const agent = {
     status: "succeeded",
+    title: "Add GET /health",
     summary: "Added GET /health.",
     steps: 14,
     durationMs: 40_000,

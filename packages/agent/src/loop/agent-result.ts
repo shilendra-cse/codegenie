@@ -21,6 +21,8 @@ export type LoopResult = {
 };
 
 export type AgentResult = Omit<LoopResult, "finishInput"> & {
+  /** The agent's title for the change; null when it gave none. */
+  title: string | null;
   summary: string | null;
 };
 

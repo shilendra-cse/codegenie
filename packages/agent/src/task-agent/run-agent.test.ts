@@ -33,6 +33,26 @@ function setup(
 }
 
 describe("runAgent", () => {
+  it("returns the agent's title, first line only, or null without one", async () => {
+    const titled = await setup([
+      call("finish_task", {
+        title: "  Set a to 2\nextra line",
+        summary: "Changed a.",
+      }),
+    ]).run();
+    const untitled = await setup([finish("Changed a.")]).run();
+    const blank = await setup([
+      call("finish_task", { title: "  ", summary: "Changed a." }),
+    ]).run();
+
+    expect(titled).toMatchObject({
+      title: "Set a to 2",
+      summary: "Changed a.",
+    });
+    expect(untitled.title).toBeNull();
+    expect(blank.title).toBeNull();
+  });
+
   it("succeeds when the model calls finish_task", async () => {
     const { run } = setup([finish("Nothing to change.")]);
     const result = await run();
