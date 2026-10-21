@@ -14,7 +14,8 @@
     "./testing": {
       "types": "./src/testing/index.ts",
       "default": "./src/testing/index.ts"
-    }
+    },
+    "./eslint": "./eslint-query-layer.js"
   },
   "scripts": {
     "generate": "drizzle-kit generate",

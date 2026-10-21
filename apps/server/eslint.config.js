@@ -1,3 +1,4 @@
+import { queryLayerRules } from "@codegenie/db/eslint";
 import eslint from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginPrettier from "eslint-plugin-prettier";
@@ -66,5 +67,6 @@ export default tseslint.config(
       sourceType: "module",
     },
   },
+  queryLayerRules,
   eslintConfigPrettier,
 );

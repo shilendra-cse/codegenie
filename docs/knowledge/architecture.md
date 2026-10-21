@@ -72,8 +72,7 @@ docs/
 Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `db → shared`; apps → runner, db. Apps never import from other apps.
 
 **`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates runs and writes events), so the schema lives in one shared package instead of inside one app:
-- data access only: schema, client, migrations, and query helpers both apps need (e.g. `DbEnvironmentStore`); business rules stay in the apps;
-- queries only one app needs stay in that app;
+- **all data access lives here:** schema, client, migrations and every query (`src/queries/`, one folder per domain, mirroring `src/schema/`). Apps call query functions and never build queries; ESLint enforces it (`@codegenie/db/eslint`). Queries hold no business rules: they report what happened, and the app decides what it means;
 - migrations run from one place (the deploy step, `pnpm migrate`), never on app startup;
 - the connection is created by each app (`createDb(url)` with its own config), never on import.
 A schema change can mean redeploying both apps; that comes from sharing the database, not from the package. The old `apps/agent` REPL is replaced by `apps/cli`. Details: [runner.md](./runner.md), [agent.md](./agent.md), [sandbox.md](./sandbox.md).

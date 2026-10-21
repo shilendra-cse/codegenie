@@ -1,18 +1,22 @@
 # @codegenie/db
 
-The Postgres schema, client and migrations ([Drizzle](https://orm.drizzle.team)), shared by `apps/server` and `apps/worker`. Table design: [docs/knowledge/database.md](../../docs/knowledge/database.md).
+The Postgres schema, client, migrations and **every query** ([Drizzle](https://orm.drizzle.team)), shared by `apps/server` and `apps/worker`. Table design: [docs/knowledge/database.md](../../docs/knowledge/database.md).
 
 ```ts
-import { createDb, runs } from "@codegenie/db";
+import { createDb, getRunWithProject, markRunStarted } from "@codegenie/db";
 
 const { db, pool } = createDb(config.database.url); // each app, from its own config
-await db.select().from(runs);
+const run = await getRunWithProject(db, runId);
+if (!(await markRunStarted(db, runId, environmentId))) {
+  // the app decides what "not started" means
+}
 ```
 
 ## Rules
 
-- **Data access only:** schema, client, migrations, and query helpers both apps need. Business rules stay in the apps.
-- **Queries only one app needs stay in that app.**
+- **Every query lives in `src/queries/`.** Apps call query functions; they never build queries (no `drizzle-orm` imports, no `db.insert/select/update/delete/query/execute/transaction`). ESLint enforces it in the apps through `@codegenie/db/eslint`; tests may still read and write rows directly.
+- **Queries hold no business rules.** They return what happened (`false` when a run wasn't queued, `null` when a row doesn't exist); the app decides what that means.
+- **One function per operation**, taking `db` first: `markRunEnded(db, runId, outcome, from)`. Several writes that must happen together are one function with a transaction inside (`createTaskWithRun`).
 - **Migrations run from one place** (`pnpm migrate`, the deploy step), never on app startup.
 - **Each app creates its own connection** with `createDb(url)`; nothing connects on import.
 
@@ -45,10 +49,19 @@ It's created on the `TEST_DATABASE_URL` server, or next to the development datab
 
 ```
 src/
-├── client.ts         createDb(url, poolOptions?)
-├── environments.ts   DbEnvironmentStore: project environment versions
-├── testing/          testDatabaseOrSkip (the @codegenie/db/testing export)
-├── schema/           one file per table group; index.ts exports them all
-└── index.ts          createDb, DbEnvironmentStore, every table, and the tables as `schema`
-drizzle/          migrations and their snapshots (generated)
+├── client.ts         createDb(url, poolOptions?), pingDatabase
+├── schema/           tables, one folder per domain; relations.ts at the root
+│   ├── auth/  github/  projects/  tasks/  runs/
+├── queries/          every query, the same folders as schema/
+│   ├── auth/         accounts-queries.ts, users-queries.ts
+│   ├── github/       installations-queries.ts
+│   ├── projects/     projects-queries.ts, environments-queries.ts (DbEnvironmentStore)
+│   ├── tasks/        tasks-queries.ts, messages-queries.ts
+│   └── runs/         runs-queries.ts, run-events-queries.ts, run-diffs-queries.ts
+├── testing/          testDatabaseOrSkip, fixtures (the @codegenie/db/testing export)
+└── index.ts          createDb, every query, every table, and the tables as `schema`
+eslint-query-layer.js the ESLint rule apps include (the @codegenie/db/eslint export)
+drizzle/              migrations and their snapshots (generated)
+
+A table's file and its queries' file sit at the same place in both trees: `schema/runs/runs-schema.ts` and `queries/runs/runs-queries.ts`. Each query file has its tests next to it (`*-queries.integration.test.ts`), on a fresh database.
 ```

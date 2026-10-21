@@ -97,7 +97,7 @@ Constraints and indexes:
 
 Lifecycle: onboarding (or a user edit) inserts version N+1 as `active` and marks the previous one `superseded` in the same transaction; rollback reactivates an older version (Phase 4).
 
-Code: `DbEnvironmentStore` in `packages/db` (`load`, `list`, `save`, `markHealth`, keyed by project id; the same `EnvironmentStore` interface as the CLI's file store). `save` locks the project row, so concurrent saves for one project get versions 1, 2, 3 in turn.
+Code: `DbEnvironmentStore` in `packages/db/src/queries/projects/environments-queries.ts` (`load`, `list`, `save`, `markHealth`, keyed by project id; the same `EnvironmentStore` interface as the CLI's file store). `save` locks the project row, so concurrent saves for one project get versions 1, 2, 3 in turn.
 
 ### `tasks`
 A unit of work on a project.
@@ -204,7 +204,7 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 
 Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced by one clean initial migration** generated from the new schema. Local databases must be reset (`pnpm --filter @codegenie/server docker:reset`, then `pnpm migrate`). From then on, migrations are additive and generated with `drizzle-kit generate`.
 
-The schema, client and migrations live in `packages/db`, shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
+The schema, client, migrations and every query live in `packages/db` (queries in `src/queries/`, one folder per domain like the schema; apps never build queries themselves), shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
 
 The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way.
 
