@@ -16,6 +16,7 @@ const database = await testDatabaseOrSkip("run record");
 type AgentResult = NonNullable<RunResult["agent"]>;
 const agent = (overrides: Partial<AgentResult> = {}): AgentResult => ({
   status: "succeeded",
+  title: "Add GET /health",
   summary: "Added GET /health.",
   steps: 9,
   durationMs: 60_000,

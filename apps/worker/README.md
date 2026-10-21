@@ -6,8 +6,11 @@ Takes work off the Redis queue and runs it in a sandbox: task runs (`run-task`) 
 pnpm worker:enqueue / API ──► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
                                                                    │            │
                                      "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, project_environments
-                                                                                └──► Redis: run:{id}, project:{id}:onboarding
+                                                                                ├──► Redis: run:{id}, project:{id}:onboarding
+                                                                                └──► GitHub API: commit, branch, pull request
 ```
+
+A run that succeeds or ends incomplete with changes is delivered: one commit by the App on `codegenie/<task>-<slug>` and a pull request, a draft when checks failed or the run is incomplete ([github.md](../../docs/knowledge/github.md) §8).
 
 ## Running it
 
@@ -56,7 +59,7 @@ Watching a run:
 ```bash
 docker exec -it codegenie-redis redis-cli psubscribe 'run:*' 'project:*'     # live events
 docker exec -it codegenie-postgres psql -U codegenie_user -d codegenie_db \
-  -c "select id, status, stage, error_code, cost_usd from runs order by queued_at desc limit 5"
+  -c "select id, status, stage, error_code, commit_sha, cost_usd from runs order by queued_at desc limit 5"
 ```
 
 ## Tests

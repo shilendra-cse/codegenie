@@ -26,6 +26,12 @@ function readSummary(finishInput: unknown): string | null {
   return typeof summary === "string" ? summary : "";
 }
 
+function readTitle(finishInput: unknown): string | null {
+  const title = (finishInput as { title?: unknown } | undefined)?.title;
+  if (typeof title !== "string") return null;
+  return title.split("\n")[0]!.trim() || null;
+}
+
 export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   const { ctx } = options;
   const { finishInput, ...result } = await runLoop({
@@ -40,11 +46,15 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
       nudge:
         "You stopped without calling finish_task. Continue working on the task, or call finish_task if it is complete.",
       wrapUp:
-        "Stop working now and call finish_task with a summary of what you completed, what is left undone, and the state of the checks.",
+        "Stop working now and call finish_task with a title and a summary of what you completed, what is left undone, and the state of the checks.",
     },
     limits: options.limits,
     emit: options.emit,
     signal: options.signal,
   });
-  return { ...result, summary: readSummary(finishInput) };
+  return {
+    ...result,
+    title: readTitle(finishInput),
+    summary: readSummary(finishInput),
+  };
 }

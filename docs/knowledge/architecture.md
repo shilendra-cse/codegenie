@@ -15,7 +15,7 @@ CodeGenie is a web-based autonomous coding agent. A user connects their GitHub r
 | D3 | GitHub access | **One GitHub App** for sign-in (its OAuth) and repo access (its installations); GitHub-only sign-in for the MVP | Per-repo consent, 1-hour tokens scoped to one repo and minimal permissions, bot identity on commits/PRs, webhooks; one registration and one identity. |
 | D4 | Run execution | **BullMQ** on Redis, dedicated `apps/worker` process | Already have Redis; durable queue, retries, concurrency control, stalled-job detection. |
 | D5 | Live updates | Worker → Redis pub/sub + `run_events` table → server **SSE** → browser | Replayable (refresh mid-run works), auditable, simple. |
-| D6 | Delivery | Worker (not the agent) commits, pushes, opens PR. **Draft PR** if checks fail, ready PR if they pass. Never push to default branch. | Model can't push half-done work; consistent git hygiene. |
+| D6 | Delivery | Worker (not the agent) commits through GitHub's API and opens the PR. **Draft PR** if checks fail, ready PR if they pass. Never the default branch. | Model can't push half-done work; no write token ever enters the sandbox; commits show as verified. |
 | D7 | Autonomy | Fire-and-forget to PR. Plan-approval step is a **post-MVP** per-task toggle. | Keep MVP flow minimal. |
 | D8 | Sandbox lifetime | **One sandbox per run, deleted at the end.** Pause/resume for follow-ups is post-MVP. | Cost and simplicity. |
 | D9 | LLM | Provider-agnostic via **Vercel AI SDK**; platform-controlled model from a **catalog** (prices, context window), selected by env (`AGENT_MODEL`); currently `gpt-6-luna` | Avoid lock-in; predictable cost; pick models by eval results. See [agent.md](./agent.md). |
@@ -169,14 +169,14 @@ Every entry point reduces to **task → new run**.
 | Stage | Actions | Events |
 |---|---|---|
 | **Prepare** | load run/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId` | `sandbox_created` |
-| **Checkout** | clone into `/workspace`; checkout base; create `codegenie/<taskId>-<slug>` on the first run (later runs check out `task.branch_name`) | `branch_created` |
+| **Checkout** | shallow clone of the base branch into `/workspace` (later runs will check out `task.branch_name`) | |
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
 | **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
 | **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `lint_completed`, `test_passed`/`test_failed` |
-| **Deliver** | no diff → finish with explanation, no PR. Else commit as `codegenie[bot]`, push, open PR (draft if checks failed) with summary + checks + run link | `git_push`, `pr_opened` |
+| **Deliver** | no diff → finish with explanation, no PR. Else the runner lists the changes and the worker commits them through GitHub's API as the App on `codegenie/<taskId>-<slug>` and opens the PR (draft if checks failed or incomplete) with summary + checks + changed files ([github.md](./github.md) §8) | `branch_created`, `git_push`, `pr_opened` |
 | **Finally** | persist summary & usage; `status=succeeded/failed/cancelled`; **always** destroy sandbox | `done` / `error` |
 
-The token is passed to git via a one-off credential env at push/clone time rather than stored in `.git/config`.
+The clone token is passed to git through that command's environment rather than stored in `.git/config`; no write token enters the sandbox.
 
 ---
 
@@ -195,7 +195,7 @@ The token is passed to git via a one-off credential env at push/clone time rathe
 | `write_file(path, content)` | create / full rewrite |
 | `bash(cmd, timeoutMs?)` | anything else, cwd `/workspace` |
 | `run_checks()` | detected lint + test commands, condensed failures |
-| `finish_task(summary)` | ends loop; summary becomes PR body |
+| `finish_task(title?, summary)` | ends loop; title becomes the commit subject and PR title, summary the PR body |
 
 **Rules:**
 - Loop ends only on `finish_task` or a limit — not when the model stops calling tools.
@@ -230,7 +230,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | Dependency install fails | Continue; agent is told setup failed and may fix it. |
 | LLM error / rate limit | Backoff retry inside loop; fail after N attempts. |
 | User cancels | `POST /api/runs/:id/cancel`: a queued run is marked `cancelled` directly; a running one gets a `run-cancel` message → abort signal → sandbox destroyed → `cancelled`. |
-| Push rejected / branch protection | `error` event with reason; diff saved as an artifact. |
+| Delivery refused (branch exists, permissions, mismatch) | `deliver_failed` with the reason; the diff stays saved on the run. |
 
 ---
 
@@ -280,7 +280,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | 0. Foundations | CI (lint, type-check, Vitest), cleanup, package skeletons, **new DB schema + clean initial migration**, shared types updated | Repo in final shape, schema in place |
 | 1. Agent core | `packages/sandbox` (interface + Docker), `packages/agent` with sandbox-backed tools, fixed history, configurable model, limits | Agent works locally against any repo |
 | 2. Worker + Daytona | `DaytonaSandbox`, base snapshot, `apps/worker`, BullMQ, events → Redis + `run_events` | Runs execute in the cloud |
-| 3. GitHub App | install flow, token minting, clone → push → PR | Real PRs |
+| 3. GitHub App | install flow, token minting, clone → commit → PR | Real PRs |
 | 4. API + UI | tasks/runs endpoints, SSE, repo picker, `/build`, live run view | **MVP: prompt → PR** |
 | 5. Iteration | follow-ups, PR-comment webhooks, cancellation | Collaborative loop |
 | 6. Integrations | Jira, then Notion | Ticket → PR |

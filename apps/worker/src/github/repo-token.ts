@@ -10,15 +10,13 @@ export type RepoProject = {
   repoName: string;
 };
 
-export async function repoReadToken(
-  deps: { db: Db; github: Pick<GithubApp, "repoToken"> },
+/** The project's GitHub installation id, while the App is installed and not suspended. */
+export async function repoInstallationId(
+  db: Db,
   project: RepoProject,
-): Promise<string> {
+): Promise<number> {
   const repo = `${project.repoOwner}/${project.repoName}`;
-  const installation = await getInstallationById(
-    deps.db,
-    project.installationId,
-  );
+  const installation = await getInstallationById(db, project.installationId);
   if (!installation || installation.uninstalledAt) {
     throw new GithubAccessError(
       `The CodeGenie GitHub App is no longer installed for ${repo}.`,
@@ -29,9 +27,18 @@ export async function repoReadToken(
       `The CodeGenie GitHub App is suspended on ${installation.accountLogin}.`,
     );
   }
+  return installation.installationId;
+}
+
+export async function repoReadToken(
+  deps: { db: Db; github: Pick<GithubApp, "repoToken"> },
+  project: RepoProject,
+): Promise<string> {
+  const repo = `${project.repoOwner}/${project.repoName}`;
+  const installationId = await repoInstallationId(deps.db, project);
   try {
     const { token } = await deps.github.repoToken(
-      installation.installationId,
+      installationId,
       project.repoGithubId,
       { contents: "read" },
     );

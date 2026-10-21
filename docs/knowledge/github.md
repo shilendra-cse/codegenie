@@ -2,7 +2,7 @@
 
 > Status: **In progress** (Phase 3) · Last updated: 2026-10-21 · Code: `packages/github` · Related: [architecture.md](./architecture.md) (D3), [development-plan.md](./development-plan.md) (Phase 3)
 
-CodeGenie reaches GitHub through **one GitHub App**: users sign in with it, install it on the repositories CodeGenie may work on, and the worker gets short-lived tokens from it to clone, push and open pull requests as `<app-slug>[bot]`. No user's own GitHub token is used to touch repositories.
+CodeGenie reaches GitHub through **one GitHub App**: users sign in with it, install it on the repositories CodeGenie may work on, and the worker gets short-lived tokens from it to clone, commit and open pull requests as `<app-slug>[bot]`. No user's own GitHub token is used to touch repositories.
 
 ## 1. How access works
 
@@ -16,7 +16,7 @@ GitHub: installation 42 = "acme allowed the App into acme/api and acme/web"
 installation token ghs_…  (one repository, only those permissions, expires within 1 hour)
    │
    ▼
-git clone / push, REST API calls
+git clone, REST API calls (commits, pull requests)
 ```
 
 - **App** (registered once): its ID and private key prove "this is CodeGenie". The private key never leaves the server and the worker.
@@ -28,8 +28,7 @@ git clone / push, REST API calls
 | Use | Permissions | Minted by | Where the token goes |
 |---|---|---|---|
 | Clone | `contents: read` | worker | only the `git clone` command; the remote is the plain URL afterwards |
-| Push | `contents: write` | worker | only the `git push` command, after the agent has finished |
-| Open the PR, read PR state | `pull_requests: write` | worker | the worker's API client, never the sandbox |
+| Commit and open the PR | `contents: write`, `pull_requests: write` | worker, at delivery | the worker's API client only; never the sandbox (§8) |
 | Repo picker | the user's sign-in token (installations they can access) | server | server only |
 
 Every token is scoped to **one repository** and expires within an hour. `repoToken` reuses a token until it has less than 5 minutes left. The agent has a shell in the sandbox, so a token is never left where it could read it (`.git/config`, the remote URL, the environment).
@@ -44,10 +43,12 @@ Every token is scoped to **one repository** and expires within an hour. `repoTok
 | `installationForRepo(owner, repo)` | The installation covering a repository, or `null` |
 | `findInstalledRepo(owner, repo)` | That installation plus the repository's id, default branch and visibility, or `null` |
 | `botIdentity()` | `{ name: "<slug>[bot]", email: "<id>+<slug>[bot]@users.noreply.github.com" }`: the commit author GitHub shows as the bot |
+| `commitToBranch(client, commit)` | One commit on a new branch through the API: blobs → tree on the parent's → commit → branch, each blob and the tree checked against git's hashes |
+| `draftPullRequestsUnavailable(error)` | Whether GitHub refused a draft pull request (GitHub Free, private repositories) |
 | `verifyWebhookSignature(secret, rawBody, signature)` | Checks `X-Hub-Signature-256` over the raw request body |
 | `parsePrivateKey(value)` | The PEM key as downloaded, or on one line with `\n` |
 
-Tests answer with GitHub's response shapes and sign real JWTs; nothing calls GitHub.
+Tests answer with GitHub's response shapes and sign real JWTs; nothing calls GitHub. `@codegenie/github/testing` has the fake (`fakeGithub`, `fakeGithubClient`) for other packages' tests.
 
 ## 4. Registering the dev App
 
@@ -128,3 +129,27 @@ run-task / onboard-project
 - A token that GitHub refuses fails the run at checkout (`checkout_failed`); a missing, uninstalled or suspended installation fails it before the sandbox is created (`github_access`). Onboarding reports the same through its `done` event.
 - Run events and logs go through `redactGithubTokens`, which keeps a token's prefix (`ghs_***`) and drops the rest, in case git or the agent ever prints one.
 - **Code**: `apps/worker/src/github/repo-token.ts`, `packages/runner/src/lib/git-auth.ts`.
+
+## 8. Delivery
+
+After the agent's last write, the sandbox is untrusted: anything the agent left running could read a token passed to a command there. So the commit is made through GitHub's API by the worker, from the changes read out of the sandbox:
+
+```
+sandbox (runner, deliver stage)                 worker (deliverToGithub)
+  git write-tree (snapshot, before verify)
+  git diff-tree baseline..snapshot  ──► change set: parent (the cloned commit), expected tree,
+                                        files (path, mode, blob hash), deletions
+                                          │  installation still installed? → contents + pull_requests: write
+                                          ▼
+                     for each file: read it from the sandbox (base64 chunks) → POST git/blobs   hash = git's?
+                     GET git/commits/<parent> → POST git/trees (base_tree)                       hash = expected?
+                     POST git/commits (no author: the App, signed, "Verified") → POST git/refs
+                     → POST pulls (draft when checks failed or the run is incomplete)
+```
+
+- **What's in the commit:** only the agent's changes since the baseline, on top of the cloned commit. The baseline commit and files that only setup or the checks wrote stay out; a file both setup and the agent changed goes in with its final content.
+- **Branch:** `codegenie/<first 8 of the task id>-<slug of the title>`, never the default branch. **Title:** the agent's `finish_task` title, else the task title; it's the commit subject and the PR title. **Body:** the agent's summary, a checks table, the changed files, and notes for an incomplete run.
+- **Draft PRs** aren't available in private repositories on GitHub Free; GitHub refuses them, and the PR is opened ready with a "Not ready to merge" note.
+- **Limits:** 1,000 files and 50 MB per delivery; submodule changes and non-UTF-8 file names can't be delivered. Any failure fails the run with `deliver_failed`; its diff is still saved.
+- **Recorded:** the task's `branch_name` once the branch exists, then `pr_number`, `pr_url` and `pr_open`; the run's `commit_sha`; events `branch_created`, `git_push`, `pr_opened`.
+- **Code:** `packages/runner/src/stages/deliver/`, `packages/github/src/commit-to-branch.ts`, `apps/worker/src/delivery/`.

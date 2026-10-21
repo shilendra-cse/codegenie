@@ -22,6 +22,7 @@ import {
   RunStateError,
   type RunRecord,
 } from "../runs/run-record.js";
+import { deliverToGithub } from "../delivery/deliver.js";
 import { GithubAccessError, repoReadToken } from "../github/repo-token.js";
 import type { Log } from "../lib/log.js";
 import type { SandboxFactory } from "../lib/sandbox-factory.js";
@@ -31,7 +32,7 @@ export type RunTaskDeps = {
   publisher: Publisher;
   log: Log;
   createSandbox: SandboxFactory;
-  github: Pick<GithubApp, "repoToken">;
+  github: Pick<GithubApp, "repoToken" | "repoClient">;
 } & Pick<RunTaskOptions, "model" | "limits">;
 
 async function loadRun(db: Db, runId: string) {
@@ -147,6 +148,7 @@ export async function handleRunTask(
       createSandbox: () => deps.createSandbox({ kind: "run", runId }),
       emit,
       signal,
+      deliver: deliverToGithub(deps, { runId, task: run.task, project, emit }),
     });
   } catch (error) {
     await record.fail({

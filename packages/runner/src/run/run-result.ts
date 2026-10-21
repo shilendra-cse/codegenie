@@ -1,6 +1,7 @@
 import type { AgentResult } from "@codegenie/agent";
 import type { FinalRunStatus, SetupResult } from "@codegenie/shared";
 import type { Diff } from "../stages/changes/index.js";
+import type { ChangeSet } from "../stages/deliver/index.js";
 import type { VerifyResult } from "../stages/verify/index.js";
 
 export type RunStageName =
@@ -8,7 +9,22 @@ export type RunStageName =
   | "checkout"
   | "setup"
   | "agent"
-  | "verify";
+  | "verify"
+  | "deliver";
+
+export type Delivery = { branchName: string; sha: string };
+
+export type DeliverableRun = {
+  agent: AgentResult;
+  verify: VerifyResult;
+  diff: Diff;
+};
+
+/** Turns the change set into a commit outside the sandbox, which never sees a write token. */
+export type Deliver = (
+  changes: ChangeSet,
+  run: DeliverableRun,
+) => Promise<Delivery>;
 
 export type RunResult = {
   status: FinalRunStatus;
@@ -20,5 +36,6 @@ export type RunResult = {
   agent?: AgentResult;
   verify?: VerifyResult;
   diff?: Diff;
+  delivery?: Delivery;
   durationMs: number;
 };

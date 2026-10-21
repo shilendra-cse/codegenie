@@ -2,6 +2,7 @@ import { createVerify, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createGithubApp } from "./github-app.js";
 import { GithubConfigError } from "./private-key.js";
+import { fakeGithub, type FakeReply } from "./testing/index.js";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -9,36 +10,7 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   publicKeyEncoding: { type: "spki", format: "pem" },
 });
 
-type Call = {
-  method: string;
-  path: string;
-  authorization: string;
-  body: unknown;
-};
-type Reply = { status: number; body: unknown };
-
-function fakeGithub(answer: (call: Call, index: number) => Reply) {
-  const calls: Call[] = [];
-  const fetch: typeof globalThis.fetch = async (input, init) => {
-    const url = new URL(String(input));
-    const headers = new Headers(init?.headers);
-    const call = {
-      method: init?.method ?? "GET",
-      path: url.pathname,
-      authorization: headers.get("authorization") ?? "",
-      body: init?.body ? JSON.parse(String(init.body)) : undefined,
-    };
-    calls.push(call);
-    const { status, body } = answer(call, calls.length - 1);
-    return new Response(JSON.stringify(body), {
-      status,
-      headers: { "content-type": "application/json" },
-    });
-  };
-  return { fetch, calls };
-}
-
-const tokenReply = (token: string, minutesLeft: number): Reply => ({
+const tokenReply = (token: string, minutesLeft: number): FakeReply => ({
   status: 201,
   body: {
     token,

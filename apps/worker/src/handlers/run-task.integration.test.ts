@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import {
   DbEnvironmentStore,
   getInstallationById,
   markInstallationUninstalled,
+  tasks,
   getRunDiff,
   runEvents,
   runs,
@@ -16,7 +18,13 @@ import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
-import { FAKE_REPO_TOKEN, fakeGithubApp } from "../testing/fake-github-app.js";
+import {
+  FAKE_COMMIT_SHA,
+  FAKE_REPO_TOKEN,
+  FAKE_TREE_SHA,
+  fakeGithubApp,
+  githubDeliveryApi,
+} from "../testing/fake-github-app.js";
 import { handleRunTask, type RunTaskDeps } from "./run-task.js";
 
 const database = await testDatabaseOrSkip("run-task handler");
@@ -36,6 +44,11 @@ const finish: ScriptedStep = {
 
 const PATCH =
   "diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md\n+# Contributing\n";
+const CONTRIBUTING = Buffer.from("# Contributing\n");
+const CONTRIBUTING_SHA = createHash("sha1")
+  .update(`blob ${CONTRIBUTING.length}\0`)
+  .update(CONTRIBUTING)
+  .digest("hex");
 
 function fakeSandbox(options: { failOn?: string; changed?: boolean } = {}) {
   const sandbox = new FakeSandbox({
@@ -50,6 +63,18 @@ function fakeSandbox(options: { failOn?: string; changed?: boolean } = {}) {
       return { stdout: "1\t0\tCONTRIBUTING.md\n" };
     if (options.changed && command.includes("git diff --cached --no-color"))
       return { stdout: PATCH };
+    if (command.includes("git write-tree"))
+      return { stdout: `${FAKE_TREE_SHA}\n` };
+    if (command.startsWith("git rev-parse --verify"))
+      return { stdout: "base000\n" };
+    if (options.changed && command.startsWith("git diff-tree"))
+      return {
+        stdout: `:000000 100644 ${"0".repeat(40)} ${CONTRIBUTING_SHA} A\0CONTRIBUTING.md\0`,
+      };
+    if (command.includes("--batch-check"))
+      return { stdout: `${CONTRIBUTING_SHA} ${CONTRIBUTING.length}\n` };
+    if (command.startsWith(`git cat-file blob ${CONTRIBUTING_SHA}`))
+      return { stdout: CONTRIBUTING.toString("base64") };
     return {};
   };
   return sandbox;
@@ -60,7 +85,11 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
   afterAll(() => database?.drop());
 
   async function setUp(
-    options: { environment?: EnvironmentConfig; message?: string } = {},
+    options: {
+      environment?: EnvironmentConfig;
+      message?: string;
+      github?: ReturnType<typeof fakeGithubApp>;
+    } = {},
   ) {
     const { project, task, run } = await insertRun(db);
     if (options.environment) {
@@ -88,7 +117,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     const logs: string[] = [];
     let sandboxes = 0;
     const labels: SandboxLabels[] = [];
-    const github = fakeGithubApp();
+    const github = options.github ?? fakeGithubApp();
     const depsFor = (script: ScriptedStep[], sandbox = fakeSandbox()) => {
       const { model, resolved } = scriptedModel(script);
       const value: RunTaskDeps = {
@@ -114,6 +143,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       sandboxes: () => sandboxes,
       labels,
       githubRequests: github.requests,
+      githubCalls: github.calls,
     };
   }
 
@@ -228,6 +258,156 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       truncated: false,
     });
     expect(await getRunDiff(db, unchanged.run.id)).toBeNull();
+  });
+
+  const taskRow = async (taskId: string) =>
+    (await db.select().from(tasks).where(eq(tasks.id, taskId)))[0]!;
+
+  it("delivers changes as a commit on a new branch and opens a pull request", async () => {
+    const { project, run, depsFor, githubRequests, githubCalls } = await setUp({
+      environment: environment(),
+    });
+
+    const result = await handleRunTask(
+      depsFor([finish], fakeSandbox({ changed: true })).deps,
+      { runId: run.id },
+    );
+
+    expect(result?.delivery).toEqual({
+      branchName: `codegenie/${run.taskId.slice(0, 8)}-add-a-health-endpoint`,
+      sha: FAKE_COMMIT_SHA,
+    });
+    expect(githubRequests.at(-1)).toMatchObject({
+      repoId: project.repoGithubId,
+      permissions: { contents: "write", pull_requests: "write" },
+    });
+    expect(githubCalls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "POST /repos/acme/app/git/blobs",
+      "GET /repos/acme/app/git/commits/base000",
+      "POST /repos/acme/app/git/trees",
+      "POST /repos/acme/app/git/commits",
+      "POST /repos/acme/app/git/refs",
+      "POST /repos/acme/app/pulls",
+    ]);
+    expect(githubCalls.at(-1)!.body).toMatchObject({
+      title: "Add a /health endpoint",
+      head: result!.delivery!.branchName,
+      base: "main",
+      draft: false,
+      body: expect.stringContaining("Added GET /health."),
+    });
+
+    expect(await taskRow(run.taskId)).toMatchObject({
+      branchName: result!.delivery!.branchName,
+      prNumber: 7,
+      prUrl: "https://github.com/acme/app/pull/7",
+      status: "pr_open",
+    });
+    expect(await row(run.id)).toMatchObject({
+      status: "succeeded",
+      stage: "deliver",
+      commitSha: FAKE_COMMIT_SHA,
+    });
+    const events = (await stored(run.id)).map((e) => e.type);
+    expect(events.slice(-4)).toEqual([
+      "branch_created",
+      "git_push",
+      "pr_opened",
+      "done",
+    ]);
+  });
+
+  it("titles the commit and pull request with the agent's title", async () => {
+    const { run, depsFor, githubCalls } = await setUp({
+      environment: environment(),
+    });
+    const titled: ScriptedStep = {
+      toolCalls: [
+        {
+          toolName: "finish_task",
+          input: { title: "Add a GET /health route", summary: "Added it." },
+        },
+      ],
+    };
+
+    await handleRunTask(
+      depsFor([titled], fakeSandbox({ changed: true })).deps,
+      { runId: run.id },
+    );
+
+    const body = (path: string) =>
+      githubCalls.find((c) => c.path.endsWith(path))!.body;
+    expect(body("/git/commits")).toMatchObject({
+      message: "Add a GET /health route\n\nAdded it.",
+    });
+    expect(body("/pulls")).toMatchObject({ title: "Add a GET /health route" });
+  });
+
+  it("opens a draft when checks fail, or a marked ready one where drafts aren't available", async () => {
+    const draft = await setUp({ environment: environment() });
+    await handleRunTask(
+      draft.depsFor(
+        [finish],
+        fakeSandbox({ changed: true, failOn: "npm run test" }),
+      ).deps,
+      { runId: draft.run.id },
+    );
+    const noDrafts = await setUp({
+      environment: environment(),
+      github: fakeGithubApp(
+        FAKE_REPO_TOKEN,
+        githubDeliveryApi({ draftUnavailable: true }),
+      ),
+    });
+    await handleRunTask(
+      noDrafts.depsFor(
+        [finish],
+        fakeSandbox({ changed: true, failOn: "npm run test" }),
+      ).deps,
+      { runId: noDrafts.run.id },
+    );
+
+    expect(draft.githubCalls.at(-1)!.body).toMatchObject({ draft: true });
+    const [refused, ready] = noDrafts.githubCalls.slice(-2);
+    expect(refused!.body).toMatchObject({ draft: true });
+    expect(ready!.body).not.toHaveProperty("draft");
+    expect(ready!.body).toMatchObject({
+      body: expect.stringContaining("draft pull requests aren't available"),
+    });
+    const opened = (await stored(noDrafts.run.id)).find(
+      (e) => e.type === "pr_opened",
+    );
+    expect(opened?.payload).toMatchObject({ draft: false });
+  });
+
+  it("fails with deliver_failed and keeps the changes when GitHub's tree doesn't match", async () => {
+    const api = githubDeliveryApi();
+    const { run, depsFor } = await setUp({
+      environment: environment(),
+      github: fakeGithubApp(FAKE_REPO_TOKEN, (call) =>
+        call.path.endsWith("/git/trees")
+          ? { status: 201, body: { sha: "9".repeat(40) } }
+          : api(call),
+      ),
+    });
+
+    const result = await handleRunTask(
+      depsFor([finish], fakeSandbox({ changed: true })).deps,
+      { runId: run.id },
+    );
+
+    expect(result).toMatchObject({ status: "failed", failedStage: "deliver" });
+    expect(await row(run.id)).toMatchObject({
+      status: "failed",
+      errorCode: "deliver_failed",
+      errorMessage: expect.stringContaining("GitHub built a different tree"),
+      commitSha: null,
+    });
+    expect(await taskRow(run.taskId)).toMatchObject({
+      branchName: null,
+      status: "open",
+    });
+    expect(await getRunDiff(db, run.id)).not.toBeNull();
   });
 
   it("uses the task title when the run has no message", async () => {
