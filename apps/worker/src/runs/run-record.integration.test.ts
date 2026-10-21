@@ -1,5 +1,6 @@
 import {
   DbEnvironmentStore,
+  runDiffs,
   runs,
   projectEnvironments,
   type Db,
@@ -220,5 +221,27 @@ describe.skipIf(!database)("run record against Postgres", () => {
       finishedAt: expect.any(Date),
     });
     expect(await record.fail({ code: "again", message: "x" })).toBe(false);
+  });
+
+  it("saves the run's changes, keeping only the latest", async () => {
+    const { run, record } = await newRun();
+    const diff = (path: string) => ({
+      patch: `diff --git a/${path} b/${path}\n`,
+      files: [{ path, added: 3, removed: null }],
+      truncated: false,
+    });
+
+    await record.saveDiff(diff("a.md"));
+    await record.saveDiff(diff("b.md"));
+
+    expect(
+      await db.select().from(runDiffs).where(eq(runDiffs.runId, run.id)),
+    ).toEqual([
+      {
+        runId: run.id,
+        ...diff("b.md"),
+        createdAt: expect.any(Date),
+      },
+    ]);
   });
 });

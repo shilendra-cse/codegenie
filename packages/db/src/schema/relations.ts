@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { user } from "./auth-schema";
 import { githubInstallations } from "./github-installations-schema";
+import { runDiffs } from "./run-diffs-schema";
 import { runEvents } from "./run-events-schema";
 import { runs } from "./runs-schema";
 import { messages } from "./messages-schema";
@@ -65,6 +66,7 @@ export const runsRelations = relations(runs, ({ one, many }) => ({
   }),
   events: many(runEvents),
   messages: many(messages),
+  diff: one(runDiffs),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -78,4 +80,8 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 
 export const runEventsRelations = relations(runEvents, ({ one }) => ({
   run: one(runs, { fields: [runEvents.runId], references: [runs.id] }),
+}));
+
+export const runDiffsRelations = relations(runDiffs, ({ one }) => ({
+  run: one(runs, { fields: [runDiffs.runId], references: [runs.id] }),
 }));
