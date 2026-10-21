@@ -28,7 +28,8 @@ user ─┬─< session                       (Better Auth)
               │         └─────────────┐  runs.environment_id (version a run used)
               └─< tasks ─┬─< messages │  (messages.run_id nullable)
                          └─< runs ────┘
-                               └─< run_events
+                               ├─< run_events
+                               └── run_diffs                (one per run)
 
 webhook_deliveries                      (standalone, idempotency)
 ```
@@ -130,13 +131,13 @@ One agent execution.
 | `trigger` | enum `run_trigger` (`initial`, `follow_up`, `pr_comment`, `retry`) | |
 | `status` | enum `run_status` (`queued`, `running`, `succeeded`, `incomplete`, `failed`, `cancelled`) | |
 | `stage` | enum `run_stage` (`prepare`, `checkout`, `setup`, `agent`, `verify`, `deliver`) null | current pipeline stage, for UI |
-| `sandbox_id` | text null | Daytona id; used by the reaper |
+| `sandbox_id` | text null | Docker or Daytona id; the reaper reconnects to it when the run's worker is gone |
 | `environment_id` | uuid FK → `project_environments.id` null | the environment config version this run replayed; set null on delete |
 | `model` | text | model the run used |
 | `commit_sha` | text null | |
 | `checks_passed` | boolean null | lint + tests outcome |
 | `summary` | text null | agent's final summary; PR body and follow-up context |
-| `error_code` | text null | machine-readable |
+| `error_code` | text null | machine-readable, e.g. `checkout_failed`, `steps_limit`, `worker_lost`, `lost_in_queue` |
 | `error_message` | text null | |
 | `input_tokens` | integer, default 0 | |
 | `output_tokens` | integer, default 0 | |
@@ -176,7 +177,20 @@ Live stream source and audit log.
 | `payload` | jsonb, default `{}` | |
 | `created_at` | timestamptz | |
 
-Primary key: **(`run_id`, `seq`)**. A run has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE run_id = $1 AND seq > $lastEventId`. `text_delta` and `agent_step` events are streamed live but **not** persisted.
+Primary key: **(`run_id`, `seq`)**. A run has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE run_id = $1 AND seq > $lastEventId`. `text_delta` and `agent_step` events are streamed live but **not** persisted. When a run's worker is gone, the reaper becomes its writer and adds `error` and `done` after the last stored event.
+
+### `run_diffs`
+What a run changed, so it survives the sandbox: shown to the user, the content of the PR, and the starting point for resuming a run whose worker died.
+
+| Column | Type | Notes |
+|---|---|---|
+| `run_id` | uuid PK, FK → `runs.id` | cascade; one diff per run (saving again replaces it) |
+| `patch` | text | `git diff` against the run's baseline commit, capped at 1 MB |
+| `files` | jsonb | `[{ path, added, removed }]` (`null` counts for binary files) |
+| `truncated` | boolean | the patch hit the cap |
+| `created_at` | timestamptz | |
+
+Written at the end of every run that changed files, and by the reaper for a run whose worker died (collected from its sandbox).
 
 ### `webhook_deliveries`
 Idempotency for GitHub webhooks (GitHub retries deliveries).
@@ -196,7 +210,7 @@ Insert first; on conflict, skip processing. Rows older than 30 days can be prune
 - **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
 - **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
-- **Deletion:** cascade `user → projects → tasks → runs → run_events` and `projects → project_environments`; projects are archived (`archived_at`), not hard-deleted.
+- **Deletion:** cascade `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`; projects are archived (`archived_at`), not hard-deleted.
 - **Naming:** snake_case tables/columns; one kebab-case schema file per table, grouped by domain in `packages/db/src/schema/` (`auth/`, `github/`, `projects/`, `tasks/`, `runs/`; e.g. `runs/run-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
 - **Shared types:** `packages/shared/src/types/api.ts` mirrors these tables for the API and web app; change both together.
 

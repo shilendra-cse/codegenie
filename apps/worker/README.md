@@ -26,11 +26,15 @@ pnpm dev:worker
 | `SANDBOX_PROVIDER` | `docker` | `docker` (local containers) or `daytona` (cloud sandboxes) |
 | `DAYTONA_API_KEY` | required for `daytona` | |
 | `DAYTONA_API_URL`, `DAYTONA_TARGET` | Daytona's defaults | endpoint and region |
+| `SANDBOX_RETENTION_HOURS` | `4` | how long a lost run's stopped Daytona sandbox is kept |
+| `REAPER_INTERVAL_MINUTES` | `5` | how often the reaper runs |
 | `DATABASE_URL` | built from `DB_*`, same defaults as the server | |
 | `REDIS_URL` | `redis://localhost:6380` | |
 | `LOG_LEVEL` | `info` | |
 
 **Logs:** each piece of work logs `Work started`, its outcome (`Run finished` with status, steps and cost, or `Onboarding finished` with status and version) and `Work finished` with its duration; failures log `Work failed`.
+
+**Reaper:** every `REAPER_INTERVAL_MINUTES` and at startup, one worker runs a `reap` item. It fails runs whose worker is gone (`running` with no active queue item: `worker_lost`) or that never left the queue (`queued` over 15 minutes, item gone: `lost_in_queue`). For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox. Logs: `Reaped` (with the count), `Failed a lost run`, `Kept a lost run's work`.
 
 **Stopping:** Ctrl-C stops taking new work and waits for the work in progress (a run can take up to 30 minutes). Ctrl-C again, a second or more later, exits at once; anything unfinished is left for the reaper. There's no watch mode, because a restart would kill the runs in progress.
 
@@ -72,6 +76,7 @@ src/
 ├── config.ts         apps/worker/.env, validated
 ├── consumer.ts       BullMQ worker: work kind → handler, cancel messages, close()
 ├── handlers/         run-task, onboard-project
+├── reaper/           lost runs, keeping their work, the schedule
 ├── runs/             run record: the runs row from queued to its final status
 ├── events/           event sink: run_events (numbered) + run:{id}
 ├── lib/              logger, serial queue

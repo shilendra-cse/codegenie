@@ -49,6 +49,7 @@ interface Sandbox {
 | readFile limit | 10 MB; larger files throw instead of returning truncated content (writing that back would corrupt the file). |
 | writeFile | Content sent via stdin, never in the command line: no quoting or injection issues. |
 | Lifecycle | One sandbox per run (two per onboarding). `destroy()` in `finally`. Docker: main process is `sleep 7200`, so a container exits by itself after 2 h even if cleanup never runs. Daytona: see §7. |
+| Lost runs | When a run's worker dies, the reaper reconnects to its sandbox (`connectSandbox`), saves its diff, then **parks** it (`parkSandbox`): Daytona stops it and keeps it for the retention period, so the run could be resumed there; Docker deletes it, since a stopped container never expires. |
 | Labels | Every sandbox has `codegenie=1`, plus what the caller passes: the worker adds `kind=run, runId` or `kind=onboarding, projectId`, so the reaper can find sandboxes whose work is over. |
 | Errors | `SandboxUnavailableError` (Docker not running / image missing / Daytona key rejected), `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`. |
 
@@ -117,7 +118,7 @@ Decisions, from a probe of the real API (SDK 0.225):
 | exec | Daytona returns stdout and stderr **mixed together**, but `diff` and `search` parse stdout. So exec sends a wrapper: the command goes in the env var `CG_CMD` (no quoting), runs under `timeout -k` like Docker, with stderr redirected to a temp file; the wrapper then prints a random marker, the exit code and the stderr file, and the provider splits on the marker. |
 | Timeouts | Same limits as Docker: exit 124 means timed out. The SDK's own timeout (ours + 20 s) is a backstop; its timeout error becomes `timedOut: true`, not a failure. |
 | Output | Daytona doesn't cap output; the provider applies Docker's 1 MB head + tail cap. |
-| Safety nets | `ephemeral` (deleted as soon as it stops), `ttlMinutes: 120` (destroyed after 2 h whatever happens), `autoStopInterval: 30` (stopped, and so deleted, after 30 idle minutes). An orphaned sandbox removes itself. |
+| Safety nets | `autoStopInterval: 30` (stopped after 30 idle minutes), `autoDeleteInterval` = retention (`SANDBOX_RETENTION_HOURS`, default 4: deleted that long after stopping), `ttlMinutes` = 2 h + 30 min + retention (destroyed then, whatever its state). An orphaned sandbox stops and deletes itself even if the reaper never runs. The deletion after retention is from the SDK's documentation; it wasn't checked on the real service. |
 | Errors | Key rejected → `SandboxUnavailableError`; other create failures → `SandboxCreateError`; missing file → `SandboxFileError`; sandbox no longer exists → `SandboxGoneError` (later calls fail without contacting Daytona). |
 | Connection | `apiKey`, `apiUrl` and `target` are passed explicitly (`createSandbox({ provider: "daytona", connection })`): the SDK refuses a `DAYTONA_API_URL` it can only find in a `.env` file. |
 

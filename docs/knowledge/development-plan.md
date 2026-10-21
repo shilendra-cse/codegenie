@@ -89,12 +89,14 @@ Branches, each built in small batches (see Ways of working):
   3. `pnpm sandbox:build-snapshot`: `codegenie-base` built on Daytona from the same Dockerfile, then checked.
   4. ~~Integration test against Daytona~~: dropped, no automated tests against real Daytona (cost). Checked by hand instead: onboarding and a run of `octocat/Hello-World` through the worker on Daytona. Added the worker's start / finish / outcome logs, which that run showed were missing.
   5. Docs.
-- [ ] **5. `feat/reaper`**
-  1. Stalled runs: runs still `running` whose worker died are marked `failed`.
-  2. Orphaned sandboxes (by run label, Docker and Daytona) whose run is no longer running are deleted.
-  3. Docs.
+- [x] **5. `feat/reaper`**: three PRs (`feat/reaper` with run diffs, `refactor/query-layer`, `feat/reaper-lost-runs`).
+  1. `run_diffs`: every run's diff is saved.
+  2. Lost runs: `running` with no active queue item (`worker_lost`) and `queued` over 15 minutes with the item gone (`lost_in_queue`) are failed, with `error` + `done` events.
+  3. Their work is kept: the diff is saved from the sandbox, which is parked (Daytona: stopped, deleted after `SANDBOX_RETENTION_HOURS`; Docker: deleted). Orphaned sandboxes are no longer deleted by us: Daytona's auto-stop and retention remove them.
+  4. Scheduling: a `reap` work item every 5 minutes (one shared job scheduler) and at startup.
+  5. Docs.
 
-**Done when:** a script-enqueued run executes in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill.
+**Done when:** a script-enqueued run executes in Daytona, events appear in Redis and Postgres, and the sandbox is always deleted — including on failure and kill. **Done (2026-10-21):** checked by hand on Daytona; on a kill, the sandbox is parked for `SANDBOX_RETENTION_HOURS` and then deleted by Daytona (by decision, so the run could be resumed).
 **Needs:** Daytona account (branch 4).
 **Known issue:** production builds of the server and worker don't run yet (`tsc` keeps the `@/…` path aliases, which plain Node can't resolve; development runs through `tsx`). Fixed with the deploy work in Phase 5.
 
@@ -137,7 +139,7 @@ Branches, each built in small batches (see Ways of working):
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
+PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
 
 ## 3. Ways of working
 

@@ -97,7 +97,8 @@ Consumes the BullMQ queue `codegenie-work` and runs the pipeline in §5. Details
 - **Work kinds:** `run-task { runId }` (one run of a task) and `onboard-project { projectId }` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Onboarding progress is published live on `project:{id}:onboarding` and not stored; a failed onboarding fails its queue item.
 - **Concurrency:** `WORKER_CONCURRENCY` items at once per process (default 3), each in its own sandbox; more throughput means more processes.
 - **Cancellation:** a queued run is marked `cancelled` in the database, and the worker skips it. A running one gets a `run-cancel` message carrying its id; every worker process hears it, and the one running it aborts the run's signal.
-- **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money). The **reaper** (Phase 2, branch 5) fails the run row and deletes orphaned sandboxes.
+- **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money).
+- **Reaper:** a `reap` work item, every 5 minutes (one BullMQ job scheduler shared by all workers) and at startup. It fails runs nothing will finish: `running` with no active queue item (`worker_lost`), or `queued` for over 15 minutes with the item gone (`lost_in_queue`), adding `error` + `done` events. For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox (Daytona: stopped, kept 4 h for a future resume; Docker: deleted).
 - **Shutdown:** the first SIGINT/SIGTERM stops taking work and waits for the work in progress; a second one a second or more later exits at once and leaves the rest to the reaper.
 
 Phase 2 clones public repositories only; private ones need the GitHub App token (Phase 3).
@@ -224,7 +225,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Failure | Handling |
 |---|---|
-| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (`maxStalledCount: 0`, never retried); the reaper marks the run `failed` and deletes its sandbox by `sandboxId`/label. |
+| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (`maxStalledCount: 0`, never retried). Within 5 minutes (or at the next worker start) the reaper saves the run's diff, parks its sandbox and fails the run with `worker_lost`. Daytona deletes a parked sandbox after `SANDBOX_RETENTION_HOURS`. |
 | Sandbox create fails | Retry with backoff (nothing has happened yet). |
 | Dependency install fails | Continue; agent is told setup failed and may fix it. |
 | LLM error / rate limit | Backoff retry inside loop; fail after N attempts. |
