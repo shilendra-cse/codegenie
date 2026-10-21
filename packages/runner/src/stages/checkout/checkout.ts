@@ -1,10 +1,11 @@
 import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
+import { gitAuthEnv } from "../../lib/git-auth.js";
 import { shellQuote } from "../../lib/shell-quote.js";
 import { listLocalFiles } from "./local-files.js";
 
 export type RepoSource =
   | { type: "local"; path: string }
-  | { type: "git"; url: string; ref?: string };
+  | { type: "git"; url: string; ref?: string; token?: string };
 
 export type CheckoutResult = {
   description: string;
@@ -28,7 +29,10 @@ export async function checkoutRepo(
     const branch = source.ref ? `--branch ${shellQuote(source.ref)} ` : "";
     const clone = await sandbox.exec(
       `git clone --quiet --depth 1 ${branch}${shellQuote(source.url)} .`,
-      { timeoutMs: CLONE_TIMEOUT_MS },
+      {
+        timeoutMs: CLONE_TIMEOUT_MS,
+        ...(source.token ? { env: gitAuthEnv(source.token) } : {}),
+      },
     );
     if (clone.exitCode !== 0) {
       throw new CheckoutError(
