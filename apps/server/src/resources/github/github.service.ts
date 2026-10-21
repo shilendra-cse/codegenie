@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { getGithubAccount } from "@codegenie/db";
+import { auth } from "@/lib/auth";
 import { HttpError } from "@/lib/http-error";
 import { Octokit } from "@octokit/rest";
 
@@ -12,19 +13,29 @@ export type GitHubRepoSummary = {
   htmlUrl: string;
 };
 
-async function getGitHubAccessToken(userId: string): Promise<string> {
-  const row = await getGithubAccount(db, userId);
+export async function githubAccessToken(
+  userId: string,
+): Promise<string | null> {
+  try {
+    const tokens = await auth.api.getAccessToken({
+      body: { providerId: "github", userId },
+    });
+    return tokens.accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
 
-  if (!row?.accessToken) {
+async function getGitHubAccessToken(userId: string): Promise<string> {
+  const token = await githubAccessToken(userId);
+  if (!token) {
     throw new HttpError(
       403,
       "Github account not connected. Sign in with Github to continue.",
       "GITHUB_NOT_LINKED",
     );
   }
-
-  // TODO: if accessTokenExpiresAt is past, refresh via Better Auth / refresh_token
-  return row.accessToken;
+  return token;
 }
 
 async function getOctokitForUser(userId: string): Promise<Octokit> {

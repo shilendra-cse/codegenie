@@ -7,11 +7,10 @@ export function createGithubWebhookHandler(
   deps: WebhookDeps & { secret: string },
 ): RequestHandler {
   return async (req, res) => {
-    const body: unknown = req.body;
     const signature = req.get("x-hub-signature-256");
     if (
-      !Buffer.isBuffer(body) ||
-      !verifyWebhookSignature(deps.secret, body, signature)
+      !req.rawBody ||
+      !verifyWebhookSignature(deps.secret, req.rawBody, signature)
     ) {
       res.status(401).json({ message: "Invalid signature" });
       return;
@@ -28,7 +27,7 @@ export function createGithubWebhookHandler(
     }
 
     try {
-      await handleGithubEvent(deps, event, JSON.parse(body.toString("utf8")));
+      await handleGithubEvent(deps, event, req.body);
       res.status(200).json({ ok: true });
     } catch (error) {
       // Forgotten so GitHub's redelivery of this event is processed, not skipped as a duplicate.

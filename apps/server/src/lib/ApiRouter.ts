@@ -1,4 +1,10 @@
-import express, { NextFunction, Request, Response, Router } from "express";
+import express, {
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response,
+  Router,
+} from "express";
 import type {
   AuthenticatedController,
   AuthenticatedRequest,
@@ -76,6 +82,7 @@ class ApiRouter {
           },
         );
       },
+      raw: (handler: RequestHandler) => this.router.get(route, handler),
     };
   }
 
@@ -104,6 +111,7 @@ class ApiRouter {
           },
         );
       },
+      raw: (handler: RequestHandler) => this.router.post(route, handler),
     };
   }
 

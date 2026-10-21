@@ -4,6 +4,7 @@ import { account, type Db, ensureUser, getInstallation } from "@codegenie/db";
 import { testDatabaseOrSkip } from "@codegenie/db/testing";
 import express from "express";
 import { afterAll, describe, expect, it } from "vitest";
+import { keepRawBody } from "@/lib/raw-body";
 import { createGithubWebhookHandler } from "./github.webhooks";
 
 const database = await testDatabaseOrSkip("GitHub webhooks");
@@ -13,9 +14,9 @@ describe.skipIf(!database)("GitHub webhook endpoint", () => {
   const db = database?.db as Db;
   const logs: string[] = [];
   const app = express();
+  app.use(express.json({ verify: keepRawBody }));
   app.post(
     "/webhooks",
-    express.raw({ type: "application/json" }),
     createGithubWebhookHandler({
       db,
       secret,
