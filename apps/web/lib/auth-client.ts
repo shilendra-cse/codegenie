@@ -5,14 +5,6 @@ export const authClient = createAuthClient({
     baseURL: "http://localhost:3001"
 });
 
-export const googleSignIn = async () => {
-    const data = await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: 'http://localhost:3000/build',
-    });
-    return data;
-}
-
 export const githubSignIn = async () => {
     const data = await authClient.signIn.social({
         provider: 'github',
@@ -21,4 +13,4 @@ export const githubSignIn = async () => {
     return data;
 }
 
-export const { signIn, signUp, signOut, getSession, useSession } = authClient;
+export const { signIn, signOut, getSession, useSession } = authClient;

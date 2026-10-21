@@ -41,7 +41,7 @@ pnpm setup
 
 This installs dependencies, creates `.env` files from the examples, starts Postgres and Redis, and runs database migrations. Then fill in the credentials it warns about:
 
-- `apps/server/.env`: GitHub and Google OAuth client ids and secrets
+- `apps/server/.env`: the GitHub App's client id and secret, App id, private key and webhook secret ([docs/knowledge/github.md](docs/knowledge/github.md))
 - `apps/cli/.env`: `OPENAI_API_KEY` (and optionally `AGENT_MODEL`)
 - `apps/worker/.env`: `OPENAI_API_KEY` (and optionally `AGENT_MODEL`, `WORKER_CONCURRENCY`)
 
