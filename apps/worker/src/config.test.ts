@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ConfigError, parseConfig } from "./config.js";
 
-const key = { OPENAI_API_KEY: "sk-test" };
+const key = {
+  OPENAI_API_KEY: "sk-test",
+  GITHUB_APP_ID: "123",
+  GITHUB_APP_PRIVATE_KEY:
+    "-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----",
+};
 
 describe("parseConfig", () => {
   it("uses the development services by default", () => {
@@ -15,6 +20,7 @@ describe("parseConfig", () => {
       concurrency: 3,
       sandbox: { provider: "docker" },
       reaperIntervalMs: 5 * 60_000,
+      github: { appId: "123", privateKey: key.GITHUB_APP_PRIVATE_KEY },
     });
   });
 
@@ -51,6 +57,8 @@ describe("parseConfig", () => {
 
   it.each([
     [{}, "OPENAI_API_KEY is not set"],
+    [{ ...key, GITHUB_APP_ID: undefined }, "GITHUB_APP_ID is not set"],
+    [{ ...key, GITHUB_APP_PRIVATE_KEY: "" }, "GITHUB_APP_PRIVATE_KEY is empty"],
     [{ OPENAI_API_KEY: "your-openai-api-key" }, "still the placeholder"],
     [{ ...key, WORKER_CONCURRENCY: "0" }, "WORKER_CONCURRENCY"],
     [{ ...key, LOG_LEVEL: "loud" }, "LOG_LEVEL"],

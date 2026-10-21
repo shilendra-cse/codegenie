@@ -1,5 +1,6 @@
 import { resolveModel } from "@codegenie/agent";
 import { createDb } from "@codegenie/db";
+import { createGithubApp } from "@codegenie/github";
 import {
   connectSandbox,
   createSandbox,
@@ -53,6 +54,7 @@ async function main() {
     model: resolveModel(config.model),
     createSandbox: (labels: SandboxLabels) =>
       createSandbox({ ...config.sandbox, labels }),
+    github: createGithubApp(config.github),
   };
   const consumer = await startConsumer({
     connection: redis.queue,

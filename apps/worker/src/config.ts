@@ -38,6 +38,15 @@ const schema = z
     DAYTONA_TARGET: z.string().min(1).optional(),
     SANDBOX_RETENTION_HOURS: z.coerce.number().min(0).default(4),
     REAPER_INTERVAL_MINUTES: z.coerce.number().min(1).default(5),
+
+    GITHUB_APP_ID: z
+      .string({ error: `GITHUB_APP_ID is not set. Add it to ${ENV_FILE}.` })
+      .min(1, `GITHUB_APP_ID is empty. Add it to ${ENV_FILE}.`),
+    GITHUB_APP_PRIVATE_KEY: z
+      .string({
+        error: `GITHUB_APP_PRIVATE_KEY is not set. Add it to ${ENV_FILE}.`,
+      })
+      .min(1, `GITHUB_APP_PRIVATE_KEY is empty. Add it to ${ENV_FILE}.`),
   })
   .refine((e) => e.SANDBOX_PROVIDER !== "daytona" || e.DAYTONA_API_KEY, {
     path: ["DAYTONA_API_KEY"],
@@ -61,6 +70,7 @@ export type WorkerConfig = {
   concurrency: number;
   sandbox: SandboxConfig;
   reaperIntervalMs: number;
+  github: { appId: string; privateKey: string };
 };
 
 export class ConfigError extends Error {}
@@ -99,5 +109,6 @@ export function parseConfig(
           }
         : { provider: "docker" },
     reaperIntervalMs: e.REAPER_INTERVAL_MINUTES * 60_000,
+    github: { appId: e.GITHUB_APP_ID, privateKey: e.GITHUB_APP_PRIVATE_KEY },
   };
 }

@@ -12,6 +12,7 @@ import { startConsumer } from "./consumer.js";
 import { enqueueOnboarding, enqueueRun, ensureProject } from "./dev/work.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
 import { handleRunTask } from "./handlers/run-task.js";
+import { fakeGithubApp } from "./testing/fake-github-app.js";
 import { testRedisOrSkip } from "./testing/test-redis.js";
 
 const database = await testDatabaseOrSkip("worker end to end");
@@ -75,6 +76,8 @@ describe.skipIf(!database || !redis || !probe)(
       ]);
       const deps = {
         db,
+        // octocat/Hello-World is public, and GitHub rejects any credentials that aren't valid.
+        github: fakeGithubApp("").github,
         publisher: connect(),
         log: () => {},
         createSandbox: async () => {

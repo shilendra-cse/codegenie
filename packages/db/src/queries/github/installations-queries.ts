@@ -45,6 +45,14 @@ export async function getInstallation(db: Db, installationId: number) {
   );
 }
 
+export async function getInstallationById(db: Db, id: string) {
+  return (
+    (await db.query.githubInstallations.findFirst({
+      where: eq(githubInstallations.id, id),
+    })) ?? null
+  );
+}
+
 export async function setInstallationSuspended(
   db: Db,
   installationId: number,

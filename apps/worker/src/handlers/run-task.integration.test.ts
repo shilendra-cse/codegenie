@@ -1,6 +1,8 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import {
   DbEnvironmentStore,
+  getInstallationById,
+  markInstallationUninstalled,
   getRunDiff,
   runEvents,
   runs,
@@ -14,6 +16,7 @@ import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
+import { FAKE_REPO_TOKEN, fakeGithubApp } from "../testing/fake-github-app.js";
 import { handleRunTask, type RunTaskDeps } from "./run-task.js";
 
 const database = await testDatabaseOrSkip("run-task handler");
@@ -85,6 +88,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     const logs: string[] = [];
     let sandboxes = 0;
     const labels: SandboxLabels[] = [];
+    const github = fakeGithubApp();
     const depsFor = (script: ScriptedStep[], sandbox = fakeSandbox()) => {
       const { model, resolved } = scriptedModel(script);
       const value: RunTaskDeps = {
@@ -97,6 +101,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
           labels.push(l);
           return sandbox;
         },
+        github: github.github,
       };
       return { deps: value, model };
     };
@@ -108,6 +113,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       depsFor,
       sandboxes: () => sandboxes,
       labels,
+      githubRequests: github.requests,
     };
   }
 
@@ -119,6 +125,50 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       .from(runEvents)
       .where(eq(runEvents.runId, runId))
       .orderBy(asc(runEvents.seq));
+
+  it("clones with a read-only token for the project's repository", async () => {
+    const { project, run, depsFor, githubRequests } = await setUp({
+      environment: environment(),
+    });
+    const sandbox = fakeSandbox();
+
+    await handleRunTask(depsFor([finish], sandbox).deps, { runId: run.id });
+
+    const installation = await getInstallationById(db, project.installationId);
+    expect(githubRequests).toEqual([
+      {
+        installationId: installation!.installationId,
+        repoId: project.repoGithubId,
+        permissions: { contents: "read" },
+      },
+    ]);
+    const clone = sandbox.execCalls.find((c) =>
+      c.command.startsWith("git clone"),
+    );
+    expect(clone!.command).not.toContain(FAKE_REPO_TOKEN);
+    expect(clone!.options.env?.GIT_CONFIG_VALUE_0).toBe(
+      `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${FAKE_REPO_TOKEN}`).toString("base64")}`,
+    );
+  });
+
+  it("fails with github_access, before any sandbox, when the App was uninstalled", async () => {
+    const { project, run, depsFor, sandboxes } = await setUp({
+      environment: environment(),
+    });
+    const installation = await getInstallationById(db, project.installationId);
+    await markInstallationUninstalled(db, installation!.installationId);
+
+    expect(
+      await handleRunTask(depsFor([finish]).deps, { runId: run.id }),
+    ).toBeNull();
+
+    expect(await row(run.id)).toMatchObject({
+      status: "failed",
+      errorCode: "github_access",
+      errorMessage: expect.stringContaining("no longer installed"),
+    });
+    expect(sandboxes()).toBe(0);
+  });
 
   it("runs a run with the project's environment and records everything", async () => {
     const { project, run, published, depsFor, labels, logs } = await setUp({
