@@ -15,6 +15,7 @@ function deferred() {
 const idle: Handlers = {
   "run-task": async () => {},
   "onboard-project": async () => {},
+  reap: async () => {},
 };
 
 describe.skipIf(!redis)("consumer against Redis", () => {
@@ -57,13 +58,17 @@ describe.skipIf(!redis)("consumer against Redis", () => {
     await start({
       "run-task": async (data) => void received.push(data),
       "onboard-project": async (data) => void received.push(data),
+      reap: async (data) => void received.push(data),
     });
 
     await finished(await queue.add("run-task", { runId: "run-1" }));
     await finished(await queue.add("onboard-project", { projectId: "p-1" }));
+    await finished(await queue.add("reap", {}));
 
-    expect(received).toEqual([{ runId: "run-1" }, { projectId: "p-1" }]);
+    expect(received).toEqual([{ runId: "run-1" }, { projectId: "p-1" }, {}]);
     expect(logs.map((l) => l.message)).toEqual([
+      "Work started",
+      "Work finished",
       "Work started",
       "Work finished",
       "Work started",

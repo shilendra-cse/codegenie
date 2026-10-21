@@ -5,6 +5,7 @@ import { DbEnvironmentStore } from "../projects/environments-queries.js";
 import { insertRun, testDatabaseOrSkip } from "../../testing/index.js";
 import {
   getRunWithProject,
+  listUnfinishedRuns,
   markRunEnded,
   markRunStarted,
   updateRunProgress,
@@ -79,5 +80,16 @@ describe.skipIf(!database)("runs queries against Postgres", () => {
       ...outcome,
       finishedAt: expect.any(Date),
     });
+  });
+
+  it("lists the runs that haven't ended", async () => {
+    const queued = (await insertRun(db)).run;
+    const running = (await insertRun(db, { status: "running" })).run;
+    const done = (await insertRun(db, { status: "succeeded" })).run;
+
+    const ids = (await listUnfinishedRuns(db)).map((r) => r.id);
+
+    expect(ids).toEqual(expect.arrayContaining([queued.id, running.id]));
+    expect(ids).not.toContain(done.id);
   });
 });

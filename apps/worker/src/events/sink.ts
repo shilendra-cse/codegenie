@@ -21,8 +21,10 @@ export type EventSink = {
 export function createEventSink(
   deps: { db: Db; publisher: Publisher },
   runId: string,
+  /** The last event number already stored, when adding to a run's events. */
+  lastSeq = 0,
 ): EventSink {
-  let seq = 0;
+  let seq = lastSeq;
   const writes = createSerialQueue();
 
   const write = async (event: RunEvent) => {

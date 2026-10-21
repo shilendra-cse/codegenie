@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
 import { runEvents } from "../../schema/index.js";
 import { insertRun, testDatabaseOrSkip } from "../../testing/index.js";
-import { insertRunEvent } from "./run-events-queries.js";
+import { getLastRunEventSeq, insertRunEvent } from "./run-events-queries.js";
 
 const database = await testDatabaseOrSkip("run events queries");
 
@@ -41,5 +41,15 @@ describe.skipIf(!database)("run events queries against Postgres", () => {
     await expect(
       insertRunEvent(db, { runId: run.id, seq: 1, type: "done" }),
     ).rejects.toThrow();
+  });
+
+  it("tells the last stored event number, 0 without events", async () => {
+    const { run } = await insertRun(db);
+    expect(await getLastRunEventSeq(db, run.id)).toBe(0);
+
+    await insertRunEvent(db, { runId: run.id, seq: 1, type: "stage_changed" });
+    await insertRunEvent(db, { runId: run.id, seq: 2, type: "done" });
+
+    expect(await getLastRunEventSeq(db, run.id)).toBe(2);
   });
 });

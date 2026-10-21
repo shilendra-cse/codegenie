@@ -68,6 +68,9 @@ export async function startConsumer(
       case "onboard-project":
         await handlers["onboard-project"](item.data, controller.signal);
         break;
+      case "reap":
+        await handlers.reap(item.data, controller.signal);
+        break;
       default:
         throw new Error(`Unknown work kind "${job.name}".`);
     }

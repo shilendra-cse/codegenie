@@ -40,6 +40,7 @@ import { resolveInWorkspace } from "../../lib/workspace.js";
 import {
   AUTO_STOP_MINUTES,
   CREATE_TIMEOUT_SECONDS,
+  DEFAULT_RETENTION_HOURS,
   DEFAULT_SNAPSHOT,
   FILE_TIMEOUT_SECONDS,
   SANDBOX_LABELS,
@@ -50,6 +51,7 @@ import { COMMAND_ENV, execScript, parseExecOutput } from "./exec-script.js";
 /** The part of a Daytona sandbox this provider uses. */
 export type RemoteSandbox = {
   id: string;
+  state?: string;
   process: {
     executeCommand(
       command: string,
@@ -66,6 +68,8 @@ export type RemoteSandbox = {
       timeout?: number,
     ): Promise<void>;
   };
+  start(timeout?: number): Promise<void>;
+  stop(timeout?: number): Promise<void>;
   delete(timeout?: number): Promise<void>;
 };
 
@@ -74,6 +78,7 @@ export type DaytonaClient = {
     params: CreateSandboxFromSnapshotParams,
     options?: { timeout?: number },
   ): Promise<RemoteSandbox>;
+  get(sandboxIdOrName: string): Promise<RemoteSandbox>;
 };
 
 export type DaytonaSandboxOptions = Partial<DaytonaConnection> & {
@@ -81,7 +86,10 @@ export type DaytonaSandboxOptions = Partial<DaytonaConnection> & {
   client?: DaytonaClient;
   snapshot?: string;
   labels?: SandboxLabels;
+  retentionHours?: number;
 };
+
+const GONE_STATES = new Set(["destroyed", "destroying"]);
 
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -103,32 +111,37 @@ export class DaytonaSandbox implements Sandbox {
     return this.remote.id;
   }
 
+  private static client(options: DaytonaSandboxOptions): DaytonaClient {
+    if (options.client) return options.client;
+    try {
+      return new Daytona({
+        apiKey: options.apiKey,
+        apiUrl: options.apiUrl,
+        target: options.target,
+      });
+    } catch (error) {
+      throw new SandboxUnavailableError(
+        `Daytona isn't configured: ${messageOf(error)}`,
+      );
+    }
+  }
+
   static async create(
     options: DaytonaSandboxOptions = {},
   ): Promise<DaytonaSandbox> {
-    let client = options.client;
-    if (!client) {
-      try {
-        client = new Daytona({
-          apiKey: options.apiKey,
-          apiUrl: options.apiUrl,
-          target: options.target,
-        });
-      } catch (error) {
-        throw new SandboxUnavailableError(
-          `Daytona isn't configured: ${messageOf(error)}`,
-        );
-      }
-    }
+    const client = DaytonaSandbox.client(options);
+    const retentionMinutes =
+      (options.retentionHours ?? DEFAULT_RETENTION_HOURS) * 60;
 
     try {
       const remote = await client.create(
         {
           snapshot: options.snapshot ?? DEFAULT_SNAPSHOT,
           labels: { ...SANDBOX_LABELS, ...options.labels },
-          ephemeral: true,
-          ttlMinutes: MAX_LIFETIME_SECONDS / 60,
           autoStopInterval: AUTO_STOP_MINUTES,
+          autoDeleteInterval: retentionMinutes,
+          ttlMinutes:
+            MAX_LIFETIME_SECONDS / 60 + AUTO_STOP_MINUTES + retentionMinutes,
         },
         { timeout: CREATE_TIMEOUT_SECONDS },
       );
@@ -145,6 +158,32 @@ export class DaytonaSandbox implements Sandbox {
       throw new SandboxCreateError(
         `Failed to create a Daytona sandbox: ${messageOf(error)}`,
       );
+    }
+  }
+
+  static async connect(
+    id: string,
+    options: DaytonaSandboxOptions = {},
+  ): Promise<DaytonaSandbox | null> {
+    const client = DaytonaSandbox.client(options);
+    let remote: RemoteSandbox;
+    try {
+      remote = await client.get(id);
+    } catch (error) {
+      if (error instanceof DaytonaNotFoundError) return null;
+      throw error;
+    }
+    if (remote.state && GONE_STATES.has(remote.state)) return null;
+    if (remote.state !== "started") await remote.start(CREATE_TIMEOUT_SECONDS);
+    return new DaytonaSandbox(remote);
+  }
+
+  async stop(): Promise<void> {
+    this.assertAlive();
+    try {
+      await this.remote.stop();
+    } catch (error) {
+      throw this.translate(error);
     }
   }
 

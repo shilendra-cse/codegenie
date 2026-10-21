@@ -1,6 +1,12 @@
 import { resolveModel } from "@codegenie/agent";
 import { createDb } from "@codegenie/db";
-import { createSandbox, type SandboxLabels } from "@codegenie/sandbox";
+import {
+  connectSandbox,
+  createSandbox,
+  type SandboxLabels,
+} from "@codegenie/sandbox";
+import { WORK_QUEUE } from "@codegenie/shared";
+import { Queue } from "bullmq";
 import { config as loadDotenv } from "dotenv";
 import { Redis } from "ioredis";
 import { ConfigError, ENV_FILE, parseConfig } from "./config.js";
@@ -8,6 +14,8 @@ import { startConsumer } from "./consumer.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
 import { handleRunTask } from "./handlers/run-task.js";
 import { createLog } from "./lib/logger.js";
+import { handleReap } from "./reaper/reap.js";
+import { scheduleReaper } from "./reaper/schedule.js";
 
 async function main() {
   loadDotenv({ path: ENV_FILE, quiet: true });
@@ -34,7 +42,9 @@ async function main() {
     queue: connect("queue"),
     publisher: connect("publisher"),
     subscriber: connect("subscriber"),
+    scheduler: connect("scheduler"),
   };
+  const queue = new Queue(WORK_QUEUE, { connection: redis.scheduler });
 
   const deps = {
     db,
@@ -53,8 +63,15 @@ async function main() {
       "run-task": (data, signal) => handleRunTask(deps, data, signal),
       "onboard-project": (data, signal) =>
         handleOnboardProject(deps, data, signal),
+      reap: () =>
+        handleReap({
+          ...deps,
+          queue,
+          connectSandbox: (id) => connectSandbox({ ...config.sandbox, id }),
+        }),
     },
   });
+  await scheduleReaper(queue, config.reaperIntervalMs);
   log("info", "Worker started", {
     model: config.model,
     concurrency: config.concurrency,
@@ -76,6 +93,7 @@ async function main() {
       signal,
     });
     await consumer.close();
+    await queue.close();
     await Promise.all(Object.values(redis).map((r) => r.quit()));
     await pool.end();
     log("info", "Worker stopped");

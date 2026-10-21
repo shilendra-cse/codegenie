@@ -6,6 +6,7 @@ export const WORK_QUEUE = "codegenie-work";
 export type QueuedWork = {
   "run-task": { runId: string };
   "onboard-project": { projectId: string };
+  reap: Record<string, never>;
 };
 
 export type QueuedWorkKind = keyof QueuedWork;

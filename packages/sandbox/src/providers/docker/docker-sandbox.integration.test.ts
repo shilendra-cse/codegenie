@@ -9,6 +9,7 @@ import {
 } from "../../core/errors.js";
 import { runProcess } from "../../lib/run-process.js";
 import { DEFAULT_IMAGE } from "./constants.js";
+import { parkSandbox } from "../../create-sandbox.js";
 import { DockerSandbox } from "./docker-sandbox.js";
 
 async function dockerReady(): Promise<string | null> {
@@ -216,5 +217,30 @@ describe.skipIf(notReady)("DockerSandbox lifecycle", () => {
     await expect(
       DockerSandbox.create({ image: "codegenie-image-that-does-not-exist" }),
     ).rejects.toThrow(/pnpm sandbox:build-image/);
+  });
+
+  it("reconnects to a container by id, starting it if it stopped", async () => {
+    const original = await DockerSandbox.create();
+    try {
+      await original.writeFile("work.txt", "kept\n");
+      await runProcess("docker", ["stop", "-t", "0", original.id]);
+
+      const again = await DockerSandbox.connect(original.id);
+
+      expect(again?.id).toBe(original.id);
+      expect(await again!.readFile("work.txt")).toBe("kept\n");
+    } finally {
+      await original.destroy();
+    }
+  });
+
+  it("returns null for a container that no longer exists", async () => {
+    expect(await DockerSandbox.connect("cg-does-not-exist")).toBeNull();
+  });
+
+  it("parks a Docker sandbox by deleting it", async () => {
+    const sandbox = await DockerSandbox.create();
+    await parkSandbox(sandbox);
+    expect(await containerExists(sandbox.id)).toBe(false);
   });
 });

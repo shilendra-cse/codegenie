@@ -36,6 +36,8 @@ const schema = z
     DAYTONA_API_KEY: z.string().min(1).optional(),
     DAYTONA_API_URL: z.string().min(1).optional(),
     DAYTONA_TARGET: z.string().min(1).optional(),
+    SANDBOX_RETENTION_HOURS: z.coerce.number().min(0).default(4),
+    REAPER_INTERVAL_MINUTES: z.coerce.number().min(1).default(5),
   })
   .refine((e) => e.SANDBOX_PROVIDER !== "daytona" || e.DAYTONA_API_KEY, {
     path: ["DAYTONA_API_KEY"],
@@ -44,7 +46,11 @@ const schema = z
 
 export type SandboxConfig =
   | { provider: "docker" }
-  | { provider: "daytona"; connection: DaytonaConnection };
+  | {
+      provider: "daytona";
+      connection: DaytonaConnection;
+      retentionHours: number;
+    };
 
 export type WorkerConfig = {
   logLevel: string;
@@ -54,6 +60,7 @@ export type WorkerConfig = {
   model: string;
   concurrency: number;
   sandbox: SandboxConfig;
+  reaperIntervalMs: number;
 };
 
 export class ConfigError extends Error {}
@@ -88,7 +95,9 @@ export function parseConfig(
               apiUrl: e.DAYTONA_API_URL,
               target: e.DAYTONA_TARGET,
             },
+            retentionHours: e.SANDBOX_RETENTION_HOURS,
           }
         : { provider: "docker" },
+    reaperIntervalMs: e.REAPER_INTERVAL_MINUTES * 60_000,
   };
 }

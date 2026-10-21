@@ -33,9 +33,11 @@ function fakeRemote(run: Run = () => ({})) {
     timeout?: number;
   }[] = [];
   const files = new Map<string, Buffer>();
+  const lifecycle: string[] = [];
   let deletes = 0;
   const remote: RemoteSandbox = {
     id: "dt-1",
+    state: "started",
     process: {
       async executeCommand(script, cwd, env = {}, timeout) {
         calls.push({ script, cwd, env, timeout });
@@ -60,13 +62,23 @@ function fakeRemote(run: Run = () => ({})) {
         files.set(path, file);
       },
     },
+    async start() {
+      lifecycle.push("start");
+    },
+    async stop() {
+      lifecycle.push("stop");
+    },
     async delete() {
       deletes += 1;
       if (deletes > 1) throw new DaytonaNotFoundError("Sandbox not found", 404);
     },
   };
-  return { remote, calls, files, deletes: () => deletes };
+  return { remote, calls, files, lifecycle, deletes: () => deletes };
 }
+
+const notFound = async (): Promise<RemoteSandbox> => {
+  throw new DaytonaNotFoundError("Sandbox not found", 404);
+};
 
 async function sandboxWith(run?: Run) {
   const fake = fakeRemote(run);
@@ -76,6 +88,7 @@ async function sandboxWith(run?: Run) {
       created.push(args);
       return fake.remote;
     },
+    get: notFound,
   };
   const sandbox = await DaytonaSandbox.create({
     client,
@@ -85,7 +98,7 @@ async function sandboxWith(run?: Run) {
 }
 
 describe("DaytonaSandbox.create", () => {
-  it("creates a short-lived sandbox from the codegenie snapshot", async () => {
+  it("creates a sandbox from the codegenie snapshot that stops when idle and is deleted after its retention", async () => {
     const { sandbox, created } = await sandboxWith();
 
     expect(sandbox.id).toBe("dt-1");
@@ -94,13 +107,29 @@ describe("DaytonaSandbox.create", () => {
         {
           snapshot: "codegenie-base",
           labels: { codegenie: "1", runId: "r1" },
-          ephemeral: true,
-          ttlMinutes: 120,
           autoStopInterval: 30,
+          autoDeleteInterval: 4 * 60,
+          ttlMinutes: 120 + 30 + 4 * 60,
         },
         { timeout: 180 },
       ],
     ]);
+  });
+
+  it("keeps a stopped sandbox for the retention it's given", async () => {
+    const fake = fakeRemote();
+    const created: Parameters<DaytonaClient["create"]>[] = [];
+    await DaytonaSandbox.create({
+      client: {
+        create: async (...args) => (created.push(args), fake.remote),
+        get: notFound,
+      },
+      retentionHours: 2,
+    });
+    expect(created[0]![0]).toMatchObject({
+      autoDeleteInterval: 120,
+      ttlMinutes: 120 + 30 + 120,
+    });
   });
 
   it.each([
@@ -111,6 +140,7 @@ describe("DaytonaSandbox.create", () => {
       create: async () => {
         throw error;
       },
+      get: notFound,
     };
     await expect(DaytonaSandbox.create({ client })).rejects.toBeInstanceOf(
       expected,
@@ -202,7 +232,7 @@ describe("DaytonaSandbox.exec", () => {
       result: "zsh: command not found: mktemp\n",
     });
     const sandbox = await DaytonaSandbox.create({
-      client: { create: async () => fake.remote },
+      client: { create: async () => fake.remote, get: notFound },
     });
 
     expect(await sandbox.exec("ls")).toMatchObject({
@@ -272,5 +302,49 @@ describe("DaytonaSandbox lifetime", () => {
 
     expect(deletes()).toBe(1);
     await expect(sandbox.exec("ls")).rejects.toBeInstanceOf(SandboxGoneError);
+  });
+});
+
+describe("DaytonaSandbox.connect", () => {
+  const clientFor = (remote: RemoteSandbox): DaytonaClient => ({
+    create: async () => remote,
+    get: async (id) => (id === remote.id ? remote : notFound()),
+  });
+
+  it("reconnects to a running sandbox", async () => {
+    const fake = fakeRemote(() => ({ stdout: "ok\n" }));
+    const sandbox = await DaytonaSandbox.connect("dt-1", {
+      client: clientFor(fake.remote),
+    });
+
+    expect(sandbox?.id).toBe("dt-1");
+    expect((await sandbox!.exec("echo ok")).stdout).toBe("ok\n");
+    expect(fake.lifecycle).toEqual([]);
+  });
+
+  it("starts a stopped sandbox before using it", async () => {
+    const fake = fakeRemote();
+    fake.remote.state = "stopped";
+    await DaytonaSandbox.connect("dt-1", { client: clientFor(fake.remote) });
+    expect(fake.lifecycle).toEqual(["start"]);
+  });
+
+  it.each([["missing"], ["destroying"]])(
+    "returns null for a sandbox that is %s",
+    async (state) => {
+      const fake = fakeRemote();
+      fake.remote.state = state;
+      const id = state === "missing" ? "dt-unknown" : "dt-1";
+      expect(
+        await DaytonaSandbox.connect(id, { client: clientFor(fake.remote) }),
+      ).toBeNull();
+    },
+  );
+
+  it("stops a sandbox without deleting it", async () => {
+    const { sandbox, lifecycle, deletes } = await sandboxWith();
+    await sandbox.stop();
+    expect(lifecycle).toEqual(["stop"]);
+    expect(deletes()).toBe(0);
   });
 });
