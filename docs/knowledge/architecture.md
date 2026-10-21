@@ -12,7 +12,7 @@ CodeGenie is a web-based autonomous coding agent. A user connects their GitHub r
 |---|---|---|---|
 | D1 | Sandbox provider | **Daytona Cloud**, behind a `Sandbox` interface | Generous free tier, pay-as-you-go, self-hostable later. Interface keeps the vendor swappable; a `DockerSandbox` serves local dev. |
 | D2 | Where the agent loop runs | **In our worker**, tools execute remotely in the sandbox | LLM keys, DB and Redis never enter the sandbox; run state survives sandbox failure; trivial event streaming. |
-| D3 | GitHub access | **GitHub App** (repo access) + GitHub OAuth (login only) | Per-repo consent, 1-hour scoped installation tokens, bot identity on commits/PRs, webhooks. |
+| D3 | GitHub access | **One GitHub App** for sign-in (its OAuth) and repo access (its installations); GitHub-only sign-in for the MVP | Per-repo consent, 1-hour tokens scoped to one repo and minimal permissions, bot identity on commits/PRs, webhooks; one registration and one identity. |
 | D4 | Run execution | **BullMQ** on Redis, dedicated `apps/worker` process | Already have Redis; durable queue, retries, concurrency control, stalled-job detection. |
 | D5 | Live updates | Worker → Redis pub/sub + `run_events` table → server **SSE** → browser | Replayable (refresh mid-run works), auditable, simple. |
 | D6 | Delivery | Worker (not the agent) commits, pushes, opens PR. **Draft PR** if checks fail, ready PR if they pass. Never push to default branch. | Model can't push half-done work; consistent git hygiene. |
@@ -85,7 +85,7 @@ A schema change can mean redeploying both apps; that comes from sharing the data
 Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/runs history), new task, live run view (event timeline, tool calls, streamed summary, PR link). Talks only to `/api/*` (same origin via rewrite).
 
 ### apps/server
-- Better Auth (GitHub/Google login, sessions).
+- Better Auth (GitHub sign-in through the App, sessions).
 - GitHub App: install callback, webhook receiver (`installation`, `installation_repositories`, `pull_request_review_comment`, `issue_comment`), signature verification.
 - REST: projects, tasks, task messages (follow-ups), runs, cancel.
 - `GET /api/runs/:id/events` — SSE replay + live.

@@ -101,17 +101,45 @@ Branches, each built in small batches (see Ways of working):
 **Known issue:** production builds of the server and worker don't run yet (`tsc` keeps the `@/…` path aliases, which plain Node can't resolve; development runs through `tsx`). Fixed with the deploy work in Phase 5.
 
 ### Phase 3 — GitHub App & delivery
-**Goal:** real PRs on real repos using only installation tokens. *(U1, U2, U6 backend)*
+**Goal:** a run on a real repository, private ones included, ends in a pull request opened by `codegenie[bot]`, using only short-lived tokens scoped to that repository. *(U1, U2, U6 backend)*
 
-- [ ] Register dev GitHub App (contents, pull requests, metadata; webhooks: installation, installation_repositories, pull_request).
-- [ ] Better Auth: GitHub-only sign-in (disable email/password and Google).
-- [ ] Install callback, `github_installations`, webhook endpoint with signature check + `webhook_deliveries` dedupe.
-- [ ] App JWT → installation token minting; replace OAuth-token GitHub service.
-- [ ] Repo listing from installations.
-- [ ] Deliver stage: commit as `codegenie[bot]`, push, open draft/ready PR with summary + checks; no-diff path; `pull_request` webhook updates `tasks.status`.
+Decisions:
+- **One GitHub App** for sign-in and repository access: its OAuth signs users in, its installations give repo access. No separate OAuth App.
+- **GitHub-only sign-in** for the MVP: email/password and Google are removed. Every user needs GitHub anyway; one identity means no account linking; it raises the bar for throwaway accounts. Better Auth keeps other providers a configuration change away.
+- **Repository access through installations, not the user's OAuth token.** Tokens are minted per run for one repository with only the permissions needed (`contents: read` to clone, `contents: write` to push, `pull_requests: write` for the PR) and expire within an hour. A leaked token reaches one repository for less than an hour, instead of every repository the user can touch, indefinitely.
+- **The repo picker lists installations and their repositories** the user can access (`/user/installations`, `/user/installations/{id}/repositories`), with an "adjust access" link to GitHub; installing on "All repositories" lists everything. Repos where the App isn't installed aren't listed.
+- **The token never stays in the sandbox:** it's given only to the clone and push commands, never to `.git/config` or the remote URL, so the agent (which has a shell) never sees it. It's also kept out of logs and events.
+- **The runner does the git work** (branch, commit, push) in the sandbox; **the worker opens the PR** through the API and updates the database. The CLI and evals keep working without GitHub.
+- **Tests use recorded GitHub responses**; the whole flow is checked by hand once on a private test repository.
 
-**Done when:** a run on a test repo opens a correct PR; uninstalling/suspending the App is reflected in the DB.
-**Needs:** GitHub App (dev), smee.io or cloudflared tunnel.
+Branches, each built in small batches (see Ways of working):
+
+- [ ] **1. `feat/github-app`**: `@codegenie/github`, used by the server and the worker.
+  1. Package and token minting: `createGithubApp({ appId, privateKey })`; `repoToken` / `repoClient` (one repository, given permissions, cached until near expiry); `installationForRepo`; private key parsing.
+  2. Bot identity (`<slug>[bot]` and its noreply email, for commits) and webhook signature verification (`X-Hub-Signature-256`).
+  3. Docs: `github.md` with the App registration guide (permissions, events, callback and setup URLs), the token model and the settings each app needs.
+- [ ] **2. `feat/github-install`**: the server.
+  1. GitHub-only sign-in through the App's OAuth.
+  2. Webhook endpoint: raw body, signature check, `webhook_deliveries` dedupe.
+  3. Installation events (`installation`, `installation_repositories`: created, repositories added/removed, suspended, deleted) → `github_installations`.
+  4. Install callback (setup URL): checks the user can access the installation, then records it.
+  5. Repo listing API: the user's installations, their repositories, the install / adjust-access URL.
+  6. Docs.
+- [ ] **3. `feat/private-clone`**: the worker.
+  1. A run's token: the project's installation → a read token for its repository.
+  2. Clone with the token passed only to that command; the remote is the plain URL afterwards; the token is redacted from logs and events.
+  3. `worker:enqueue` finds a repository's real installation through the App, so private repositories work from the script.
+  4. Docs.
+- [ ] **4. `feat/delivery`**
+  1. Runner deliver step: branch `codegenie/<task>-<slug>`, commit as the bot, push with a write token passed only to that command; no changes → no branch.
+  2. Worker: open the PR (draft when checks failed or the run is incomplete) with the summary, check results and a run link; update the task (branch, PR number and URL, `pr_open`) and the run (`commit_sha`); `branch_created` / `git_push` / `pr_opened` events; `deliver_failed` on errors.
+  3. Docs.
+- [ ] **5. `feat/pr-webhooks`**
+  1. `pull_request` merged / closed / reopened → the task's status.
+  2. Docs.
+
+**Done when:** a run on a private test repository opens a correct PR; installing, uninstalling or suspending the App is reflected in the database.
+**Needs:** a dev GitHub App (App id and private key before branch 1 is checked by hand; client id and secret, webhook secret and a smee.io channel or cloudflared tunnel before branch 2), and a private test repository with the App installed before branch 3.
 
 ### Phase 4 — API & UI
 **Goal:** the full prompt → PR flow from the browser. *(U3, U4, U5, U6, U7, U9, U10)*
