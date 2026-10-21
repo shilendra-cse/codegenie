@@ -17,7 +17,8 @@ packages/
   runner/     Runs a task end to end: sandbox, checkout, setup, agent, verify
   agent/      The AI agent: model, prompt, tools, loop
   sandbox/    Isolated environments (Docker)
-  db/         Postgres schema, client and migrations, shared by server and worker
+  db/         Postgres schema, client, migrations and queries, shared by server and worker
+  github/     GitHub App access: repo-scoped tokens, the bot identity, webhook signatures
   terminal/   Terminal output shared by the CLI and evals (colors, layout, spinners)
   shared/     Types shared across apps and packages
 docs/
@@ -84,7 +85,7 @@ API docs are served at http://localhost:3001/api/docs while the server is runnin
 - [Architecture](docs/knowledge/architecture.md)
 - [Database](docs/knowledge/database.md)
 - [Development plan](docs/knowledge/development-plan.md)
-- [Runner](docs/knowledge/runner.md), [Environment](docs/knowledge/environment.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md), [Evals](docs/knowledge/evals.md)
+- [Runner](docs/knowledge/runner.md), [Environment](docs/knowledge/environment.md), [Agent](docs/knowledge/agent.md), [Sandbox](docs/knowledge/sandbox.md), [GitHub](docs/knowledge/github.md), [Evals](docs/knowledge/evals.md)
 
 ## License
 
