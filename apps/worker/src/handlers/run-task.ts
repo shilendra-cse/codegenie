@@ -1,11 +1,15 @@
-import { DbEnvironmentStore, runs, messages, type Db } from "@codegenie/db";
+import {
+  DbEnvironmentStore,
+  getLatestUserMessage,
+  getRunWithProject,
+  type Db,
+} from "@codegenie/db";
 import {
   runTask,
   type RunResult,
   type RunTaskOptions,
 } from "@codegenie/runner";
 import type { RunEvent, QueuedWork } from "@codegenie/shared";
-import { and, desc, eq } from "drizzle-orm";
 import {
   createEventSink,
   type EventSink,
@@ -28,15 +32,9 @@ export type RunTaskDeps = {
 } & Pick<RunTaskOptions, "model" | "limits">;
 
 async function loadRun(db: Db, runId: string) {
-  const run = await db.query.runs.findFirst({
-    where: eq(runs.id, runId),
-    with: { task: { with: { project: true } } },
-  });
+  const run = await getRunWithProject(db, runId);
   if (!run) throw new Error(`Run ${runId} doesn't exist.`);
-  const message = await db.query.messages.findFirst({
-    where: and(eq(messages.runId, runId), eq(messages.role, "user")),
-    orderBy: desc(messages.createdAt),
-  });
+  const message = await getLatestUserMessage(db, runId);
   return { ...run, instruction: message?.content ?? run.task.title };
 }
 

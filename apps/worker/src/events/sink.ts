@@ -1,4 +1,4 @@
-import { runEvents, type Db } from "@codegenie/db";
+import { insertRunEvent, type Db } from "@codegenie/db";
 import { runChannel, type RunEvent } from "@codegenie/shared";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
@@ -32,7 +32,7 @@ export function createEventSink(
       return;
     }
     const numbered = { ...event, seq: seq + 1 };
-    await deps.db.insert(runEvents).values({
+    await insertRunEvent(deps.db, {
       runId,
       seq: numbered.seq,
       type,
