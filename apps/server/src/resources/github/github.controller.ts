@@ -9,6 +9,9 @@ import type { AuthenticatedController } from "@/types/base.types";
 export type GithubControllerDeps = {
   githubToken(userId: string): Promise<string | null>;
   installUrl(): Promise<string>;
+  userProjectRepos(
+    userId: string,
+  ): Promise<{ id: string; repoGithubId: number }[]>;
   fetch?: typeof fetch;
 };
 
@@ -55,10 +58,21 @@ export function createGithubControllers(deps: GithubControllerDeps) {
         "GITHUB_INSTALLATION_NOT_FOUND",
       );
     }
+    const projectIds = new Map(
+      (await deps.userProjectRepos(req.user.id)).map((p) => [
+        p.repoGithubId,
+        p.id,
+      ]),
+    );
     repositories.sort((a, b) =>
       (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
     );
-    return ok(200, "OK", { repositories });
+    return ok(200, "OK", {
+      repositories: repositories.map((repo) => ({
+        ...repo,
+        projectId: projectIds.get(repo.id) ?? null,
+      })),
+    });
   };
 
   return { getInstallations, getInstallationRepositories };

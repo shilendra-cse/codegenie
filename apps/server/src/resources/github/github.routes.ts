@@ -1,3 +1,4 @@
+import { findUserProjectRepos } from "@codegenie/db";
 import { config } from "@/config";
 import { db } from "@/db";
 import { api } from "@/lib/ApiRouter";
@@ -13,6 +14,7 @@ const github = createGithubControllers({
   githubToken: githubAccessToken,
   installUrl: async () =>
     `https://github.com/apps/${await githubApp.slug()}/installations/new`,
+  userProjectRepos: (userId) => findUserProjectRepos(db, userId),
 });
 
 api.get("/github/installations").authSecure(github.getInstallations);

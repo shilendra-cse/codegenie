@@ -144,6 +144,19 @@ Branches, each built in small batches (see Ways of working):
 ### Phase 4 — API & UI
 **Goal:** the full prompt → PR flow from the browser. *(U3, U4, U5, U6, U7, U9, U10)*
 
+Design: [ui.md](./ui.md) and its canvas; API: [api.md](./api.md).
+
+Branches, each built in small batches (see Ways of working):
+
+- [x] **1. `feat/projects-api`**: list, get, add (checked against the installation and the user's GitHub access) and remove projects; `projectId` on the repo picker; ownership rule; OpenAPI; api.md.
+- [ ] **2. `feat/tasks-api`**: create tasks (the server queues work), get tasks and runs, cancel, start onboarding; the worker's dev enqueue script goes.
+- [ ] **3. `feat/run-events`**: `GET /runs/:id/events`, SSE with replay and `Last-Event-ID`.
+- [ ] **4. `feat/web-projects`**: API client, `/api/*` rewrite, app shell, connect GitHub, repo picker, project list.
+- [ ] **5. `feat/web-runs`**: project page, new task, live run view, task page.
+- [ ] **6. `feat/web-onboarding`**: environment setup as a conversation; onboarding events stored and replayable.
+- [ ] **7. `feat/e2e`**: Playwright smoke test with a mocked model.
+
+Checklist:
 - [ ] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /runs/:id`, `GET /runs/:id/events` (SSE + replay), `POST /runs/:id/cancel`; OpenAPI updated.
 - [ ] Authorization: users only access their own resources.
 - [ ] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live run view (stage, tool calls, summary, PR link, cancel), task page (conversation + runs).
