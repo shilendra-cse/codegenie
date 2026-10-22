@@ -641,6 +641,56 @@ paths:
         "404":
           $ref: "#/components/responses/RunNotFound"
 
+  /api/runs/{runId}/events:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Runs]
+      summary: The run's events, replayed then live (server-sent events)
+      description: |
+        Keeps the response open and writes one frame per event: `id: <seq>` (stored events only) and `data: <RunEvent JSON>`, separated by a blank line; `: ping` comments every 15 s.
+        Replays stored events after `Last-Event-ID` / `after`, then forwards live ones; ends after the `done` event or once the run has ended. See docs/knowledge/api.md §6.
+      operationId: streamRunEvents
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          description: Resume after this event (EventSource sends it on reconnect)
+          schema:
+            type: integer
+            minimum: 0
+        - name: after
+          in: query
+          description: Same as Last-Event-ID, for clients that can't set headers
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: The event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                id: 1
+                data: {"type":"stage_changed","stage":"prepare","runId":"…","seq":1,"ts":"…"}
+
+                : ping
+
+                id: 2
+                data: {"type":"done","status":"succeeded","runId":"…","seq":2,"ts":"…"}
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/RunNotFound"
+
   /api/runs/{runId}/cancel:
     parameters:
       - name: runId

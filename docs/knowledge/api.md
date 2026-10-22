@@ -52,6 +52,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | GET | `/runs/:id` | One run |
 | GET | `/runs/:id/diff` | The run's patch and files, or `null` |
 | POST | `/runs/:id/cancel` | 202 `{ outcome: "cancelled" }` for a queued run, `"stopping"` for a running one |
+| GET | `/runs/:id/events` | The run's events as a stream (server-sent events), replayed then live (§6) |
 
 A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) and installation state (`accountLogin`, `suspended`, `uninstalled`).
 
@@ -67,7 +68,7 @@ A **run**: `id`, `taskId`, `trigger`, `status`, `stage`, `model`, `summary`, `ch
 
 **Cancelling** a queued run marks it `cancelled` directly; a running one is told to stop over Redis (`run-cancel`) and ends `cancelled` once the worker stops it.
 
-Run events (live and replayed) and the environment come next ([development-plan.md](./development-plan.md), Phase 4).
+The environment's endpoints come next ([development-plan.md](./development-plan.md), Phase 4).
 
 ## 5. Code layout
 
@@ -79,4 +80,29 @@ apps/server/src/resources/<name>/
   services/<fn>.service.ts  one function each: rules, HttpErrors, response shapes
 ```
 
+A route whose handler writes its own response (a stream) wraps it: `api.get(path).authSecure(stream(handler))`. `lib/sse.ts` opens the connection (`openSse`), formats frames, and ends the response; an error before streaming still becomes a normal JSON error.
+
 Services call queries from `@codegenie/db`; a query that returns a row or `null` is named `find…`, and the service that turns "not found" into a 404 is named `get…`. Controllers are created from their dependencies (`createProjectControllers({ db, githubToken })`), so tests pass fakes for GitHub and a real test database.
+
+## 6. Run events stream
+
+`GET /api/runs/:id/events` keeps one HTTP response open and writes the run's events to it as they happen ([server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html)). In the browser, `new EventSource(url, { withCredentials: true })`.
+
+```
+id: 1
+data: {"type":"stage_changed","stage":"prepare","runId":"…","seq":1,"ts":"…"}
+
+data: {"type":"text_delta","delta":"Reading the routes","runId":"…","ts":"…"}
+
+: ping
+
+id: 9
+data: {"type":"done","status":"succeeded","runId":"…","seq":9,"ts":"…"}
+```
+
+- **`data`** is a `RunEvent` (`packages/shared`), the same JSON the worker publishes. **`id`** is its `seq`: stored events are numbered 1, 2, 3…; live-only events (`text_delta`, `agent_step`) have no id and aren't replayed.
+- **Resuming:** `Last-Event-ID: <seq>` (sent by `EventSource` itself on reconnect) or `?after=<seq>` starts after that event. Without either, the whole run is replayed.
+- **Order of work:** the server listens on the run's Redis channel first, then replays stored events from `run_events` 500 at a time, then forwards live ones. Each stored event is sent once; a jump in `seq` is filled from `run_events`.
+- **Ending:** after the `done` event, or as soon as the run has ended without one (e.g. a queued run that was cancelled). A `: ping` every 15 s keeps proxies from closing the connection and re-checks the run's status. `EventSource` reconnects when a stream ends, so clients close it on `done`.
+- **Errors** before streaming are normal JSON: 401, 404 `RUN_NOT_FOUND`, 400 for a bad `Last-Event-ID`.
+- **Redis:** one subscriber connection per server, shared by every viewer; it subscribes to `run:{id}` for a run's first viewer and unsubscribes after its last (`lib/run-event-hub.ts`).
