@@ -301,6 +301,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       branchName: result!.delivery!.branchName,
       prNumber: 7,
       prUrl: "https://github.com/acme/app/pull/7",
+      prDraft: false,
       status: "pr_open",
     });
     expect(await row(run.id)).toMatchObject({
@@ -368,6 +369,10 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     );
 
     expect(draft.githubCalls.at(-1)!.body).toMatchObject({ draft: true });
+    expect(await taskRow(draft.run.taskId)).toMatchObject({ prDraft: true });
+    expect(await taskRow(noDrafts.run.taskId)).toMatchObject({
+      prDraft: false,
+    });
     const [refused, ready] = noDrafts.githubCalls.slice(-2);
     expect(refused!.body).toMatchObject({ draft: true });
     expect(ready!.body).not.toHaveProperty("draft");

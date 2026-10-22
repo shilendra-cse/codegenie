@@ -3,7 +3,9 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
 import { DbEnvironmentStore } from "../projects/environments-queries.js";
 import { insertRun, testDatabaseOrSkip } from "../../testing/index.js";
+import { saveRunDiff } from "./run-diffs-queries.js";
 import {
+  findUserRun,
   getRunWithProject,
   listUnfinishedRuns,
   markRunEnded,
@@ -91,5 +93,23 @@ describe.skipIf(!database)("runs queries against Postgres", () => {
 
     expect(ids).toEqual(expect.arrayContaining([queued.id, running.id]));
     expect(ids).not.toContain(done.id);
+  });
+
+  it("gets a run with its changed files, only for the owner of its project", async () => {
+    const { project, run } = await insertRun(db);
+    await saveRunDiff(db, run.id, {
+      patch: "diff --git a/a.ts b/a.ts",
+      files: [{ path: "a.ts", added: 2, removed: 1 }],
+      truncated: false,
+    });
+
+    expect(await findUserRun(db, project.userId, run.id)).toMatchObject({
+      id: run.id,
+      diff: {
+        files: [{ path: "a.ts", added: 2, removed: 1 }],
+        truncated: false,
+      },
+    });
+    expect(await findUserRun(db, randomUUID(), run.id)).toBeNull();
   });
 });

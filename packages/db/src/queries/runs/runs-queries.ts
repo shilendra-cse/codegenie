@@ -1,6 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../client.js";
+import { projects } from "../../schema/projects/projects-schema.js";
 import { runs } from "../../schema/runs/runs-schema.js";
+import { tasks } from "../../schema/tasks/tasks-schema.js";
 
 type Run = typeof runs.$inferSelect;
 
@@ -79,3 +81,19 @@ export async function listUnfinishedRuns(db: Db) {
     .from(runs)
     .where(inArray(runs.status, ["queued", "running"]));
 }
+
+export async function findUserRun(db: Db, userId: string, runId: string) {
+  const ownedTaskIds = db
+    .select({ id: tasks.id })
+    .from(tasks)
+    .innerJoin(projects, eq(tasks.projectId, projects.id))
+    .where(eq(projects.userId, userId));
+  return (
+    (await db.query.runs.findFirst({
+      where: and(eq(runs.id, runId), inArray(runs.taskId, ownedTaskIds)),
+      with: { diff: { columns: { files: true, truncated: true } } },
+    })) ?? null
+  );
+}
+
+export type UserRun = NonNullable<Awaited<ReturnType<typeof findUserRun>>>;

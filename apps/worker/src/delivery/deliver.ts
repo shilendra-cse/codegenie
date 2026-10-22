@@ -80,6 +80,7 @@ export function deliverToGithub(
     await setTaskPullRequest(deps.db, task.id, {
       number: pullRequest.number,
       url: pullRequest.html_url,
+      draft: pullRequest.draft ?? false,
     });
     emit({
       type: "pr_opened",

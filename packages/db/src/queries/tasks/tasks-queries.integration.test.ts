@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
@@ -7,8 +8,11 @@ import {
   insertTask,
   testDatabaseOrSkip,
 } from "../../testing/index.js";
+import { saveRunDiff } from "../runs/run-diffs-queries.js";
 import {
   createTaskWithRun,
+  findUserTask,
+  findUserTasks,
   setTaskBranch,
   setTaskPullRequest,
   setTaskStatusForPullRequest,
@@ -50,6 +54,7 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
     await setTaskPullRequest(db, task.id, {
       number: 7,
       url: "https://github.com/acme/app/pull/7",
+      draft: true,
     });
 
     const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
@@ -57,6 +62,7 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
       branchName: "codegenie/1234abcd-add-a-readme",
       prNumber: 7,
       prUrl: "https://github.com/acme/app/pull/7",
+      prDraft: true,
       status: "pr_open",
     });
   });
@@ -104,5 +110,70 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
     expect(
       await db.select().from(tasks).where(eq(tasks.projectId, project.id)),
     ).toEqual([]);
+  });
+
+  describe("reading a user's tasks", () => {
+    it("lists the user's tasks newest first, with their project and runs, a page at a time", async () => {
+      const project = await insertProject(db);
+      const other = await insertProject(db, {
+        userId: project.userId,
+        installationId: project.installationId,
+      });
+      const first = await createTaskWithRun(db, values(project));
+      const second = await createTaskWithRun(db, values(project));
+      const third = await createTaskWithRun(db, values(other));
+      await createTaskWithRun(db, values(await insertProject(db)));
+
+      const page = await findUserTasks(db, project.userId, { limit: 2 });
+      const next = await findUserTasks(db, project.userId, {
+        limit: 2,
+        afterTaskId: page.at(-1)!.id,
+      });
+      const filtered = await findUserTasks(db, project.userId, {
+        projectId: project.id,
+        limit: 10,
+      });
+
+      expect(page.map((t) => t.id)).toEqual([third.task.id, second.task.id]);
+      expect(next.map((t) => t.id)).toEqual([first.task.id]);
+      expect(filtered.map((t) => t.id)).toEqual([
+        second.task.id,
+        first.task.id,
+      ]);
+      expect(page[0]).toMatchObject({
+        project: { id: other.id, repoOwner: "acme", repoName: "app" },
+        runs: [{ id: third.run.id, status: "queued" }],
+      });
+    });
+
+    it("gets a task with its messages and runs, newest run first, only for its owner", async () => {
+      const project = await insertProject(db);
+      const { task, run } = await createTaskWithRun(db, values(project));
+      await saveRunDiff(db, run.id, {
+        patch: "diff --git a/README.md b/README.md",
+        files: [{ path: "README.md", added: 1, removed: 0 }],
+        truncated: false,
+      });
+
+      const found = await findUserTask(db, project.userId, task.id);
+
+      expect(found).toMatchObject({
+        id: task.id,
+        project: { id: project.id },
+        messages: [{ role: "user", content: "Add a README" }],
+        runs: [
+          {
+            id: run.id,
+            diff: {
+              files: [{ path: "README.md", added: 1, removed: 0 }],
+              truncated: false,
+            },
+          },
+        ],
+      });
+      expect(found!.runs[0]!.diff).not.toHaveProperty("patch");
+      expect(await findUserTask(db, randomUUID(), task.id)).toBeNull();
+      expect(await findUserTask(db, project.userId, randomUUID())).toBeNull();
+    });
   });
 });

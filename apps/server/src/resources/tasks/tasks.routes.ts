@@ -11,3 +11,5 @@ const tasks = createTaskControllers({
 });
 
 api.post("/projects/:id/tasks").authSecure(tasks.startTask);
+api.get("/tasks").authSecure(tasks.listTasks);
+api.get("/tasks/:id").authSecure(tasks.getTask);

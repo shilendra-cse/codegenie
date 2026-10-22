@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgEnum,
@@ -41,6 +42,7 @@ export const tasks = pgTable(
     branchName: text("branch_name"),
     prNumber: integer("pr_number"),
     prUrl: text("pr_url"),
+    prDraft: boolean("pr_draft"),
     status: taskStatusEnum("status").notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
