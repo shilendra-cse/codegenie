@@ -5,6 +5,12 @@ export const runParamsSchema = z.object({
   id: z.uuid("The run id must be a UUID."),
 });
 
+export const afterSeqSchema = z.coerce
+  .number("The last event id must be a number.")
+  .int()
+  .min(0)
+  .default(0);
+
 export type RunResponse = {
   id: string;
   taskId: string;

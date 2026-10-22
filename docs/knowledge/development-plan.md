@@ -150,7 +150,7 @@ Branches, each built in small batches (see Ways of working):
 
 - [x] **1. `feat/projects-api`**: list, get, add (checked against the installation and the user's GitHub access) and remove projects; `projectId` on the repo picker; ownership rule; OpenAPI; api.md.
 - [x] **2. `feat/tasks-api`**: create tasks (the server queues work), get tasks and runs, cancel, start onboarding; the worker's dev enqueue script goes.
-- [ ] **3. `feat/run-events`**: `GET /runs/:id/events`, SSE with replay and `Last-Event-ID`.
+- [x] **3. `feat/run-events`**: `GET /runs/:id/events`, SSE with replay and `Last-Event-ID` ([api.md](./api.md) §6).
 - [ ] **4. `feat/web-projects`**: API client, `/api/*` rewrite, app shell, connect GitHub, repo picker, project list.
 - [ ] **5. `feat/web-runs`**: project page, new task, live run view, task page.
 - [ ] **6. `feat/web-onboarding`**: environment setup as a conversation; onboarding events stored and replayable.

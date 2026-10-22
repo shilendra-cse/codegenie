@@ -3,7 +3,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
 import { runEvents } from "../../schema/index.js";
 import { insertRun, testDatabaseOrSkip } from "../../testing/index.js";
-import { getLastRunEventSeq, insertRunEvent } from "./run-events-queries.js";
+import {
+  findRunEventsAfter,
+  getLastRunEventSeq,
+  insertRunEvent,
+} from "./run-events-queries.js";
 
 const database = await testDatabaseOrSkip("run events queries");
 
@@ -51,5 +55,26 @@ describe.skipIf(!database)("run events queries against Postgres", () => {
     await insertRunEvent(db, { runId: run.id, seq: 2, type: "done" });
 
     expect(await getLastRunEventSeq(db, run.id)).toBe(2);
+  });
+
+  it("finds a run's events after a number, in order, a page at a time", async () => {
+    const { run } = await insertRun(db);
+    const { run: other } = await insertRun(db);
+    for (const seq of [3, 1, 2, 4]) {
+      await insertRunEvent(db, {
+        runId: run.id,
+        seq,
+        type: "stage_changed",
+        payload: { seq },
+      });
+    }
+    await insertRunEvent(db, { runId: other.id, seq: 2, type: "done" });
+
+    const seqs = async (after: number, limit: number) =>
+      (await findRunEventsAfter(db, run.id, after, limit)).map((e) => e.seq);
+
+    expect(await seqs(0, 10)).toEqual([1, 2, 3, 4]);
+    expect(await seqs(1, 2)).toEqual([2, 3]);
+    expect(await seqs(4, 10)).toEqual([]);
   });
 });

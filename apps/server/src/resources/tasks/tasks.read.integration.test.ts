@@ -29,6 +29,8 @@ describe.skipIf(!database)("reading tasks and runs against Postgres", () => {
   const runControllers = createRunControllers({
     db,
     publisher: { publish: () => Promise.resolve(0) },
+    hub: { listen: () => Promise.resolve(() => Promise.resolve()) },
+    heartbeatMs: 15_000,
   });
 
   const request = (
