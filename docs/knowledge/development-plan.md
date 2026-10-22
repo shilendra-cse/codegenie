@@ -144,17 +144,14 @@ Branches, each built in small batches (see Ways of working):
 ### Phase 4 — API & UI
 **Goal:** the full prompt → PR flow from the browser. *(U3, U4, U5, U6, U7, U9, U10)*
 
-Design: [ui.md](./ui.md) and its canvas; API: [api.md](./api.md).
+Design: [ui.md](./ui.md) and its canvas; API: [api.md](./api.md); web app: [web.md](./web.md).
 
 Branches, each built in small batches (see Ways of working):
 
 - [x] **1. `feat/projects-api`**: list, get, add (checked against the installation and the user's GitHub access) and remove projects; `projectId` on the repo picker; ownership rule; OpenAPI; api.md.
 - [x] **2. `feat/tasks-api`**: create tasks (the server queues work), get tasks and runs, cancel, start onboarding; the worker's dev enqueue script goes.
 - [x] **3. `feat/run-events`**: `GET /runs/:id/events`, SSE with replay and `Last-Event-ID` ([api.md](./api.md) §6).
-- [ ] **4. `feat/web-projects`**: API client, `/api/*` rewrite, app shell, connect GitHub, repo picker, project list.
-- [ ] **5. `feat/web-runs`**: project page, new task, live run view, task page.
-- [ ] **6. `feat/web-onboarding`**: environment setup as a conversation; onboarding events stored and replayable.
-- [ ] **7. `feat/e2e`**: Playwright smoke test with a mocked model.
+- [ ] **4–12. The web app, step by step through the user's journey** ([web.md](./web.md) §10): sign in → connect GitHub → add a repository → set up the environment (with onboarding events stored server-side) → start a task → watch it work → get the PR → find your work → end-to-end test. Each step's requirements are written in web.md and approved before it's built.
 
 Checklist:
 - [ ] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /runs/:id`, `GET /runs/:id/events` (SSE + replay), `POST /runs/:id/cancel`; OpenAPI updated.
