@@ -5,3 +5,4 @@
 import "./resources/example/example.routes";
 import "./resources/github/github.routes";
 import "./resources/projects/projects.routes";
+import "./resources/tasks/tasks.routes";

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { config as loadDotenv } from "dotenv";
 import { resolveModel, type ResolvedModel } from "@codegenie/agent";
+import { DEFAULT_AGENT_MODEL } from "@codegenie/shared";
 import { z } from "zod";
 
 export const ENV_FILE = path.join(import.meta.dirname, "..", ".env");
@@ -13,7 +14,7 @@ const schema = z.object({
     .refine((key) => key !== PLACEHOLDER_KEY, {
       message: `OPENAI_API_KEY is still the placeholder. Set your key in ${ENV_FILE}.`,
     }),
-  AGENT_MODEL: z.string().min(1).default("openai:gpt-6-luna"),
+  AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
 });
 
 export type CliConfig = { model: string };

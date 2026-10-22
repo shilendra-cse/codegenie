@@ -46,6 +46,7 @@
     "@codegenie/shared": "workspace:*",
     "@types/swagger-ui-express": "^4.1.8",
     "better-auth": "^1.6.11",
+    "bullmq": "^6.3.17",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",

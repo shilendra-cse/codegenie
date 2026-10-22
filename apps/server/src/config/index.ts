@@ -1,3 +1,4 @@
+import { DEFAULT_AGENT_MODEL } from "@codegenie/shared";
 import { z } from "zod";
 import "dotenv/config";
 
@@ -32,6 +33,8 @@ const envSchema = z.object({
   REDIS_PORT: z.string().transform(Number).default(6380),
   REDIS_PASSWORD: z.string().default("codegenie_password"),
   REDIS_URL: z.string().default("redis://localhost:6380"),
+
+  AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
 
   BETTER_AUTH_URL: z.string().default("http://localhost:3001"),
   BETTER_AUTH_SECRET: z.string().default("your-better-auth-secret"),
@@ -110,6 +113,9 @@ const parseEnv = () => {
         port: env.REDIS_PORT,
         password: env.REDIS_PASSWORD,
         url: env.REDIS_URL,
+      },
+      agent: {
+        model: env.AGENT_MODEL,
       },
       betterAuth: {
         url: env.BETTER_AUTH_URL,

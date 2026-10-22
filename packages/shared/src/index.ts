@@ -80,6 +80,7 @@ export { checkKey } from "./types/environment.js";
 
 export {
   CANCEL_CHANNEL,
+  DEFAULT_AGENT_MODEL,
   WORK_QUEUE,
   onboardingChannel,
   type OnboardingMessage,
