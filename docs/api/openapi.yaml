@@ -12,6 +12,8 @@ tags:
   - name: Example
   - name: GitHub
   - name: Projects
+  - name: Tasks
+  - name: Runs
 
 paths:
   /health:
@@ -365,6 +367,321 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/projects/{projectId}/onboarding:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Projects]
+      summary: Set up the project's environment
+      description: Queues environment setup. While one is queued or running for the project, another isn't added.
+      operationId: startProjectOnboarding
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [projectId]
+                        properties:
+                          projectId:
+                            type: string
+                            format: uuid
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "409":
+          description: The App is uninstalled (`GITHUB_INSTALLATION_REMOVED`) or suspended (`GITHUB_INSTALLATION_SUSPENDED`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          $ref: "#/components/responses/QueueUnavailable"
+
+  /api/projects/{projectId}/tasks:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Tasks]
+      summary: Start a task on a project
+      description: Creates the task, its first message and a queued run, and queues the run. The title is the prompt's first line; the base branch defaults to the project's.
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTask"
+      responses:
+        "201":
+          description: Created and queued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [task, run]
+                        properties:
+                          task:
+                            type: object
+                            required: [id, projectId, title, baseBranch, createdAt]
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                              projectId:
+                                type: string
+                                format: uuid
+                              title:
+                                type: string
+                              baseBranch:
+                                type: string
+                              createdAt:
+                                type: string
+                                format: date-time
+                          run:
+                            type: object
+                            required: [id, status, model]
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                              status:
+                                type: string
+                                enum: [queued]
+                              model:
+                                type: string
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "409":
+          description: The project isn't set up (`PROJECT_NOT_SET_UP`), needs attention (`PROJECT_NEEDS_ATTENTION`), or its App is uninstalled (`GITHUB_INSTALLATION_REMOVED`) or suspended (`GITHUB_INSTALLATION_SUSPENDED`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          $ref: "#/components/responses/QueueUnavailable"
+
+  /api/tasks:
+    get:
+      tags: [Tasks]
+      summary: The signed-in user's tasks
+      description: Newest first, 50 per page.
+      operationId: listTasks
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          description: "`nextCursor` from the previous page"
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: A page of tasks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [tasks, nextCursor]
+                        properties:
+                          tasks:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/TaskListItem"
+                          nextCursor:
+                            type: string
+                            format: uuid
+                            nullable: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Tasks]
+      summary: A task with its messages and runs
+      operationId: getTask
+      responses:
+        "200":
+          description: The task
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [task]
+                        properties:
+                          task:
+                            $ref: "#/components/schemas/TaskDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not one of the user's tasks (`TASK_NOT_FOUND`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/runs/{runId}:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Runs]
+      summary: One run
+      operationId: getRun
+      responses:
+        "200":
+          description: The run
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [run]
+                        properties:
+                          run:
+                            $ref: "#/components/schemas/Run"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/RunNotFound"
+
+  /api/runs/{runId}/diff:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Runs]
+      summary: The run's changes as a patch
+      operationId: getRunDiff
+      responses:
+        "200":
+          description: The diff, or null when the run changed nothing
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [diff]
+                        properties:
+                          diff:
+                            nullable: true
+                            allOf:
+                              - $ref: "#/components/schemas/RunDiff"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/RunNotFound"
+
+  /api/runs/{runId}/cancel:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Runs]
+      summary: Cancel a run
+      description: A queued run is cancelled at once; a running one is told to stop and ends cancelled shortly after.
+      operationId: cancelRun
+      responses:
+        "202":
+          description: Cancelled, or stopping
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [outcome]
+                        properties:
+                          outcome:
+                            type: string
+                            enum: [cancelled, stopping]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/RunNotFound"
+        "409":
+          description: The run has already ended (`RUN_ENDED`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -394,6 +711,18 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     ProjectNotFound:
       description: Not one of the user's projects, or it doesn't exist (`PROJECT_NOT_FOUND`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    RunNotFound:
+      description: Not a run on one of the user's tasks (`RUN_NOT_FOUND`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    QueueUnavailable:
+      description: Work couldn't be queued (`QUEUE_UNAVAILABLE`); try again
       content:
         application/json:
           schema:
@@ -591,6 +920,230 @@ components:
         repoId:
           type: integer
           description: GitHub's repository id
+
+    CreateTask:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 20000
+          example: Add a GET /health endpoint that returns 503 when the database is down.
+        baseBranch:
+          type: string
+          example: main
+    TaskLabel:
+      type: string
+      enum: [queued, working, pr_open, pr_draft, merged, closed, no_changes, failed, cancelled]
+    RunError:
+      type: object
+      nullable: true
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: deliver_failed
+        message:
+          type: string
+          nullable: true
+    TaskListItem:
+      type: object
+      required: [id, title, project, label, baseBranch, branchName, pullRequest, latestRun, runCount, durationMs, costUsd, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        project:
+          type: object
+          required: [id, owner, name]
+          properties:
+            id:
+              type: string
+              format: uuid
+            owner:
+              type: string
+            name:
+              type: string
+        label:
+          $ref: "#/components/schemas/TaskLabel"
+        baseBranch:
+          type: string
+        branchName:
+          type: string
+          nullable: true
+        pullRequest:
+          type: object
+          nullable: true
+          required: [number, url, draft]
+          properties:
+            number:
+              type: integer
+            url:
+              type: string
+              format: uri
+            draft:
+              type: boolean
+        latestRun:
+          type: object
+          nullable: true
+          required: [id, status, stage, error]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: "#/components/schemas/RunStatus"
+            stage:
+              $ref: "#/components/schemas/RunStage"
+            error:
+              $ref: "#/components/schemas/RunError"
+        runCount:
+          type: integer
+        durationMs:
+          type: integer
+        costUsd:
+          type: number
+          example: 0.21
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TaskDetail:
+      allOf:
+        - $ref: "#/components/schemas/TaskListItem"
+        - type: object
+          required: [messages, runs]
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: "#/components/schemas/Message"
+            runs:
+              type: array
+              items:
+                $ref: "#/components/schemas/Run"
+    Message:
+      type: object
+      required: [id, role, authorUserId, runId, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, system]
+        authorUserId:
+          type: string
+          nullable: true
+        runId:
+          type: string
+          format: uuid
+          nullable: true
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RunStatus:
+      type: string
+      enum: [queued, running, succeeded, incomplete, failed, cancelled]
+    RunStage:
+      type: string
+      nullable: true
+      enum: [prepare, checkout, setup, agent, verify, deliver]
+    ChangedFile:
+      type: object
+      required: [path, added, removed]
+      properties:
+        path:
+          type: string
+        added:
+          type: integer
+          nullable: true
+          description: null for binary files
+        removed:
+          type: integer
+          nullable: true
+    Run:
+      type: object
+      required: [id, taskId, trigger, status, stage, model, summary, checksPassed, commitSha, error, steps, inputTokens, outputTokens, costUsd, queuedAt, startedAt, finishedAt, durationMs, changes]
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        trigger:
+          type: string
+          enum: [initial, follow_up, pr_comment, retry]
+        status:
+          $ref: "#/components/schemas/RunStatus"
+        stage:
+          $ref: "#/components/schemas/RunStage"
+        model:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        checksPassed:
+          type: boolean
+          nullable: true
+        commitSha:
+          type: string
+          nullable: true
+        error:
+          $ref: "#/components/schemas/RunError"
+        steps:
+          type: integer
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        costUsd:
+          type: number
+        queuedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        durationMs:
+          type: integer
+          nullable: true
+        changes:
+          type: object
+          nullable: true
+          required: [files, truncated]
+          properties:
+            files:
+              type: array
+              items:
+                $ref: "#/components/schemas/ChangedFile"
+            truncated:
+              type: boolean
+    RunDiff:
+      type: object
+      required: [patch, files, truncated]
+      properties:
+        patch:
+          type: string
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangedFile"
+        truncated:
+          type: boolean
 
 security:
   - sessionCookie: []

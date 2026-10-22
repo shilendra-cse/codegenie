@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { DaytonaConnection } from "@codegenie/sandbox";
+import { DEFAULT_AGENT_MODEL } from "@codegenie/shared";
 import { z } from "zod";
 
 export const ENV_FILE = path.join(import.meta.dirname, "..", ".env");
@@ -29,7 +30,7 @@ const schema = z
       .refine((key) => key !== PLACEHOLDER_KEY, {
         message: `OPENAI_API_KEY is still the placeholder. Set your key in ${ENV_FILE}.`,
       }),
-    AGENT_MODEL: z.string().min(1).default("openai:gpt-6-luna"),
+    AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(3),
 
     SANDBOX_PROVIDER: z.enum(["docker", "daytona"]).default("docker"),

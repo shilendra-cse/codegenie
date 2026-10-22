@@ -2,11 +2,13 @@ import { execFileSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
 import { scriptedModel } from "@codegenie/agent/testing";
 import {
+  createTaskWithRun,
   DbEnvironmentStore,
   ensureUser,
   recordInstallation,
   runEvents,
   runs,
+  upsertProject,
   type Db,
 } from "@codegenie/db";
 import { testDatabaseOrSkip } from "@codegenie/db/testing";
@@ -17,7 +19,6 @@ import { Queue, QueueEvents } from "bullmq";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { startConsumer } from "./consumer.js";
-import { enqueueOnboarding, enqueueRun, ensureProject } from "./dev/work.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
 import { handleRunTask } from "./handlers/run-task.js";
 import { fakeGithubApp } from "./testing/fake-github-app.js";
@@ -121,21 +122,23 @@ describe.skipIf(!database || !redis || !probe)(
           name: "Ada",
           email: `${installerId}@example.com`,
         });
-        await recordInstallation(db, {
+        const installation = await recordInstallation(db, {
           installationId,
           accountLogin: "octocat",
           accountType: "user",
           installedByUserId: installerId,
         });
-        const project = await ensureProject(db, {
-          installationId,
-          id: 1296269,
-          owner: "octocat",
-          name: "Hello-World",
+        const project = await upsertProject(db, {
+          userId: installerId,
+          installationId: installation.id,
+          repoGithubId: 1296269,
+          repoOwner: "octocat",
+          repoName: "Hello-World",
           defaultBranch: "master",
-          private: false,
         });
-        const onboarding = await enqueueOnboarding(queue, project.id);
+        const onboarding = await queue.add("onboard-project", {
+          projectId: project.id,
+        });
         await onboarding.waitUntilFinished(queueEvents);
 
         const environment = await new DbEnvironmentStore(db).load(project.id);
@@ -148,11 +151,24 @@ describe.skipIf(!database || !redis || !probe)(
           published.get(`project:${project.id}:onboarding`)?.at(-1),
         ).toEqual({ type: "done", status: "approved", version: 1 });
 
-        const { run, job } = await enqueueRun(db, queue, {
-          project,
-          instruction: "Look around the repository",
-          model: "scripted",
+        const { run } = await createTaskWithRun(db, {
+          task: {
+            projectId: project.id,
+            createdByUserId: installerId,
+            title: "Look around the repository",
+            baseBranch: "master",
+          },
+          run: { trigger: "initial", model: "scripted" },
+          message: {
+            authorUserId: installerId,
+            content: "Look around the repository",
+          },
         });
+        const job = await queue.add(
+          "run-task",
+          { runId: run.id },
+          { jobId: run.id },
+        );
         await job.waitUntilFinished(queueEvents);
 
         const [row] = await db.select().from(runs).where(eq(runs.id, run.id));

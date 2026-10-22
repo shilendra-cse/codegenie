@@ -3,7 +3,7 @@
 Takes work off the Redis queue and runs it in a sandbox: task runs (`run-task`) and project onboarding (`onboard-project`). Design: [docs/knowledge/architecture.md](../../docs/knowledge/architecture.md) §3 and §5.
 
 ```
-pnpm worker:enqueue / API ──► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
+server API ──────────► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
                                                                    │            │
                                      "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, project_environments
                                                                                 ├──► Redis: run:{id}, project:{id}:onboarding
@@ -44,15 +44,16 @@ pnpm dev:worker
 
 ## Giving it work
 
-Until the API exists (Phase 4), work is queued by hand, for any repository the GitHub App is installed on, private ones included:
+Only the server queues work ([api.md](../../docs/knowledge/api.md)). Signed in, with `pnpm dev:server` and `pnpm dev:worker` running:
 
-```bash
-pnpm worker:enqueue onboard octocat/Hello-World          # once per repository
-pnpm worker:enqueue run octocat/Hello-World "Add a CONTRIBUTING.md"
-pnpm worker:enqueue cancel <runId>                        # queued: cancelled; running: stopped
-```
+| Step | Request |
+|---|---|
+| Add a repository as a project | `POST /api/projects` `{ installationId, repoId }` |
+| Set up its environment, once | `POST /api/projects/:id/onboarding` |
+| Start a task | `POST /api/projects/:id/tasks` `{ prompt }` |
+| Cancel a run | `POST /api/runs/:id/cancel` (queued: cancelled; running: stopped) |
 
-The script finds the repository's installation through the App; if the App isn't installed there, it prints the install link. The installation must also be recorded here (sign in at the web app and install from there, or let the webhook record it); the project then belongs to whoever installed it. This code lives in `src/dev/` and moves to the API in Phase 4.
+Until the web app has these screens, send them from the API docs at http://localhost:3001/api/docs, which use your session cookie.
 
 Watching a run:
 
@@ -84,6 +85,5 @@ src/
 ├── runs/             run record: the runs row from queued to its final status
 ├── events/           event sink: run_events (numbered) + run:{id}
 ├── lib/              logger, serial queue
-├── dev/              pnpm worker:enqueue (moves to the API in Phase 4)
 └── testing/          testRedisOrSkip
 ```

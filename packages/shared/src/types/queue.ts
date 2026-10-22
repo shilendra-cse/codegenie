@@ -3,6 +3,8 @@ import type { OnboardingStatus } from "./environment.js";
 
 export const WORK_QUEUE = "codegenie-work";
 
+export const DEFAULT_AGENT_MODEL = "openai:gpt-6-luna";
+
 export type QueuedWork = {
   "run-task": { runId: string };
   "onboard-project": { projectId: string };

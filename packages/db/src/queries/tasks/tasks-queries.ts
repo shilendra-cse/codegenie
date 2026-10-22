@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { projects } from "../../schema/projects/projects-schema.js";
 import { runs } from "../../schema/runs/runs-schema.js";
@@ -41,13 +41,14 @@ export async function setTaskBranch(
 export async function setTaskPullRequest(
   db: Db,
   taskId: string,
-  pullRequest: { number: number; url: string },
+  pullRequest: { number: number; url: string; draft: boolean },
 ) {
   await db
     .update(tasks)
     .set({
       prNumber: pullRequest.number,
       prUrl: pullRequest.url,
+      prDraft: pullRequest.draft,
       status: "pr_open",
     })
     .where(eq(tasks.id, taskId));
@@ -78,3 +79,59 @@ export async function setTaskStatusForPullRequest(
     )
     .returning({ id: tasks.id });
 }
+
+const ownedProjectIds = (db: Db, userId: string) =>
+  db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.userId, userId));
+
+const projectColumns = {
+  columns: { id: true, repoOwner: true, repoName: true },
+} as const;
+
+export async function findUserTasks(
+  db: Db,
+  userId: string,
+  options: { projectId?: string; afterTaskId?: string; limit: number },
+) {
+  return db.query.tasks.findMany({
+    where: and(
+      inArray(tasks.projectId, ownedProjectIds(db, userId)),
+      options.projectId ? eq(tasks.projectId, options.projectId) : undefined,
+      options.afterTaskId
+        ? sql`(${tasks.createdAt}, ${tasks.id}) < (select created_at, id from tasks where id = ${options.afterTaskId})`
+        : undefined,
+    ),
+    with: {
+      project: projectColumns,
+      runs: { orderBy: desc(runs.queuedAt) },
+    },
+    orderBy: [desc(tasks.createdAt), desc(tasks.id)],
+    limit: options.limit,
+  });
+}
+
+export async function findUserTask(db: Db, userId: string, taskId: string) {
+  return (
+    (await db.query.tasks.findFirst({
+      where: and(
+        eq(tasks.id, taskId),
+        inArray(tasks.projectId, ownedProjectIds(db, userId)),
+      ),
+      with: {
+        project: projectColumns,
+        messages: { orderBy: asc(messages.createdAt) },
+        runs: {
+          orderBy: desc(runs.queuedAt),
+          with: { diff: { columns: { files: true, truncated: true } } },
+        },
+      },
+    })) ?? null
+  );
+}
+
+export type UserTaskListItem = Awaited<
+  ReturnType<typeof findUserTasks>
+>[number];
+export type UserTask = NonNullable<Awaited<ReturnType<typeof findUserTask>>>;
