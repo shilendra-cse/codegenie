@@ -11,7 +11,11 @@ import type {
   SecureHandler,
 } from "@/types/base.types.js";
 import { protect } from "@/middleware/auth.js";
+import { logger } from "./logger.js";
 import { handleStream } from "./sse.js";
+
+const reportStreamError = (error: unknown, path: string) =>
+  logger.error({ error, path }, "Stream failed");
 
 class ApiRouter {
   private router: Router;
@@ -33,7 +37,7 @@ class ApiRouter {
     controller: PublicHandler,
   ) {
     if ("kind" in controller) {
-      handleStream(controller.handler)(req, res, next);
+      handleStream(controller.handler, reportStreamError)(req, res, next);
       return;
     }
     try {
@@ -53,7 +57,7 @@ class ApiRouter {
     controller: SecureHandler,
   ) {
     if ("kind" in controller) {
-      handleStream(controller.handler)(req, res, next);
+      handleStream(controller.handler, reportStreamError)(req, res, next);
       return;
     }
     try {

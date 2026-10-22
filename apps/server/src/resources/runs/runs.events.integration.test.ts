@@ -4,15 +4,24 @@ import type { AddressInfo } from "node:net";
 import { type Db, insertRunEvent, runs } from "@codegenie/db";
 import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import { eq } from "drizzle-orm";
-import express from "express";
+import express, { type ErrorRequestHandler } from "express";
 import { afterAll, describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 import { RunEventHub } from "@/lib/run-event-hub";
 import { handleStream } from "@/lib/sse";
-import { errorHandler } from "@/middleware/error-handler";
+import { HttpError } from "@/lib/http-error";
 import type { AuthenticatedRequest } from "@/types/base.types";
 import { createRunControllers } from "./runs.controller";
 
 const database = await testDatabaseOrSkip("run event stream");
+
+const answerErrors: ErrorRequestHandler = (error, _req, res, _next) => {
+  if (error instanceof HttpError) {
+    res.status(error.status).json({ code: error.code });
+  } else {
+    res.status(error instanceof ZodError ? 400 : 500).json({});
+  }
+};
 
 type Frame = { id?: number; data?: Record<string, unknown>; comment?: string };
 
@@ -66,9 +75,9 @@ describe.skipIf(!database)("run event stream over HTTP", () => {
         };
         next();
       },
-      handleStream(controllers.streamEvents),
+      handleStream(controllers.streamEvents, () => {}),
     );
-    app.use(errorHandler);
+    app.use(answerErrors);
     const server = app.listen(0);
     servers.push(server);
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

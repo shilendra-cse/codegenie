@@ -5,7 +5,6 @@ import type {
   PublicStream,
   StreamRoute,
 } from "@/types/base.types";
-import { logger } from "./logger";
 
 export type SseFrame = { id?: number; data: string } | { comment: string };
 
@@ -44,12 +43,17 @@ export function stream<Handler extends AuthenticatedStream | PublicStream>(
   return { kind: "stream", handler };
 }
 
-export function handleStream(stream: AuthenticatedStream): RequestHandler {
+export type StreamErrorReporter = (error: unknown, path: string) => void;
+
+export function handleStream(
+  stream: AuthenticatedStream,
+  reportError: StreamErrorReporter,
+): RequestHandler {
   return (req, res, next) => {
     stream(req as AuthenticatedRequest, res)
       .catch((error: unknown) => {
         if (!res.headersSent) return next(error);
-        logger.error({ error, path: req.path }, "Stream failed");
+        reportError(error, req.path);
       })
       .finally(() => {
         if (res.headersSent && !res.writableEnded) res.end();
