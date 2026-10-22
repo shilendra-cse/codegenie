@@ -1,4 +1,4 @@
-import { eq, max } from "drizzle-orm";
+import { and, asc, eq, gt, max } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { runEvents } from "../../schema/runs/run-events-schema.js";
 
@@ -14,4 +14,18 @@ export async function getLastRunEventSeq(db: Db, runId: string) {
     .from(runEvents)
     .where(eq(runEvents.runId, runId));
   return row?.seq ?? 0;
+}
+
+export async function findRunEventsAfter(
+  db: Db,
+  runId: string,
+  afterSeq: number,
+  limit: number,
+) {
+  return db
+    .select()
+    .from(runEvents)
+    .where(and(eq(runEvents.runId, runId), gt(runEvents.seq, afterSeq)))
+    .orderBy(asc(runEvents.seq))
+    .limit(limit);
 }
