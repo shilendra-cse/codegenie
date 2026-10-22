@@ -1,6 +1,6 @@
 import { createTaskWithRun, type Db, markRunEnded } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
-import { getUserProject } from "../../projects/services/getUserProject.service";
+import { getRunnableProject } from "../../projects/services/getRunnableProject.service";
 import type {
   CreatedTaskResponse,
   CreateTaskInput,
@@ -17,21 +17,7 @@ export async function createTask(
   projectId: string,
   input: CreateTaskInput,
 ): Promise<CreatedTaskResponse> {
-  const project = await getUserProject(deps.db, userId, projectId);
-  if (project.installation.uninstalled) {
-    throw new HttpError(
-      409,
-      `The CodeGenie GitHub App is no longer installed on ${project.installation.accountLogin}.`,
-      "GITHUB_INSTALLATION_REMOVED",
-    );
-  }
-  if (project.installation.suspended) {
-    throw new HttpError(
-      409,
-      `The CodeGenie GitHub App is suspended on ${project.installation.accountLogin}.`,
-      "GITHUB_INSTALLATION_SUSPENDED",
-    );
-  }
+  const project = await getRunnableProject(deps.db, userId, projectId);
   if (!project.environment) {
     throw new HttpError(
       409,

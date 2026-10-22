@@ -8,8 +8,10 @@ import {
 import { getUserProject } from "./services/getUserProject.service";
 import { listUserProjects } from "./services/listUserProjects.service";
 import { removeProject } from "./services/removeProject.service";
+import { startOnboarding } from "./services/startOnboarding.service";
+import type { WorkQueue } from "../tasks/tasks.types";
 
-export type ProjectControllerDeps = CreateProjectDeps;
+export type ProjectControllerDeps = CreateProjectDeps & { queue: WorkQueue };
 
 export function createProjectControllers(deps: ProjectControllerDeps) {
   const { db } = deps;
@@ -39,5 +41,11 @@ export function createProjectControllers(deps: ProjectControllerDeps) {
     return ok(200, "Deleted", { id });
   };
 
-  return { listProjects, getProject, addProject, deleteProject };
+  const startSetup: AuthenticatedController = async (req) => {
+    const { id } = projectParamsSchema.parse(req.params);
+    await startOnboarding(deps, req.user.id, id);
+    return ok(202, "Accepted", { projectId: id });
+  };
+
+  return { listProjects, getProject, addProject, deleteProject, startSetup };
 }

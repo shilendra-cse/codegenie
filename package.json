@@ -16,7 +16,6 @@
     "build:web": "pnpm --filter web build",
     "build:server": "pnpm --filter server build",
     "build:worker": "pnpm --filter @codegenie/worker build",
-    "worker:enqueue": "pnpm --filter @codegenie/worker enqueue",
     "sandbox:build-image": "pnpm --filter @codegenie/sandbox build-image",
     "sandbox:build-snapshot": "pnpm --filter @codegenie/sandbox build-snapshot",
     "sandbox:clean": "pnpm --filter @codegenie/sandbox clean",

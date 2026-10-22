@@ -26,7 +26,10 @@ describe.skipIf(!database)("reading tasks and runs against Postgres", () => {
     queue: { add: () => Promise.resolve({}) },
     model: "test:model",
   });
-  const runControllers = createRunControllers({ db });
+  const runControllers = createRunControllers({
+    db,
+    publisher: { publish: () => Promise.resolve(0) },
+  });
 
   const request = (
     userId: string,

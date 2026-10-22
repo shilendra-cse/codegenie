@@ -3,6 +3,7 @@ import {
   type Db,
   DbEnvironmentStore,
   ensureUser,
+  getInstallationById,
   markInstallationUninstalled,
   recordInstallation,
   setInstallationSuspended,
@@ -53,10 +54,20 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
         }
       : { status: 404, body: { message: "Not Found" } },
   );
+  const queued: { name: string; data: unknown; options: unknown }[] = [];
+  let queueDown = false;
   const projects = createProjectControllers({
     db,
     githubToken: () => Promise.resolve(githubToken),
     fetch: github.fetch,
+    queue: {
+      add(name, data, options) {
+        if (queueDown)
+          return Promise.reject(new Error("Connection is closed."));
+        queued.push({ name, data, options });
+        return Promise.resolve({});
+      },
+    },
   });
   afterAll(() => database?.drop());
 
@@ -296,6 +307,56 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
           response,
         ),
       ).rejects.toMatchObject({ status: 404, code: "PROJECT_NOT_FOUND" });
+    });
+  });
+
+  describe("starting environment setup", () => {
+    it("queues setup once per project at a time", async () => {
+      const project = await insertProject(db);
+
+      const result = await projects.startSetup(
+        request(project.userId, { id: project.id }),
+        response,
+      );
+
+      expect(result).toMatchObject({
+        status: 202,
+        data: { projectId: project.id },
+      });
+      expect(queued.at(-1)).toEqual({
+        name: "onboard-project",
+        data: { projectId: project.id },
+        options: { deduplication: { id: `onboard-${project.id}` } },
+      });
+    });
+
+    it("refuses when the App is suspended, for someone else's project, and when the queue is down", async () => {
+      const suspended = await insertProject(db);
+      const installation = await getInstallationById(
+        db,
+        suspended.installationId,
+      );
+      await setInstallationSuspended(db, installation!.installationId, true);
+      const project = await insertProject(db);
+      const setup = (userId: string, id: string) =>
+        projects.startSetup(request(userId, { id }), response);
+
+      await expect(setup(suspended.userId, suspended.id)).rejects.toMatchObject(
+        {
+          status: 409,
+          code: "GITHUB_INSTALLATION_SUSPENDED",
+        },
+      );
+      await expect(setup(randomUUID(), project.id)).rejects.toMatchObject({
+        status: 404,
+        code: "PROJECT_NOT_FOUND",
+      });
+      queueDown = true;
+      await expect(setup(project.userId, project.id)).rejects.toMatchObject({
+        status: 503,
+        code: "QUEUE_UNAVAILABLE",
+      });
+      queueDown = false;
     });
   });
 });

@@ -24,9 +24,16 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | `GITHUB_SIGN_IN_REQUIRED` | 401 | No usable GitHub token for the user; sign in again |
 | `GITHUB_INSTALLATION_NOT_FOUND` | 404 | The installation isn't recorded, was uninstalled, or the user can't access it |
 | `GITHUB_INSTALLATION_SUSPENDED` | 409 | The App is suspended on that account |
+| `GITHUB_INSTALLATION_REMOVED` | 409 | The App was uninstalled from the project's account; no new work can start |
 | `GITHUB_REPOSITORY_NOT_FOUND` | 404 | The repository isn't visible to the user through that installation |
 | `PROJECT_NOT_FOUND` | 404 | Not one of the user's projects, or doesn't exist |
 | `PROJECT_BUSY` | 409 | A run is queued or running on the project |
+| `PROJECT_NOT_SET_UP` | 409 | The project has no environment yet; set it up first |
+| `PROJECT_NEEDS_ATTENTION` | 409 | The project's setup needs attention; re-run setup first |
+| `TASK_NOT_FOUND` | 404 | Not one of the user's tasks, or doesn't exist |
+| `RUN_NOT_FOUND` | 404 | Not a run on one of the user's tasks, or doesn't exist |
+| `RUN_ENDED` | 409 | The run has already ended, so it can't be cancelled |
+| `QUEUE_UNAVAILABLE` | 503 | Work couldn't be queued (Redis unreachable); a task's run is marked failed (`queue_unavailable`) |
 
 ## 4. Resources
 
@@ -38,6 +45,13 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | POST | `/projects` | `{ installationId, repoId }` → 201 created, or 200 with the existing project |
 | GET | `/projects/:id` | One project |
 | DELETE | `/projects/:id` | Removes it with its tasks, runs and environments; GitHub untouched |
+| POST | `/projects/:id/onboarding` | Queues environment setup (202); while one is queued or running, another isn't added |
+| POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued |
+| GET | `/tasks?projectId=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` |
+| GET | `/tasks/:id` | A task with its messages and runs |
+| GET | `/runs/:id` | One run |
+| GET | `/runs/:id/diff` | The run's patch and files, or `null` |
+| POST | `/runs/:id/cancel` | 202 `{ outcome: "cancelled" }` for a queued run, `"stopping"` for a running one |
 
 A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) and installation state (`accountLogin`, `suspended`, `uninstalled`).
 
@@ -45,7 +59,15 @@ A **project** is its repository (`githubId`, `owner`, `name`), default branch, a
 
 **Removing a project** is refused while one of its runs is queued or running; the check and the delete are one statement, so a run queued in between can't be orphaned.
 
-Tasks, runs, run events and the environment come next ([development-plan.md](./development-plan.md), Phase 4).
+**Starting work** (a task or setup) needs the App installed and not suspended (409); a task also needs the environment set up and healthy (409). The task's title is the prompt's first line (≤ 120 characters), its base branch the project's default unless given, and its run records the server's `AGENT_MODEL`. The database is written first, then the queue; if Redis can't be reached the run is failed and the request answers 503.
+
+A **task** in a list: `id`, `title`, `project` (`id`, `owner`, `name`), `label`, `baseBranch`, `branchName`, `pullRequest` (`number`, `url`, `draft`, or `null`), `latestRun` (`id`, `status`, `stage`, `error`), `runCount`, `durationMs` and `costUsd` across runs, `createdAt`, `updatedAt` (latest activity). Its **label**, in order: latest run queued → `queued`, running → `working`; PR merged → `merged`, closed → `closed`, open → `pr_open` / `pr_draft`; latest run failed → `failed`, cancelled → `cancelled`; otherwise `no_changes` ([ui.md](./ui.md) §5). Pages are cursored by the last task's id. The task detail adds `messages` (oldest first) and `runs` (newest first).
+
+A **run**: `id`, `taskId`, `trigger`, `status`, `stage`, `model`, `summary`, `checksPassed`, `commitSha`, `error` (`code`, `message`, or `null`), `steps`, `inputTokens`, `outputTokens`, `costUsd`, `queuedAt`, `startedAt`, `finishedAt`, `durationMs`, `changes` (`files`, `truncated`, or `null`; the patch comes from `/runs/:id/diff`).
+
+**Cancelling** a queued run marks it `cancelled` directly; a running one is told to stop over Redis (`run-cancel`) and ends `cancelled` once the worker stops it.
+
+Run events (live and replayed) and the environment come next ([development-plan.md](./development-plan.md), Phase 4).
 
 ## 5. Code layout
 
