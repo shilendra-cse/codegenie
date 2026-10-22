@@ -22,6 +22,8 @@ describe.skipIf(!database)("cancelling runs against Postgres", () => {
         return Promise.resolve(1);
       },
     },
+    hub: { listen: () => Promise.resolve(() => Promise.resolve()) },
+    heartbeatMs: 15_000,
   });
 
   const cancel = (userId: string, runId: string) =>

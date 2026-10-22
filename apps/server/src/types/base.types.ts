@@ -23,3 +23,18 @@ export type AuthenticatedController = (
   req: AuthenticatedRequest,
   res: Response,
 ) => ApiResponse | Promise<ApiResponse>;
+
+export type AuthenticatedStream = (
+  req: AuthenticatedRequest,
+  res: Response,
+) => Promise<void>;
+
+export type PublicStream = (req: Request, res: Response) => Promise<void>;
+
+export type StreamRoute<Handler> = { kind: "stream"; handler: Handler };
+
+export type SecureHandler =
+  | AuthenticatedController
+  | StreamRoute<AuthenticatedStream>;
+
+export type PublicHandler = PublicController | StreamRoute<PublicStream>;

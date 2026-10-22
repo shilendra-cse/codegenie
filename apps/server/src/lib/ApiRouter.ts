@@ -6,11 +6,12 @@ import express, {
   Router,
 } from "express";
 import type {
-  AuthenticatedController,
   AuthenticatedRequest,
-  PublicController,
+  PublicHandler,
+  SecureHandler,
 } from "@/types/base.types.js";
 import { protect } from "@/middleware/auth.js";
+import { handleStream } from "./sse.js";
 
 class ApiRouter {
   private router: Router;
@@ -29,8 +30,12 @@ class ApiRouter {
     req: Request,
     res: Response,
     next: NextFunction,
-    controller: PublicController,
+    controller: PublicHandler,
   ) {
+    if ("kind" in controller) {
+      handleStream(controller.handler)(req, res, next);
+      return;
+    }
     try {
       const response = await Promise.resolve(controller(req, res));
       if (!res.headersSent) {
@@ -45,8 +50,12 @@ class ApiRouter {
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction,
-    controller: AuthenticatedController,
+    controller: SecureHandler,
   ) {
+    if ("kind" in controller) {
+      handleStream(controller.handler)(req, res, next);
+      return;
+    }
     try {
       const response = await Promise.resolve(controller(req, res));
       if (!res.headersSent) {
@@ -59,7 +68,7 @@ class ApiRouter {
 
   get(route: string) {
     return {
-      authSecure: (controller: AuthenticatedController) => {
+      authSecure: (controller: SecureHandler) => {
         return this.router.get(
           route,
           this.authMiddleware("secure"),
@@ -73,7 +82,7 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: PublicController) => {
+      noAuth: (controller: PublicHandler) => {
         return this.router.get(
           route,
           this.authMiddleware("public"),
@@ -88,7 +97,7 @@ class ApiRouter {
 
   post(route: string) {
     return {
-      authSecure: (controller: AuthenticatedController) => {
+      authSecure: (controller: SecureHandler) => {
         return this.router.post(
           route,
           this.authMiddleware("secure"),
@@ -102,7 +111,7 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: PublicController) => {
+      noAuth: (controller: PublicHandler) => {
         return this.router.post(
           route,
           this.authMiddleware("public"),
@@ -117,7 +126,7 @@ class ApiRouter {
 
   put(route: string) {
     return {
-      authSecure: (controller: AuthenticatedController) => {
+      authSecure: (controller: SecureHandler) => {
         return this.router.put(
           route,
           this.authMiddleware("secure"),
@@ -131,7 +140,7 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: PublicController) => {
+      noAuth: (controller: PublicHandler) => {
         return this.router.put(
           route,
           this.authMiddleware("public"),
@@ -145,7 +154,7 @@ class ApiRouter {
 
   delete(route: string) {
     return {
-      authSecure: (controller: AuthenticatedController) => {
+      authSecure: (controller: SecureHandler) => {
         return this.router.delete(
           route,
           this.authMiddleware("secure"),
@@ -159,7 +168,7 @@ class ApiRouter {
           },
         );
       },
-      noAuth: (controller: PublicController) => {
+      noAuth: (controller: PublicHandler) => {
         return this.router.delete(
           route,
           this.authMiddleware("public"),
