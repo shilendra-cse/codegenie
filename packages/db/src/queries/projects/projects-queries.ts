@@ -63,3 +63,24 @@ export async function findUserProject(
 export type UserProject = NonNullable<
   Awaited<ReturnType<typeof findUserProject>>
 >;
+
+export async function findUserProjectRepos(db: Db, userId: string) {
+  return db
+    .select({ id: projects.id, repoGithubId: projects.repoGithubId })
+    .from(projects)
+    .where(eq(projects.userId, userId));
+}
+
+export async function findUserProjectForRepo(
+  db: Db,
+  userId: string,
+  repoGithubId: number,
+) {
+  const [project] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(
+      and(eq(projects.userId, userId), eq(projects.repoGithubId, repoGithubId)),
+    );
+  return project ?? null;
+}

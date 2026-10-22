@@ -5,6 +5,13 @@ export const projectParamsSchema = z.object({
   id: z.uuid("The project id must be a UUID."),
 });
 
+export const createProjectSchema = z.object({
+  installationId: z.number().int().positive(),
+  repoId: z.number().int().positive(),
+});
+
+export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
 export type ProjectResponse = {
   id: string;
   repo: { githubId: number; owner: string; name: string };

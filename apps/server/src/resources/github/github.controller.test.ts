@@ -48,6 +48,8 @@ function controllers(token: string | null = "ghu_user") {
       Promise.resolve(
         "https://github.com/apps/codegenie-dev/installations/new",
       ),
+    userProjectRepos: () =>
+      Promise.resolve([{ id: "project-1", repoGithubId: 1 }]),
     fetch: githubFetch,
   });
 }
@@ -74,7 +76,7 @@ describe("GitHub controllers", () => {
     });
   });
 
-  it("lists an installation's repositories, most recently updated first", async () => {
+  it("lists an installation's repositories, most recently updated first, with their projects", async () => {
     const result = await controllers().getInstallationRepositories(
       request({ id: "42" }),
       response,
@@ -83,8 +85,8 @@ describe("GitHub controllers", () => {
       status: 200,
       data: {
         repositories: [
-          { id: 2, fullName: "acme/new" },
-          { id: 1, fullName: "acme/old" },
+          { id: 2, fullName: "acme/new", projectId: null },
+          { id: 1, fullName: "acme/old", projectId: "project-1" },
         ],
       },
     });

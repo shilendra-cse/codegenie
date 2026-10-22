@@ -9,6 +9,8 @@ import {
   getProject,
   findUserProject,
   findUserProjects,
+  findUserProjectForRepo,
+  findUserProjectRepos,
   upsertProject,
 } from "./projects-queries.js";
 
@@ -82,6 +84,19 @@ describe.skipIf(!database)("projects queries against Postgres", () => {
     );
     expect(await findUserProject(db, someoneElse, project.id)).toBeNull();
     expect(await findUserProject(db, project.userId, randomUUID())).toBeNull();
+  });
+
+  it("lists which repositories a user already has as projects", async () => {
+    const project = await insertProject(db);
+    await insertProject(db);
+
+    expect(await findUserProjectRepos(db, project.userId)).toEqual([
+      { id: project.id, repoGithubId: project.repoGithubId },
+    ]);
+    expect(
+      await findUserProjectForRepo(db, project.userId, project.repoGithubId),
+    ).toEqual({ id: project.id });
+    expect(await findUserProjectForRepo(db, project.userId, 1)).toBeNull();
   });
 
   it("gets a project, or null", async () => {
