@@ -11,6 +11,7 @@ tags:
   - name: Health
   - name: Example
   - name: GitHub
+  - name: Projects
 
 paths:
   /health:
@@ -210,6 +211,160 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/projects:
+    get:
+      tags: [Projects]
+      summary: The signed-in user's projects
+      description: Newest first.
+      operationId: listProjects
+      responses:
+        "200":
+          description: Projects
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [projects]
+                        properties:
+                          projects:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Projects]
+      summary: Add a repository as a project
+      description: The installation must be recorded, installed and not suspended, and the repository visible through the user's own GitHub token. Adding a repository that's already a project returns that project.
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProject"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [project]
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "200":
+          description: Already a project
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [project]
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/GitHubSignInRequired"
+        "404":
+          description: The installation isn't recorded, was uninstalled or isn't visible to the user (`GITHUB_INSTALLATION_NOT_FOUND`), or the repository isn't visible (`GITHUB_REPOSITORY_NOT_FOUND`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The App is suspended on that account (`GITHUB_INSTALLATION_SUSPENDED`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/projects/{projectId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: One of the signed-in user's projects
+      operationId: getProject
+      responses:
+        "200":
+          description: The project
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [project]
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+    delete:
+      tags: [Projects]
+      summary: Remove a project
+      description: Deletes its tasks, runs and environments from CodeGenie. The repository and its pull requests on GitHub are not touched.
+      operationId: deleteProject
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [id]
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "409":
+          description: A run is queued or running (`PROJECT_BUSY`); cancel it first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -233,6 +388,12 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     GitHubSignInRequired:
       description: Not signed in, or no usable GitHub token (`GITHUB_SIGN_IN_REQUIRED`); sign in with GitHub again
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ProjectNotFound:
+      description: Not one of the user's projects, or it doesn't exist (`PROJECT_NOT_FOUND`)
       content:
         application/json:
           schema:
@@ -338,7 +499,7 @@ components:
           enum: [user, organization]
     GitHubRepo:
       type: object
-      required: [id, fullName, owner, name, defaultBranch, private, htmlUrl, updatedAt]
+      required: [id, fullName, owner, name, defaultBranch, private, htmlUrl, updatedAt, projectId]
       properties:
         id:
           type: integer
@@ -362,6 +523,74 @@ components:
           type: string
           format: date-time
           nullable: true
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The user's project for this repository, if it's one already
+    Project:
+      type: object
+      required: [id, repo, defaultBranch, environment, installation, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        repo:
+          type: object
+          required: [githubId, owner, name]
+          properties:
+            githubId:
+              type: integer
+            owner:
+              type: string
+              example: acme
+            name:
+              type: string
+              example: web
+        defaultBranch:
+          type: string
+          example: main
+        environment:
+          type: object
+          nullable: true
+          description: The active environment; null until the project is set up
+          required: [version, health, healthReasons, savedAt]
+          properties:
+            version:
+              type: integer
+            health:
+              type: string
+              enum: [ok, needs_attention]
+            healthReasons:
+              type: array
+              items:
+                type: string
+            savedAt:
+              type: string
+              format: date-time
+        installation:
+          type: object
+          required: [accountLogin, suspended, uninstalled]
+          properties:
+            accountLogin:
+              type: string
+            suspended:
+              type: boolean
+            uninstalled:
+              type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    CreateProject:
+      type: object
+      required: [installationId, repoId]
+      properties:
+        installationId:
+          type: integer
+          description: GitHub's installation id
+        repoId:
+          type: integer
+          description: GitHub's repository id
 
 security:
   - sessionCookie: []

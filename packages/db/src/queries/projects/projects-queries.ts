@@ -1,7 +1,9 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, not } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { projectEnvironments } from "../../schema/projects/project-environments-schema.js";
 import { projects } from "../../schema/projects/projects-schema.js";
+import { runs } from "../../schema/runs/runs-schema.js";
+import { tasks } from "../../schema/tasks/tasks-schema.js";
 
 export type NewProject = typeof projects.$inferInsert;
 
@@ -83,4 +85,22 @@ export async function findUserProjectForRepo(
       and(eq(projects.userId, userId), eq(projects.repoGithubId, repoGithubId)),
     );
   return project ?? null;
+}
+
+export async function deleteProjectUnlessBusy(db: Db, projectId: string) {
+  const busy = db
+    .select({ id: runs.id })
+    .from(runs)
+    .innerJoin(tasks, eq(runs.taskId, tasks.id))
+    .where(
+      and(
+        eq(tasks.projectId, projectId),
+        inArray(runs.status, ["queued", "running"]),
+      ),
+    );
+  const deleted = await db
+    .delete(projects)
+    .where(and(eq(projects.id, projectId), not(exists(busy))))
+    .returning({ id: projects.id });
+  return deleted.length > 0;
 }

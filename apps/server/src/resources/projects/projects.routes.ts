@@ -11,3 +11,4 @@ const projects = createProjectControllers({
 api.get("/projects").authSecure(projects.listProjects);
 api.post("/projects").authSecure(projects.addProject);
 api.get("/projects/:id").authSecure(projects.getProject);
+api.delete("/projects/:id").authSecure(projects.deleteProject);

@@ -1,13 +1,18 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
-import { insertProject, testDatabaseOrSkip } from "../../testing/index.js";
+import {
+  insertProject,
+  insertRun,
+  testDatabaseOrSkip,
+} from "../../testing/index.js";
 import { ensureUser } from "../auth/users-queries.js";
 import { recordInstallation } from "../github/installations-queries.js";
 import { DbEnvironmentStore } from "./environments-queries.js";
 import {
-  getProject,
+  deleteProjectUnlessBusy,
   findUserProject,
+  getProject,
   findUserProjects,
   findUserProjectForRepo,
   findUserProjectRepos,
@@ -97,6 +102,20 @@ describe.skipIf(!database)("projects queries against Postgres", () => {
       await findUserProjectForRepo(db, project.userId, project.repoGithubId),
     ).toEqual({ id: project.id });
     expect(await findUserProjectForRepo(db, project.userId, 1)).toBeNull();
+  });
+
+  it("deletes a project with its tasks and runs, unless a run is queued or running", async () => {
+    const idle = await insertRun(db, { status: "succeeded" });
+    const queued = await insertRun(db);
+    const running = await insertRun(db, { status: "running" });
+
+    expect(await deleteProjectUnlessBusy(db, idle.project.id)).toBe(true);
+    expect(await deleteProjectUnlessBusy(db, queued.project.id)).toBe(false);
+    expect(await deleteProjectUnlessBusy(db, running.project.id)).toBe(false);
+    expect(await deleteProjectUnlessBusy(db, randomUUID())).toBe(false);
+
+    expect(await getProject(db, idle.project.id)).toBeNull();
+    expect(await getProject(db, queued.project.id)).not.toBeNull();
   });
 
   it("gets a project, or null", async () => {

@@ -7,7 +7,7 @@ Copy this folder when adding a new API resource. It shows the conventions used a
 | File | Role |
 |------|------|
 | `example.types.ts` | Zod request schemas + domain types |
-| `example.service.ts` | Business logic (DB, external APIs, errors) |
+| `example.service.ts` | Business logic (DB, external APIs, errors). Real resources put one function per file in `services/<functionName>.service.ts` (see `resources/projects/`) |
 | `example.controller.ts` | HTTP handlers: parse input, call service, return envelope |
 | `example.routes.ts` | Register paths on the shared `ApiRouter` (side-effect import) |
 
@@ -67,6 +67,6 @@ Errors: throw `HttpError` in the service (or let Zod throw in the controller). T
 
 1. Add paths/schemas to `docs/api/openapi.yaml`
 2. Add shared types in `packages/shared/src/types/api.ts` if needed
-3. Create `*.types.ts`, `*.service.ts`, `*.controller.ts`, `*.routes.ts`
+3. Create `*.types.ts`, `services/<functionName>.service.ts` (one per service), `*.controller.ts`, `*.routes.ts`
 4. Import the routes file from `src/routes.ts`
-5. Entry in `docs/api/changelog.md`
+5. Describe the resource in [docs/knowledge/api.md](../../../../../docs/knowledge/api.md)

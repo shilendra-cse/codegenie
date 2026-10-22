@@ -7,6 +7,7 @@ import {
 } from "./services/createProject.service";
 import { getUserProject } from "./services/getUserProject.service";
 import { listUserProjects } from "./services/listUserProjects.service";
+import { removeProject } from "./services/removeProject.service";
 
 export type ProjectControllerDeps = CreateProjectDeps;
 
@@ -32,5 +33,11 @@ export function createProjectControllers(deps: ProjectControllerDeps) {
       : ok(200, "OK", { project });
   };
 
-  return { listProjects, getProject, addProject };
+  const deleteProject: AuthenticatedController = async (req) => {
+    const { id } = projectParamsSchema.parse(req.params);
+    await removeProject(db, req.user.id, id);
+    return ok(200, "Deleted", { id });
+  };
+
+  return { listProjects, getProject, addProject, deleteProject };
 }

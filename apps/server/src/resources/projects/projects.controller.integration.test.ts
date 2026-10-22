@@ -7,7 +7,11 @@ import {
   recordInstallation,
   setInstallationSuspended,
 } from "@codegenie/db";
-import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
+import {
+  insertProject,
+  insertRun,
+  testDatabaseOrSkip,
+} from "@codegenie/db/testing";
 import { fakeGithub } from "@codegenie/github/testing";
 import type { Response } from "express";
 import { afterAll, describe, expect, it } from "vitest";
@@ -258,6 +262,40 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
           response,
         ),
       ).rejects.toBeInstanceOf(ZodError);
+    });
+  });
+
+  describe("removing a project", () => {
+    it("deletes the user's project", async () => {
+      const { project } = await insertRun(db, { status: "succeeded" });
+      const params = { id: project.id };
+
+      const result = await projects.deleteProject(
+        request(project.userId, params),
+        response,
+      );
+
+      expect(result).toMatchObject({ status: 200, data: { id: project.id } });
+      await expect(
+        projects.getProject(request(project.userId, params), response),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("refuses while a run is queued or running, and someone else's project", async () => {
+      const { project } = await insertRun(db, { status: "running" });
+
+      await expect(
+        projects.deleteProject(
+          request(project.userId, { id: project.id }),
+          response,
+        ),
+      ).rejects.toMatchObject({ status: 409, code: "PROJECT_BUSY" });
+      await expect(
+        projects.deleteProject(
+          request(randomUUID(), { id: project.id }),
+          response,
+        ),
+      ).rejects.toMatchObject({ status: 404, code: "PROJECT_NOT_FOUND" });
     });
   });
 });
