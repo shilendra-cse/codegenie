@@ -4,6 +4,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/factory/dropdown-menu";
@@ -11,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 export const Menu = DropdownMenu;
 export const MenuTrigger = DropdownMenuTrigger;
+export const MenuRadioGroup = DropdownMenuRadioGroup;
 
 export function MenuContent({
   className,
@@ -35,6 +38,21 @@ export function MenuItem({
     <DropdownMenuItem
       className={cn(
         "gap-2.5 rounded-sm px-2.5 py-2 text-sm focus:bg-muted",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function MenuRadioItem({
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuRadioItem>) {
+  return (
+    <DropdownMenuRadioItem
+      className={cn(
+        "gap-2.5 rounded-sm py-2 pr-2.5 text-sm focus:bg-muted",
         className,
       )}
       {...props}

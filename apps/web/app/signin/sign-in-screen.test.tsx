@@ -53,6 +53,6 @@ describe("SignInScreen", () => {
 
     render(<SignInScreen next="https://evil.example" failed={false} />);
 
-    expect(router.replace).toHaveBeenCalledWith("/build");
+    expect(router.replace).toHaveBeenCalledWith("/welcome");
   });
 });

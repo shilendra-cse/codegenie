@@ -40,7 +40,7 @@ describe("Landing", () => {
 
     const open = screen.getAllByRole("link", { name: "Open CodeGenie" });
     expect(open.length).toBeGreaterThan(0);
-    open.forEach((link) => expect(link).toHaveAttribute("href", "/build"));
+    open.forEach((link) => expect(link).toHaveAttribute("href", "/welcome"));
     expect(screen.queryByRole("link", { name: "Get started" })).toBeNull();
   });
 });
