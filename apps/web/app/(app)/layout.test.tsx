@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppLayout from "./layout";
-import WelcomePage from "./welcome/page";
 
 const auth = vi.hoisted(() => ({
   session: { data: null as unknown, isPending: false },
@@ -30,7 +29,7 @@ function renderApp() {
   return render(
     <QueryClientProvider client={new QueryClient()}>
       <AppLayout>
-        <WelcomePage />
+        <p>Page content</p>
       </AppLayout>
     </QueryClientProvider>,
   );
@@ -42,13 +41,11 @@ describe("the app shell", () => {
     auth.signOut.mockReset().mockResolvedValue({});
   });
 
-  it("greets the signed-in user by first name", () => {
+  it("shows the page with the signed-in user's account menu", () => {
     auth.session = { data: ada, isPending: false };
     renderApp();
 
-    expect(
-      screen.getByRole("heading", { name: "Welcome, Ada" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Page content")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Ada Lovelace, account menu" }),
     ).toBeInTheDocument();

@@ -31,7 +31,8 @@ export function SignInCard({ busy, error, onSignIn }: SignInCardProps) {
         <Button
           variant="primary"
           size="lg"
-          className="w-full shadow-[0_8px_24px_-8px_var(--glow)]"
+          glow
+          className="w-full"
           busy={busy}
           onClick={onSignIn}
         >

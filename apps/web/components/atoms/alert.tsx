@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const tones = {
+  ok: "border-ok-border bg-ok-soft text-ok",
   error: "border-err-border bg-err-soft text-err",
   warn: "border-warn-border bg-warn-soft text-warn",
   info: "border-border bg-surface text-foreground",

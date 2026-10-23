@@ -25,12 +25,15 @@ export type ButtonProps = Omit<
   variant?: keyof typeof variants;
   size?: keyof typeof sizes;
   busy?: boolean;
+  /** The soft glow for a page's one main action. */
+  glow?: boolean;
 };
 
 export function Button({
   variant = "secondary",
   size = "md",
   busy = false,
+  glow = false,
   asChild,
   disabled,
   className,
@@ -46,6 +49,7 @@ export function Button({
         "border font-medium focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
         variants[variant],
         sizes[size],
+        glow && "shadow-[0_8px_24px_-8px_var(--glow)]",
         className,
       )}
       {...props}
