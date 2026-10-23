@@ -13,6 +13,7 @@ import type { GithubApp } from "@codegenie/github";
 import type { RunEvent, QueuedWork } from "@codegenie/shared";
 import {
   createEventSink,
+  runEventTarget,
   type EventSink,
   type Publisher,
 } from "../events/sink.js";
@@ -125,7 +126,7 @@ export async function handleRunTask(
     return null;
   }
 
-  const sink = createEventSink({ db, publisher: deps.publisher }, runId);
+  const sink = createEventSink(deps, runEventTarget(db, runId));
   const emit = (event: RunEvent) => {
     sink.emit(event);
     record.observe(event);

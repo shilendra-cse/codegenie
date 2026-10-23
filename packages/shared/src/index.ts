@@ -38,7 +38,6 @@ export {
   WORK_QUEUE,
   onboardingChannel,
   runChannel,
-  type OnboardingMessage,
   type QueuedWork,
   type QueuedWorkKind,
 } from "./types/queue.js";

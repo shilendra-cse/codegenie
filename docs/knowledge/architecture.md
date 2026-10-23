@@ -95,7 +95,7 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/r
 ### apps/worker
 Consumes the BullMQ queue `codegenie-work` and runs the pipeline in §5. Details and commands: [apps/worker/README.md](../../apps/worker/README.md).
 
-- **Work kinds:** `run-task { runId }` (one run of a task) and `onboard-project { projectId }` (sets a project's environment up with the recommended answers, until onboarding moves to the website in Phase 4). Onboarding progress is published live on `project:{id}:onboarding` and not stored; a failed onboarding fails its queue item.
+- **Work kinds:** `run-task { runId }` (one run of a task) and `onboard-project { onboardingId }` (one setup of a project's environment, recorded in `onboardings`; [environment.md](./environment.md) §3.5). A setup's events are stored in `onboarding_events` and published live on `onboarding:{id}`; a failed setup fails its queue item, and the reaper ends setups whose worker is gone, as it does for runs.
 - **Concurrency:** `WORKER_CONCURRENCY` items at once per process (default 3), each in its own sandbox; more throughput means more processes.
 - **Cancellation:** a queued run is marked `cancelled` in the database, and the worker skips it. A running one gets a `run-cancel` message carrying its id; every worker process hears it, and the one running it aborts the run's signal.
 - **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money).

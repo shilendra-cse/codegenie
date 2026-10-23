@@ -1,5 +1,3 @@
-import type { RunEvent } from "../api/events.js";
-import type { OnboardingStatus } from "./environment.js";
 
 export const WORK_QUEUE = "codegenie-work";
 
@@ -7,7 +5,7 @@ export const DEFAULT_AGENT_MODEL = "openai:gpt-6-luna";
 
 export type QueuedWork = {
   "run-task": { runId: string };
-  "onboard-project": { projectId: string };
+  "onboard-project": { onboardingId: string };
   reap: Record<string, never>;
 };
 
@@ -19,16 +17,6 @@ export function runChannel(runId: string): string {
   return `run:${runId}`;
 }
 
-export function onboardingChannel(projectId: string): string {
-  return `project:${projectId}:onboarding`;
+export function onboardingChannel(onboardingId: string): string {
+  return `onboarding:${onboardingId}`;
 }
-
-export type OnboardingMessage =
-  | { type: "info"; message: string }
-  | { type: "event"; event: RunEvent }
-  | {
-      type: "done";
-      status: OnboardingStatus;
-      version?: number;
-      error?: string;
-    };

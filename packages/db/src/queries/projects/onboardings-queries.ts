@@ -36,7 +36,7 @@ async function findActiveOnboarding(db: Db, projectId: string) {
 }
 
 /** A new queued setup, or the one already active (`created: false`). */
-export async function startOnboarding(
+export async function createOnboarding(
   db: Db,
   values: { projectId: string; userId: string },
 ) {

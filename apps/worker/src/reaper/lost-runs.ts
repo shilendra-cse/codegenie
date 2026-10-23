@@ -8,14 +8,19 @@ import {
 import { collectDiff, findBaseline } from "@codegenie/runner";
 import { parkSandbox } from "@codegenie/sandbox";
 import type { Queue } from "bullmq";
-import { createEventSink, type Publisher } from "../events/sink.js";
+import {
+  createEventSink,
+  runEventTarget,
+  type Publisher,
+} from "../events/sink.js";
 import type { Log } from "../lib/log.js";
 import type { SandboxConnector } from "../lib/sandbox-factory.js";
 
 // Covers the gap between inserting a run and queueing it, and a short Redis outage.
 export const QUEUED_GRACE_MS = 15 * 60_000;
 
-const PENDING = new Set([
+/** Queue states in which work will still be picked up. */
+export const PENDING = new Set([
   "waiting",
   "delayed",
   "prioritized",
@@ -126,7 +131,7 @@ export async function failLostRuns(deps: LostRunsDeps): Promise<LostRun[]> {
 
     const sink = createEventSink(
       deps,
-      runId,
+      runEventTarget(deps.db, runId),
       await getLastRunEventSeq(deps.db, runId),
     );
     const ts = new Date().toISOString();

@@ -1,21 +1,34 @@
-import { DbEnvironmentStore, getProject, type Db } from "@codegenie/db";
+import {
+  DbEnvironmentStore,
+  findOnboarding,
+  getProject,
+  type Db,
+} from "@codegenie/db";
+import type { GithubApp } from "@codegenie/github";
 import {
   autoChannel,
   runOnboarding,
   type OnboardingResult,
   type RunOnboardingOptions,
 } from "@codegenie/runner";
-import type { GithubApp } from "@codegenie/github";
-import {
-  onboardingChannel,
-  type OnboardingMessage,
-  type QueuedWork,
+import type {
+  OnboardingEndStatus,
+  OnboardingEventBody,
+  QueuedWork,
+  RunEvent,
 } from "@codegenie/shared";
-import type { Publisher } from "../events/sink.js";
+import {
+  createEventSink,
+  onboardingEventTarget,
+  type Publisher,
+} from "../events/sink.js";
 import { GithubAccessError, repoReadToken } from "../github/repo-token.js";
 import type { Log } from "../lib/log.js";
 import type { SandboxFactory } from "../lib/sandbox-factory.js";
-import { createSerialQueue } from "../lib/serial-queue.js";
+import {
+  createOnboardingRecord,
+  onboardingOutcome,
+} from "../onboardings/onboarding-record.js";
 
 export type OnboardProjectDeps = {
   db: Db;
@@ -25,38 +38,59 @@ export type OnboardProjectDeps = {
   github: Pick<GithubApp, "repoToken">;
 } & Pick<RunOnboardingOptions, "model" | "agentLimits">;
 
+/** Null when the setup was no longer queued (e.g. cancelled before it started). */
 export async function handleOnboardProject(
   deps: OnboardProjectDeps,
-  { projectId }: QueuedWork["onboard-project"],
+  { onboardingId }: QueuedWork["onboard-project"],
   signal?: AbortSignal,
-): Promise<OnboardingResult> {
+): Promise<OnboardingResult | null> {
   const { db } = deps;
-  const project = await getProject(db, projectId);
-  if (!project) throw new Error(`Project ${projectId} doesn't exist.`);
+  const onboarding = await findOnboarding(db, onboardingId);
+  if (!onboarding) throw new Error(`Setup ${onboardingId} doesn't exist.`);
+  const project = await getProject(db, onboarding.projectId);
+  if (!project)
+    throw new Error(`Project ${onboarding.projectId} doesn't exist.`);
   const repo = `${project.repoOwner}/${project.repoName}`;
 
-  const publishes = createSerialQueue();
-  const publish = (message: OnboardingMessage) =>
-    publishes.add(async () => {
-      await deps.publisher.publish(
-        onboardingChannel(projectId),
-        JSON.stringify(message),
-      );
-    });
+  const record = createOnboardingRecord(db, onboardingId);
+  if (!(await record.start())) {
+    deps.log("info", "Setup skipped: it isn't queued", { onboardingId });
+    return null;
+  }
+
+  const sink = createEventSink<RunEvent | OnboardingEventBody>(
+    deps,
+    onboardingEventTarget(db, onboardingId),
+  );
+  const now = () => new Date().toISOString();
+  const info = (message: string) =>
+    sink.emit({ type: "info", ts: now(), message });
+  const done = (
+    status: OnboardingEndStatus,
+    extra: { version?: number; error?: string } = {},
+  ) => sink.emit({ type: "done", ts: now(), status, ...extra });
+  const flush = () =>
+    sink.flush().catch((error: unknown) =>
+      deps.log("warn", "Some setup events weren't saved or published", {
+        onboardingId,
+        error: String(error),
+      }),
+    );
 
   let token: string;
   try {
     token = await repoReadToken(deps, project);
   } catch (error) {
     if (error instanceof GithubAccessError) {
-      publish({ type: "done", status: "failed", error: error.message });
-      await publishes.drain().catch(() => {});
+      done("failed", { error: error.message });
+      await flush();
+      await record.fail({ code: "github_access", message: error.message });
     }
     throw error;
   }
 
   const result = await runOnboarding({
-    runId: `onboard-${projectId}`,
+    runId: `onboarding-${onboardingId}`,
     source: {
       type: "git",
       url: `https://github.com/${repo}.git`,
@@ -65,42 +99,37 @@ export async function handleOnboardProject(
     },
     model: deps.model,
     agentLimits: deps.agentLimits,
-    createSandbox: () => deps.createSandbox({ kind: "onboarding", projectId }),
-    channel: autoChannel((message) => publish({ type: "info", message })),
-    emit: (event) => publish({ type: "event", event }),
+    createSandbox: () =>
+      deps.createSandbox({ kind: "onboarding", projectId: project.id }),
+    channel: autoChannel(info),
+    emit: (event) => sink.emit(event),
     signal,
   });
 
   const saved =
     result.status === "approved" && result.config
       ? await new DbEnvironmentStore(db).save(
-          projectId,
+          project.id,
           result.config,
           result.config.meta.source,
         )
       : null;
-  publish({
-    type: "done",
-    status: result.status,
+  const outcome = onboardingOutcome(result, saved?.id ?? null);
+  done(outcome.status, {
     ...(saved ? { version: saved.version } : {}),
-    ...(result.error ? { error: result.error } : {}),
+    ...(outcome.errorMessage ? { error: outcome.errorMessage } : {}),
   });
-  try {
-    await publishes.drain();
-  } catch (error) {
-    deps.log("warn", "Some onboarding messages weren't published", {
-      projectId,
-      error: String(error),
-    });
-  }
-  deps.log("info", "Onboarding finished", {
-    projectId,
-    status: result.status,
+  await flush();
+  await record.finish(outcome);
+  deps.log("info", "Setup finished", {
+    onboardingId,
+    projectId: project.id,
+    status: outcome.status,
     ...(saved ? { version: saved.version } : {}),
   });
 
-  if (result.status === "failed") {
-    throw new Error(`Onboarding ${repo} failed: ${result.error}`);
+  if (outcome.status === "failed") {
+    throw new Error(`Setup of ${repo} failed: ${outcome.errorMessage}`);
   }
   return result;
 }

@@ -5,8 +5,8 @@ Takes work off the Redis queue and runs it in a sandbox: task runs (`run-task`) 
 ```
 server API ──────────► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
                                                                    │            │
-                                     "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, project_environments
-                                                                                ├──► Redis: run:{id}, project:{id}:onboarding
+                                     "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, onboardings, onboarding_events, project_environments
+                                                                                ├──► Redis: run:{id}, onboarding:{id}
                                                                                 └──► GitHub API: commit, branch, pull request
 ```
 

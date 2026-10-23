@@ -1,14 +1,18 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import {
   DbEnvironmentStore,
+  findOnboarding,
+  findOnboardingEventsAfter,
   getInstallationById,
   markInstallationUninstalled,
+  markOnboardingEnded,
+  createOnboarding,
   type Db,
 } from "@codegenie/db";
 import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { SandboxLabels } from "@codegenie/sandbox";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { OnboardingMessage } from "@codegenie/shared";
+import type { OnboardingEvent } from "@codegenie/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
 import { fakeGithubApp } from "../testing/fake-github-app.js";
@@ -61,15 +65,30 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
   const environments = new DbEnvironmentStore(db);
   afterAll(() => database?.drop());
 
+  async function queuedSetup() {
+    const project = await insertProject(db);
+    const { onboarding } = await createOnboarding(db, {
+      projectId: project.id,
+      userId: project.userId,
+    });
+    return { project, onboardingId: onboarding.id };
+  }
+
+  const stored = async (onboardingId: string) =>
+    (await findOnboardingEventsAfter(db, onboardingId, 0, 100)).map((event) => [
+      event.seq,
+      event.type,
+    ]);
+
   function depsFor(handler: Handler = () => ({}), script: ScriptedStep[] = []) {
     const labels: SandboxLabels[] = [];
     const logs: { message: string; data?: Record<string, unknown> }[] = [];
-    const published: { channel: string; message: OnboardingMessage }[] = [];
+    const published: { channel: string; message: OnboardingEvent }[] = [];
     const publisher: Publisher = {
       async publish(channel, message) {
         published.push({
           channel,
-          message: JSON.parse(message) as OnboardingMessage,
+          message: JSON.parse(message) as OnboardingEvent,
         });
         return 1;
       },
@@ -91,85 +110,117 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
     };
   }
 
-  it("saves the drafted environment and publishes its progress", async () => {
-    const project = await insertProject(db);
+  it("saves the drafted environment, recording the setup and its events", async () => {
+    const { project, onboardingId } = await queuedSetup();
     const { deps, published, messages, labels, logs } = depsFor();
 
-    const result = await handleOnboardProject(deps, { projectId: project.id });
+    const result = await handleOnboardProject(deps, { onboardingId });
 
-    expect(result.status).toBe("approved");
+    expect(result?.status).toBe("approved");
     expect(labels).toEqual([
       { kind: "onboarding", projectId: project.id },
       { kind: "onboarding", projectId: project.id },
     ]);
-    expect(await environments.load(project.id)).toMatchObject({
+    const environment = await environments.load(project.id);
+    expect(environment).toMatchObject({
       version: 1,
       source: "detected",
       config: { meta: { commit: "c0ffee" } },
     });
+    const setup = await findOnboarding(db, onboardingId);
+    expect(setup).toMatchObject({
+      status: "succeeded",
+      environmentId: environment?.id,
+    });
+    expect(setup?.startedAt).toBeInstanceOf(Date);
+    expect(setup?.finishedAt).toBeInstanceOf(Date);
+
     expect(new Set(published.map((p) => p.channel))).toEqual(
-      new Set([`project:${project.id}:onboarding`]),
+      new Set([`onboarding:${onboardingId}`]),
     );
-    expect(messages()).toContainEqual({
-      type: "info",
-      message: "Final check in a fresh sandbox…",
-    });
-    expect(messages().at(-1)).toEqual({
+    expect(messages()).toContainEqual(
+      expect.objectContaining({
+        type: "info",
+        message: "Final check in a fresh sandbox…",
+        onboardingId,
+      }),
+    );
+    const last = messages().at(-1);
+    expect(last).toMatchObject({
       type: "done",
-      status: "approved",
+      status: "succeeded",
       version: 1,
+      onboardingId,
     });
+    const events = await stored(onboardingId);
+    expect(events.map(([seq]) => seq)).toEqual(
+      events.map((_event, index) => index + 1),
+    );
+    expect(events.at(-1)).toEqual([last?.seq, "done"]);
     expect(logs).toContainEqual({
-      message: "Onboarding finished",
-      data: { projectId: project.id, status: "approved", version: 1 },
+      message: "Setup finished",
+      data: {
+        onboardingId,
+        projectId: project.id,
+        status: "succeeded",
+        version: 1,
+      },
     });
   });
 
-  it("saves a new version when the project is onboarded again", async () => {
-    const project = await insertProject(db);
-    await handleOnboardProject(depsFor().deps, { projectId: project.id });
+  it("saves a new version when the project is set up again", async () => {
+    const first = await queuedSetup();
+    await handleOnboardProject(depsFor().deps, {
+      onboardingId: first.onboardingId,
+    });
+    const { onboarding } = await createOnboarding(db, {
+      projectId: first.project.id,
+      userId: first.project.userId,
+    });
 
     const { deps, messages } = depsFor();
-    await handleOnboardProject(deps, { projectId: project.id });
+    await handleOnboardProject(deps, { onboardingId: onboarding.id });
 
-    expect((await environments.load(project.id))?.version).toBe(2);
-    expect((await environments.list(project.id)).map((e) => e.version)).toEqual(
-      [2, 1],
-    );
+    expect((await environments.load(first.project.id))?.version).toBe(2);
     expect(messages().at(-1)).toMatchObject({ type: "done", version: 2 });
   });
 
-  it("publishes the setup agent's events when the draft has problems", async () => {
-    const project = await insertProject(db);
+  it("records the setup agent's events without the runner's run id", async () => {
+    const { project, onboardingId } = await queuedSetup();
     const { deps, messages } = depsFor(lintBroken, [finishWithoutLint]);
 
-    await handleOnboardProject(deps, { projectId: project.id });
+    await handleOnboardProject(deps, { onboardingId });
 
-    expect(messages()).toContainEqual({
-      type: "event",
-      event: expect.objectContaining({
-        type: "tool_start",
-        runId: `onboard-${project.id}`,
-      }),
-    });
+    const toolStart = messages().find((m) => m.type === "tool_start");
+    expect(toolStart).toMatchObject({ onboardingId, seq: expect.any(Number) });
+    expect(toolStart).not.toHaveProperty("runId");
+    expect((await stored(onboardingId)).map(([, type]) => type)).toContain(
+      "tool_start",
+    );
     expect(await environments.load(project.id)).toMatchObject({
       source: "ai",
     });
   });
 
-  it("throws when onboarding fails, without saving anything", async () => {
-    const project = await insertProject(db);
+  it("records a failed setup, without saving anything", async () => {
+    const { project, onboardingId } = await queuedSetup();
     const { deps, messages } = depsFor((command) =>
       command.includes("git clone")
         ? { exitCode: 128, stderr: "repository not found" }
         : {},
     );
 
-    await expect(
-      handleOnboardProject(deps, { projectId: project.id }),
-    ).rejects.toThrow("Onboarding acme/app failed");
+    await expect(handleOnboardProject(deps, { onboardingId })).rejects.toThrow(
+      "Setup of acme/app failed",
+    );
 
     expect(await environments.load(project.id)).toBeNull();
+    expect(await findOnboarding(db, onboardingId)).toMatchObject({
+      status: "failed",
+      errorCode: "setup_failed",
+      errorMessage: expect.any(String),
+      environmentId: null,
+    });
     expect(messages().at(-1)).toMatchObject({
       type: "done",
       status: "failed",
@@ -177,32 +228,48 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
     });
   });
 
-  it("fails, and tells listeners, when the App was uninstalled", async () => {
-    const project = await insertProject(db);
+  it("fails, and says why, when the App was uninstalled", async () => {
+    const { project, onboardingId } = await queuedSetup();
     const installation = await getInstallationById(db, project.installationId);
     await markInstallationUninstalled(db, installation!.installationId);
     const { deps, messages, labels } = depsFor();
 
-    await expect(
-      handleOnboardProject(deps, { projectId: project.id }),
-    ).rejects.toThrow("no longer installed");
+    await expect(handleOnboardProject(deps, { onboardingId })).rejects.toThrow(
+      "no longer installed",
+    );
 
     expect(messages()).toEqual([
-      {
+      expect.objectContaining({
         type: "done",
         status: "failed",
         error: expect.stringContaining("no longer installed"),
-      },
+        seq: 1,
+      }),
     ]);
+    expect(await findOnboarding(db, onboardingId)).toMatchObject({
+      status: "failed",
+      errorCode: "github_access",
+    });
     expect(labels).toEqual([]);
   });
 
-  it("throws for a project that doesn't exist", async () => {
-    const { deps, published } = depsFor();
-    const projectId = "00000000-0000-0000-0000-000000000000";
+  it("skips a setup that was cancelled before it started", async () => {
+    const { onboardingId } = await queuedSetup();
+    await markOnboardingEnded(db, onboardingId, { status: "cancelled" });
+    const { deps, published, labels } = depsFor();
 
-    await expect(handleOnboardProject(deps, { projectId })).rejects.toThrow(
-      `Project ${projectId} doesn't exist.`,
+    expect(await handleOnboardProject(deps, { onboardingId })).toBeNull();
+    expect(published).toEqual([]);
+    expect(labels).toEqual([]);
+    expect(await stored(onboardingId)).toEqual([]);
+  });
+
+  it("throws for a setup that doesn't exist", async () => {
+    const { deps, published } = depsFor();
+    const onboardingId = "00000000-0000-0000-0000-000000000000";
+
+    await expect(handleOnboardProject(deps, { onboardingId })).rejects.toThrow(
+      `Setup ${onboardingId} doesn't exist.`,
     );
     expect(published).toEqual([]);
   });

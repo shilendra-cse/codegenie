@@ -18,7 +18,7 @@ import {
   markOnboardingResumed,
   markOnboardingStarted,
   markOnboardingWaiting,
-  startOnboarding,
+  createOnboarding,
 } from "./onboardings-queries.js";
 
 const database = await testDatabaseOrSkip("onboardings queries");
@@ -29,7 +29,7 @@ describe.skipIf(!database)("onboardings queries against Postgres", () => {
 
   async function started() {
     const project = await insertProject(db);
-    const { onboarding } = await startOnboarding(db, {
+    const { onboarding } = await createOnboarding(db, {
       projectId: project.id,
       userId: project.userId,
     });
@@ -44,7 +44,7 @@ describe.skipIf(!database)("onboardings queries against Postgres", () => {
       status: "queued",
     });
 
-    const again = await startOnboarding(db, {
+    const again = await createOnboarding(db, {
       projectId: project.id,
       userId: project.userId,
     });
@@ -55,7 +55,7 @@ describe.skipIf(!database)("onboardings queries against Postgres", () => {
     const { project, onboarding } = await started();
     await markOnboardingEnded(db, onboarding.id, { status: "failed" });
 
-    const next = await startOnboarding(db, {
+    const next = await createOnboarding(db, {
       projectId: project.id,
       userId: project.userId,
     });

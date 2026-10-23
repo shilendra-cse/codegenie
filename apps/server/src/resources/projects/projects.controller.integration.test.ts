@@ -3,6 +3,7 @@ import {
   type Db,
   DbEnvironmentStore,
   ensureUser,
+  findLatestOnboarding,
   getInstallationById,
   markInstallationUninstalled,
   recordInstallation,
@@ -311,23 +312,33 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
   });
 
   describe("starting environment setup", () => {
-    it("queues setup once per project at a time", async () => {
+    it("records the setup, then queues it, once per project at a time", async () => {
       const project = await insertProject(db);
+      const start = () =>
+        projects.startSetup(
+          request(project.userId, { id: project.id }),
+          response,
+        );
 
-      const result = await projects.startSetup(
-        request(project.userId, { id: project.id }),
-        response,
-      );
-
-      expect(result).toMatchObject({
+      expect(await start()).toMatchObject({
         status: 202,
         data: { projectId: project.id },
       });
+      const setup = await findLatestOnboarding(db, project.id);
+      expect(setup).toMatchObject({
+        status: "queued",
+        createdByUserId: project.userId,
+      });
       expect(queued.at(-1)).toEqual({
         name: "onboard-project",
-        data: { projectId: project.id },
-        options: { deduplication: { id: `onboard-${project.id}` } },
+        data: { onboardingId: setup?.id },
+        options: { jobId: setup?.id },
       });
+
+      const before = queued.length;
+      await start();
+      expect(queued).toHaveLength(before);
+      expect((await findLatestOnboarding(db, project.id))?.id).toBe(setup?.id);
     });
 
     it("refuses when the App is suspended, for someone else's project, and when the queue is down", async () => {
@@ -357,6 +368,15 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
         code: "QUEUE_UNAVAILABLE",
       });
       queueDown = false;
+      // The setup that couldn't be queued doesn't block the next one.
+      expect(await findLatestOnboarding(db, project.id)).toMatchObject({
+        status: "failed",
+        errorCode: "queue_unavailable",
+      });
+      await setup(project.userId, project.id);
+      expect((await findLatestOnboarding(db, project.id))?.status).toBe(
+        "queued",
+      );
     });
   });
 });
