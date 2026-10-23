@@ -8,6 +8,7 @@ import {
   type ResultDetails,
 } from "./agent-result.js";
 import { Compactor } from "./compaction.js";
+import { createDeadline, type Deadline } from "./deadline.js";
 import { errorMessage, isInfrastructureError } from "./errors.js";
 import type { Emit } from "./events.js";
 import {
@@ -45,6 +46,8 @@ export type RunLoopOptions = {
   limits?: Partial<AgentLimits>;
   emit?: Emit;
   signal?: AbortSignal;
+  /** The time limit, when the caller pauses it (e.g. while a person answers); otherwise one from `limits`. */
+  deadline?: Deadline;
 };
 
 export async function runLoop(options: RunLoopOptions): Promise<LoopResult> {
@@ -92,50 +95,58 @@ export async function runLoop(options: RunLoopOptions): Promise<LoopResult> {
   const userSignal = options.signal;
   const withUser = (...signals: AbortSignal[]) =>
     AbortSignal.any(userSignal ? [...signals, userSignal] : signals);
-  const deadline = AbortSignal.timeout(limits.maxWallTimeMs);
-  const mainSignal = withUser(env.infraAbort.signal, deadline);
+  const deadline = options.deadline ?? createDeadline(limits.maxWallTimeMs);
+  const mainSignal = withUser(env.infraAbort.signal, deadline.signal);
+  try {
+    return await loop();
+  } finally {
+    // A deadline passed in belongs to the caller, which disposes it.
+    if (!options.deadline) deadline.dispose();
+  }
 
-  let nudges = 0;
-  while (true) {
-    const outcome = await runSegment(state, env, {
-      maxSteps: limits.maxSteps - state.steps,
-      signal: mainSignal,
-      costLimit: true,
-    });
-
-    if (outcome.finishInput !== undefined) {
-      return result("succeeded", { finishInput: outcome.finishInput });
-    }
-    if (outcome.infraError) {
-      return result("failed", {
-        error: `Sandbox error: ${errorMessage(outcome.infraError)}`,
+  async function loop(): Promise<LoopResult> {
+    let nudges = 0;
+    while (true) {
+      const outcome = await runSegment(state, env, {
+        maxSteps: limits.maxSteps - state.steps,
+        signal: mainSignal,
+        costLimit: true,
       });
-    }
-    if (userSignal?.aborted) return result("cancelled");
-    if (outcome.modelError) {
-      return result("failed", {
-        error: `Model request failed: ${errorMessage(outcome.modelError)}`,
-      });
-    }
 
-    const limit: LimitReached | null = deadline.aborted
-      ? "time"
-      : state.steps >= limits.maxSteps
-        ? "steps"
-        : state.usage.costUsd >= limits.maxCostUsd
-          ? "cost"
-          : null;
-    if (limit) {
-      return wrapUp(limit);
-    }
+      if (outcome.finishInput !== undefined) {
+        return result("succeeded", { finishInput: outcome.finishInput });
+      }
+      if (outcome.infraError) {
+        return result("failed", {
+          error: `Sandbox error: ${errorMessage(outcome.infraError)}`,
+        });
+      }
+      if (userSignal?.aborted) return result("cancelled");
+      if (outcome.modelError) {
+        return result("failed", {
+          error: `Model request failed: ${errorMessage(outcome.modelError)}`,
+        });
+      }
 
-    if (nudges >= MAX_NUDGES) {
-      return result("failed", {
-        error: `The agent stopped without calling ${finish.name}.`,
-      });
+      const limit: LimitReached | null = deadline.signal.aborted
+        ? "time"
+        : state.steps >= limits.maxSteps
+          ? "steps"
+          : state.usage.costUsd >= limits.maxCostUsd
+            ? "cost"
+            : null;
+      if (limit) {
+        return wrapUp(limit);
+      }
+
+      if (nudges >= MAX_NUDGES) {
+        return result("failed", {
+          error: `The agent stopped without calling ${finish.name}.`,
+        });
+      }
+      nudges += 1;
+      state.messages.push({ role: "user", content: finish.nudge });
     }
-    nudges += 1;
-    state.messages.push({ role: "user", content: finish.nudge });
   }
 
   async function wrapUp(limit: LimitReached): Promise<LoopResult> {

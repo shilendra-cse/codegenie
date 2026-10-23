@@ -93,6 +93,35 @@ describe("runSetupAgent", () => {
     expect(tried).toEqual([fixed]);
   });
 
+  it("doesn't count the time spent waiting for an answer against its time limit", async () => {
+    const { run } = setup(
+      [
+        call("ask_user", {
+          question: "Should lint be dropped?",
+          options: [{ label: "Drop it" }, { label: "Keep it" }],
+        }),
+        finish(fixed),
+      ],
+      {
+        limits: { maxWallTimeMs: 200 },
+        // Longer than the whole limit: only the agent's own work may count.
+        channel: {
+          ask: () =>
+            new Promise((resolve) =>
+              setTimeout(() => resolve({ option: 0 }), 400),
+            ),
+          info: () => {},
+        },
+      },
+    );
+
+    const outcome = await run();
+
+    expect(outcome.status).toBe("succeeded");
+    expect(outcome.limitReached).toBeUndefined();
+    expect(outcome.proposal).toEqual(fixed);
+  });
+
   it("briefs the model with the repository, the drafted setup and its results", async () => {
     const { model, run } = setup([finish(drafted)]);
     await run();

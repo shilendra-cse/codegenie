@@ -4,7 +4,7 @@ import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { RunEvent, RunStage } from "@codegenie/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { createEventSink, type Publisher } from "./sink.js";
+import { createEventSink, runEventTarget, type Publisher } from "./sink.js";
 
 const database = await testDatabaseOrSkip("event sink");
 
@@ -47,7 +47,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   it("stores events numbered in order and publishes each with its number", async () => {
     const { run } = await insertRun(db);
     const { publisher, messages } = recordingPublisher();
-    const sink = createEventSink({ db, publisher }, run.id);
+    const sink = createEventSink({ publisher }, runEventTarget(db, run.id));
 
     sink.emit(stage(run.id, "setup"));
     sink.emit({
@@ -91,7 +91,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   it("hides GitHub tokens before storing or publishing an event", async () => {
     const { run } = await insertRun(db);
     const { publisher, messages } = recordingPublisher();
-    const sink = createEventSink({ db, publisher }, run.id);
+    const sink = createEventSink({ publisher }, runEventTarget(db, run.id));
     const token = "ghs_faketoken0123456789abcdefghij";
 
     sink.emit({
@@ -114,7 +114,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   it("only publishes text and step progress, without using a number", async () => {
     const { run } = await insertRun(db);
     const { publisher, messages } = recordingPublisher();
-    const sink = createEventSink({ db, publisher }, run.id);
+    const sink = createEventSink({ publisher }, runEventTarget(db, run.id));
 
     sink.emit({ type: "text_delta", runId: run.id, ts, delta: "Reading" });
     sink.emit({
@@ -140,8 +140,8 @@ describe.skipIf(!database)("event sink against Postgres", () => {
   it("keeps the order of many quick events", async () => {
     const { run } = await insertRun(db);
     const sink = createEventSink(
-      { db, publisher: recordingPublisher().publisher },
-      run.id,
+      { publisher: recordingPublisher().publisher },
+      runEventTarget(db, run.id),
     );
     for (let i = 0; i < 40; i++) {
       sink.emit({
@@ -167,7 +167,7 @@ describe.skipIf(!database)("event sink against Postgres", () => {
     const { publisher } = recordingPublisher((message) =>
       message.includes("sb-broken"),
     );
-    const sink = createEventSink({ db, publisher }, run.id);
+    const sink = createEventSink({ publisher }, runEventTarget(db, run.id));
 
     sink.emit({
       type: "sandbox_created",
@@ -182,7 +182,10 @@ describe.skipIf(!database)("event sink against Postgres", () => {
       [2, "stage_changed"],
     ]);
 
-    const missing = createEventSink({ db, publisher }, randomUUID());
+    const missing = createEventSink(
+      { publisher },
+      runEventTarget(db, randomUUID()),
+    );
     missing.emit(stage(randomUUID(), "setup"));
     await expect(missing.flush()).rejects.toThrow();
   });

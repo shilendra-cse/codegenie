@@ -2,9 +2,11 @@ import { execFileSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
 import { scriptedModel } from "@codegenie/agent/testing";
 import {
+  createOnboarding,
   createTaskWithRun,
   DbEnvironmentStore,
   ensureUser,
+  findOnboarding,
   recordInstallation,
   runEvents,
   runs,
@@ -21,6 +23,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { startConsumer } from "./consumer.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
 import { handleRunTask } from "./handlers/run-task.js";
+import { createAnswerRouter } from "./onboardings/answer-router.js";
 import { fakeGithubApp } from "./testing/fake-github-app.js";
 import { testRedisOrSkip } from "./testing/test-redis.js";
 
@@ -57,7 +60,7 @@ describe.skipIf(!database || !redis || !probe)(
           JSON.parse(message),
         ]);
       });
-      await listener.psubscribe("run:*", "project:*");
+      await listener.psubscribe("run:*", "onboarding:*");
 
       const onboardingModel = scriptedModel([
         {
@@ -89,6 +92,8 @@ describe.skipIf(!database || !redis || !probe)(
         github: fakeGithubApp("").github,
         publisher: connect(),
         log: () => {},
+        answers: createAnswerRouter(),
+        answerTimeoutMs: 60_000,
         createSandbox: async () => {
           const sandbox = await DockerSandbox.create();
           sandboxIds.push(sandbox.id);
@@ -98,6 +103,7 @@ describe.skipIf(!database || !redis || !probe)(
       const consumer = await startConsumer({
         connection: connect(),
         subscriber: connect(),
+        answers: deps.answers,
         concurrency: 2,
         log: () => {},
         prefix,
@@ -136,9 +142,15 @@ describe.skipIf(!database || !redis || !probe)(
           repoName: "Hello-World",
           defaultBranch: "master",
         });
-        const onboarding = await queue.add("onboard-project", {
+        const { onboarding: setup } = await createOnboarding(db, {
           projectId: project.id,
+          userId: installerId,
         });
+        const onboarding = await queue.add(
+          "onboard-project",
+          { onboardingId: setup.id },
+          { jobId: setup.id },
+        );
         await onboarding.waitUntilFinished(queueEvents);
 
         const environment = await new DbEnvironmentStore(db).load(project.id);
@@ -147,9 +159,14 @@ describe.skipIf(!database || !redis || !probe)(
           source: "ai",
           config: { steps: [], checks: [] },
         });
-        expect(
-          published.get(`project:${project.id}:onboarding`)?.at(-1),
-        ).toEqual({ type: "done", status: "approved", version: 1 });
+        expect(published.get(`onboarding:${setup.id}`)?.at(-1)).toMatchObject({
+          type: "done",
+          status: "succeeded",
+          version: 1,
+        });
+        expect(await findOnboarding(db, setup.id)).toMatchObject({
+          status: "succeeded",
+        });
 
         const { run } = await createTaskWithRun(db, {
           task: {

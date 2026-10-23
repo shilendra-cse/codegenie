@@ -23,6 +23,7 @@ user ─┬─< session                       (Better Auth)
       ├─< github_installations          (installed_by)
       └─< projects >── github_installations
               │
+              ├─< onboardings ─< onboarding_events  (setups started from the website)
               ├─< project_environments            (environment config versions)
               │         ▲
               │         └─────────────┐  runs.environment_id (version a run used)
@@ -182,6 +183,38 @@ Live stream source and audit log.
 
 Primary key: **(`run_id`, `seq`)**. A run has exactly one writer, so `seq` is gap-free and ordered; SSE resume is `WHERE run_id = $1 AND seq > $lastEventId`. `text_delta` and `agent_step` events are streamed live but **not** persisted. When a run's worker is gone, the reaper becomes its writer and adds `error` and `done` after the last stored event.
 
+### `onboardings`
+One environment setup of a project, started from the website ([environment.md](./environment.md) §3.5).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `project_id` | uuid FK → `projects.id` | cascade |
+| `created_by_user_id` | text FK → `user.id` null | set null |
+| `status` | enum `onboarding_status` (`queued`, `running`, `waiting`, `succeeded`, `failed`, `cancelled`) | `waiting` while a question is open |
+| `error_code`, `error_message` | text null | e.g. `NO_ANSWER` |
+| `open_question_id` | text null | the question it's waiting on |
+| `environment_id` | uuid FK → `project_environments.id` null | the version it saved; set null |
+| `input_tokens`, `output_tokens` | integer, default 0 | |
+| `cost_usd` | numeric(10,4), default 0 | |
+| `queued_at` | timestamptz, default now | |
+| `started_at`, `finished_at` | timestamptz null | |
+
+At most one active (`queued`, `running`, `waiting`) per project: a partial unique index, so starting setup twice returns the one already active.
+
+### `onboarding_events`
+Everything a setup does, in order: the setup's live stream and its record. Same shape and rules as `run_events` (one writer, the worker; `seq` gap-free; resume with `seq > $lastEventId`).
+
+| Column | Type | Notes |
+|---|---|---|
+| `onboarding_id` | uuid FK → `onboardings.id` | cascade |
+| `seq` | integer | 1, 2, 3… per setup |
+| `type` | text | the runner's events, `info`, `question_asked`, `question_answered`, `done` |
+| `payload` | jsonb, default `{}` | |
+| `created_at` | timestamptz | |
+
+Primary key: **(`onboarding_id`, `seq`)**.
+
 ### `run_diffs`
 What a run changed, so it survives the sandbox: shown to the user, the content of the PR, and the starting point for resuming a run whose worker died.
 
@@ -213,7 +246,7 @@ Insert first; on conflict, skip processing. If processing fails, the row is dele
 - **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
 - **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
-- **Deletion:** cascade `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`; projects are archived (`archived_at`), not hard-deleted.
+- **Deletion:** cascade `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`, `projects → onboardings → onboarding_events`; projects are archived (`archived_at`), not hard-deleted.
 - **Naming:** snake_case tables/columns; one kebab-case schema file per table, grouped by domain in `packages/db/src/schema/` (`auth/`, `github/`, `projects/`, `tasks/`, `runs/`; e.g. `runs/run-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
 - **Shared types:** `packages/shared/src/types/api.ts` mirrors these tables for the API and web app; change both together.
 
@@ -223,7 +256,7 @@ Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced
 
 The schema, client, migrations and every query live in `packages/db` (queries in `src/queries/`, one folder per domain like the schema; apps never build queries themselves), shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
 
-The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way.
+The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way. Since then: `0001_run_diffs`, `0002_installation_uninstalled_at`, `0003_task_pr_draft`, `0004_onboardings`.
 
 **Tests** that need Postgres use `testDatabaseOrSkip` from `@codegenie/db/testing`: a fresh, migrated database per run, created next to the development one (or on `TEST_DATABASE_URL`) and dropped afterwards; skipped without Postgres, required in CI (which runs a Postgres service).
 

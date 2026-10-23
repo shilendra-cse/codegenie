@@ -13,6 +13,7 @@ import { Redis } from "ioredis";
 import { ConfigError, ENV_FILE, parseConfig } from "./config.js";
 import { startConsumer } from "./consumer.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
+import { createAnswerRouter } from "./onboardings/answer-router.js";
 import { handleRunTask } from "./handlers/run-task.js";
 import { createLog } from "./lib/logger.js";
 import { handleReap } from "./reaper/reap.js";
@@ -55,10 +56,13 @@ async function main() {
     createSandbox: (labels: SandboxLabels) =>
       createSandbox({ ...config.sandbox, labels }),
     github: createGithubApp(config.github),
+    answers: createAnswerRouter(),
+    answerTimeoutMs: config.answerTimeoutMs,
   };
   const consumer = await startConsumer({
     connection: redis.queue,
     subscriber: redis.subscriber,
+    answers: deps.answers,
     concurrency: config.concurrency,
     log,
     handlers: {

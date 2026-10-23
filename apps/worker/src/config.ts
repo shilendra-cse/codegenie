@@ -39,6 +39,7 @@ const schema = z
     DAYTONA_TARGET: z.string().min(1).optional(),
     SANDBOX_RETENTION_HOURS: z.coerce.number().min(0).default(4),
     REAPER_INTERVAL_MINUTES: z.coerce.number().min(1).default(5),
+    ONBOARDING_ANSWER_TIMEOUT_MINUTES: z.coerce.number().min(1).default(30),
 
     GITHUB_APP_ID: z
       .string({ error: `GITHUB_APP_ID is not set. Add it to ${ENV_FILE}.` })
@@ -71,6 +72,7 @@ export type WorkerConfig = {
   concurrency: number;
   sandbox: SandboxConfig;
   reaperIntervalMs: number;
+  answerTimeoutMs: number;
   github: { appId: string; privateKey: string };
 };
 
@@ -110,6 +112,7 @@ export function parseConfig(
           }
         : { provider: "docker" },
     reaperIntervalMs: e.REAPER_INTERVAL_MINUTES * 60_000,
+    answerTimeoutMs: e.ONBOARDING_ANSWER_TIMEOUT_MINUTES * 60_000,
     github: { appId: e.GITHUB_APP_ID, privateKey: e.GITHUB_APP_PRIVATE_KEY },
   };
 }

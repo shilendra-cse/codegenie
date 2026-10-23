@@ -2,7 +2,7 @@ import type { Server } from "node:http";
 import { pool } from "@/db/index.js";
 import { logger } from "./logger.js";
 import { redis } from "./redis.js";
-import { closeRunEventHub } from "./run-events.js";
+import { closeEventHub } from "./events.js";
 import { closeWorkQueue } from "./work-queue.js";
 
 const SHUTDOWN_TIMEOUT_MS = 5000;
@@ -33,7 +33,7 @@ export function registerGracefulShutdown(getServer: () => Server | null): void {
       }
 
       await closeWorkQueue();
-      await closeRunEventHub();
+      await closeEventHub();
       await redis.quit();
       logger.info("Redis connections closed");
 

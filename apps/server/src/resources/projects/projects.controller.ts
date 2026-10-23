@@ -8,10 +8,9 @@ import {
 import { getUserProject } from "./services/getUserProject.service";
 import { listUserProjects } from "./services/listUserProjects.service";
 import { removeProject } from "./services/removeProject.service";
-import { startOnboarding } from "./services/startOnboarding.service";
-import type { WorkQueue } from "../tasks/tasks.types";
+import { listEnvironments } from "./services/listEnvironments.service";
 
-export type ProjectControllerDeps = CreateProjectDeps & { queue: WorkQueue };
+export type ProjectControllerDeps = CreateProjectDeps;
 
 export function createProjectControllers(deps: ProjectControllerDeps) {
   const { db } = deps;
@@ -41,11 +40,17 @@ export function createProjectControllers(deps: ProjectControllerDeps) {
     return ok(200, "Deleted", { id });
   };
 
-  const startSetup: AuthenticatedController = async (req) => {
+  const getEnvironments: AuthenticatedController = async (req) => {
     const { id } = projectParamsSchema.parse(req.params);
-    await startOnboarding(deps, req.user.id, id);
-    return ok(202, "Accepted", { projectId: id });
+    const environments = await listEnvironments(db, req.user.id, id);
+    return ok(200, "OK", { environments });
   };
 
-  return { listProjects, getProject, addProject, deleteProject, startSetup };
+  return {
+    listProjects,
+    getProject,
+    addProject,
+    deleteProject,
+    getEnvironments,
+  };
 }

@@ -132,7 +132,7 @@ Every step and check is run and classified:
 | `ask_user(question)` | asks the user through the channel; returns the chosen option or free text |
 | `finish_setup(config, notes)` | structured final answer; ends the agent |
 
-- Limits: 40 steps, 20 minutes (one DoDesk install already takes ~1.5 minutes), $0.20, at most 5 questions. Its cost is reported with the onboarding result.
+- Limits: 40 steps, 20 minutes (one DoDesk install already takes ~1.5 minutes), $0.20, at most 5 questions. The 20 minutes are the agent's working time: its clock pauses while a question waits for the user (`createDeadline` in `packages/agent`), so a slow answer doesn't eat into it. Its cost is reported with the onboarding result.
 - The agent package does not depend on the runner: `validate` and `channel` are passed in.
 
 ### 3.4 Questions
@@ -160,7 +160,7 @@ interface UserChannel {
 |---|---|---|
 | `TerminalChannel` | CLI | numbered options in the terminal |
 | `AutoChannel` | evals, `--yes` | always the recommended option; recorded as `auto: true` |
-| `EventChannel` | website (later) | `question_asked` event → question cards → answer through the API |
+| `EventChannel` | website (`apps/worker/src/onboardings/`) | stores `question_asked`, waits for the answer over Redis (`onboarding-answer`), stores `question_answered`; stops setup after 30 minutes without one (§3.5) |
 
 Example conversation (DoDesk):
 
@@ -176,6 +176,19 @@ backend tests: 6 pass, 9 fail: "connect ECONNREFUSED localhost:5433"
 › 1
 Using "npm run test" for backend. Re-running… ✓ 6/6 pass.
 ```
+
+### 3.5 Setup from the website
+
+The website starts setup, shows it live and asks its questions in the browser.
+
+- **Stored:** each setup is an `onboardings` row (status `queued` → `running` ⇄ `waiting` → `succeeded` / `failed` / `cancelled`, what it saved, what it cost) with its events in `onboarding_events` ([database.md](./database.md)). At most one active setup per project; starting again returns it.
+- **Watched:** the worker stores every event, then publishes it; the browser follows `GET /projects/:id/onboarding/events`, replayed from the database then live, through the same hub and stream as run events ([api.md](./api.md) §6); it stays open while a question waits.
+- **Questions (`EventChannel`):** the worker records `question_asked` and waits; the answer comes through `POST /projects/:id/onboarding/answer` and reaches the worker over Redis; the worker records `question_answered` and carries on.
+- **Waiting:** the sandbox stays open while a question is unanswered. After **30 minutes** setup stops (`failed`, `NO_ANSWER`: "Setup stopped after waiting 30 minutes for an answer.") and the sandbox goes; it can be started again.
+- **Stop:** a queued setup is cancelled directly; a running or waiting one is told to stop and ends `cancelled`.
+- **Saving:** a setup that succeeds is saved straight away as the project's next active version (`runOnboarding({ autoApprove: true })` skips "Save this environment?"; the CLI still asks); re-running setup makes a newer one.
+- **The wait** is `ONBOARDING_ANSWER_TIMEOUT_MINUTES` in the worker (default 30). If the worker itself dies while waiting, the reaper ends the setup (`worker_lost`).
+- **API:** `POST /onboarding` (start), `GET /onboarding` (latest), `GET /onboarding/events` (stream), `POST /onboarding/answer`, `POST /onboarding/cancel`, `GET /environments` (versions), all under `/projects/:id`. Rollback comes with the project page.
 
 ## 4. Task runs
 
@@ -210,7 +223,7 @@ Runs flag the config as **needs attention** (without stopping) when:
 - a setup step failed, or
 - a folder with a `package.json` appears that the config doesn't cover (`uncoveredProjects`: the multi-project rules run on the checkout; workspace packages don't count, since the root installs them).
 
-The fix is to rerun onboarding, which starts from the current config and only works on what's broken, producing a new version.
+The fix is to rerun onboarding, which produces a new version. Today a rerun starts from scratch (the repository is detected again, and earlier answers aren't reused); starting from the current config and only working on what's broken is planned.
 
 ## 5. Storage
 
@@ -287,7 +300,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 | C ✅ | C1 setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>` | the guided conversation works |
 | D ✅ | `EnvironmentStore` + CLI file store (versions); `agent:setup` saves and `--show`s, `agent:run` loads; health signals | complete onboarding in the CLI |
 | Phase 2 | DB migration + `DbEnvironmentStore` | product storage |
-| Phase 4 | `EventChannel`, question cards, config panel, needs-attention banner | onboarding on the website |
+| Phase 4 | `EventChannel`, stored setups and events, the setup API (§3.5); then question cards, config panel, needs-attention banner | onboarding on the website |
 
 ## 9. Not in the MVP
 

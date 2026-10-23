@@ -164,6 +164,26 @@ describe("runOnboarding", () => {
     ]);
   });
 
+  it("saves without asking when told to approve on its own", async () => {
+    const { createSandbox } = sandboxes();
+    const asked: SetupQuestion[] = [];
+    const channel: UserChannel = {
+      ask: async (question) => {
+        asked.push(question);
+        return { option: 1 };
+      },
+      info: () => {},
+    };
+
+    const result = await runOnboarding(
+      options({ createSandbox, channel, autoApprove: true }),
+    );
+
+    expect(result.status).toBe("approved");
+    expect(result.config).toBeDefined();
+    expect(asked).toEqual([]);
+  });
+
   it("runs the after-checkout hook in both sandboxes", async () => {
     const { createSandbox } = sandboxes();
     const hooked: string[] = [];

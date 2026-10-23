@@ -1,5 +1,3 @@
-import { runChannel } from "@codegenie/shared";
-
 export type MessageSubscriber = {
   subscribe(channel: string): Promise<unknown>;
   unsubscribe(channel: string): Promise<unknown>;
@@ -9,10 +7,11 @@ export type MessageSubscriber = {
   ): unknown;
 };
 
-export type RunEventViewer = (message: string) => void;
+export type EventViewer = (message: string) => void;
 
-export class RunEventHub {
-  private readonly viewers = new Map<string, Set<RunEventViewer>>();
+/** Shares one Redis subscriber among everyone watching a run's or a setup's channel. */
+export class EventHub {
+  private readonly viewers = new Map<string, Set<EventViewer>>();
   private readonly lastRedisCall = new Map<string, Promise<unknown>>();
 
   constructor(private readonly subscriber: MessageSubscriber) {
@@ -21,8 +20,7 @@ export class RunEventHub {
     });
   }
 
-  async listen(runId: string, viewer: RunEventViewer) {
-    const channel = runChannel(runId);
+  async listen(channel: string, viewer: EventViewer) {
     this.addViewer(channel, viewer);
     try {
       await this.lastRedisCall.get(channel);
@@ -33,7 +31,7 @@ export class RunEventHub {
     return () => this.removeViewer(channel, viewer);
   }
 
-  private addViewer(channel: string, viewer: RunEventViewer) {
+  private addViewer(channel: string, viewer: EventViewer) {
     const watching = this.viewers.get(channel);
     if (watching) {
       watching.add(viewer);
@@ -45,7 +43,7 @@ export class RunEventHub {
     );
   }
 
-  private async removeViewer(channel: string, viewer: RunEventViewer) {
+  private async removeViewer(channel: string, viewer: EventViewer) {
     const watching = this.viewers.get(channel);
     if (!watching?.delete(viewer) || watching.size > 0) return;
     this.viewers.delete(channel);

@@ -3,7 +3,6 @@ import {
   type Db,
   DbEnvironmentStore,
   ensureUser,
-  getInstallationById,
   markInstallationUninstalled,
   recordInstallation,
   setInstallationSuspended,
@@ -54,20 +53,10 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
         }
       : { status: 404, body: { message: "Not Found" } },
   );
-  const queued: { name: string; data: unknown; options: unknown }[] = [];
-  let queueDown = false;
   const projects = createProjectControllers({
     db,
     githubToken: () => Promise.resolve(githubToken),
     fetch: github.fetch,
-    queue: {
-      add(name, data, options) {
-        if (queueDown)
-          return Promise.reject(new Error("Connection is closed."));
-        queued.push({ name, data, options });
-        return Promise.resolve({});
-      },
-    },
   });
   afterAll(() => database?.drop());
 
@@ -310,53 +299,55 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
     });
   });
 
-  describe("starting environment setup", () => {
-    it("queues setup once per project at a time", async () => {
-      const project = await insertProject(db);
-
-      const result = await projects.startSetup(
-        request(project.userId, { id: project.id }),
-        response,
-      );
-
-      expect(result).toMatchObject({
-        status: 202,
-        data: { projectId: project.id },
-      });
-      expect(queued.at(-1)).toEqual({
-        name: "onboard-project",
-        data: { projectId: project.id },
-        options: { deduplication: { id: `onboard-${project.id}` } },
-      });
+  describe("listing environment versions", () => {
+    const config = (command: string) => ({
+      version: 1 as const,
+      steps: [{ name: "install", cwd: ".", command }],
+      checks: [],
+      meta: {
+        source: "ai" as const,
+        createdAt: "",
+        decisions: [{ question: "Use npm?", answer: "Yes", auto: false }],
+      },
     });
 
-    it("refuses when the App is suspended, for someone else's project, and when the queue is down", async () => {
-      const suspended = await insertProject(db);
-      const installation = await getInstallationById(
-        db,
-        suspended.installationId,
-      );
-      await setInstallationSuspended(db, installation!.installationId, true);
+    it("lists the saved versions, newest and active first", async () => {
       const project = await insertProject(db);
-      const setup = (userId: string, id: string) =>
-        projects.startSetup(request(userId, { id }), response);
+      const store = new DbEnvironmentStore(db);
+      const environments = (userId: string) =>
+        projects.getEnvironments(request(userId, { id: project.id }), response);
 
-      await expect(setup(suspended.userId, suspended.id)).rejects.toMatchObject(
-        {
-          status: 409,
-          code: "GITHUB_INSTALLATION_SUSPENDED",
+      expect(await environments(project.userId)).toMatchObject({
+        status: 200,
+        data: { environments: [] },
+      });
+
+      await store.save(project.id, config("npm ci"), "ai");
+      await store.save(project.id, config("npm install"), "ai");
+
+      const result = await environments(project.userId);
+      expect(result).toMatchObject({
+        status: 200,
+        data: {
+          environments: [
+            {
+              version: 2,
+              active: true,
+              source: "ai",
+              health: "ok",
+              healthReasons: [],
+              steps: [{ name: "install", cwd: ".", command: "npm install" }],
+              checks: [],
+              decisions: [{ question: "Use npm?", answer: "Yes", auto: false }],
+            },
+            { version: 1, active: false },
+          ],
         },
-      );
-      await expect(setup(randomUUID(), project.id)).rejects.toMatchObject({
+      });
+      await expect(environments(randomUUID())).rejects.toMatchObject({
         status: 404,
         code: "PROJECT_NOT_FOUND",
       });
-      queueDown = true;
-      await expect(setup(project.userId, project.id)).rejects.toMatchObject({
-        status: 503,
-        code: "QUEUE_UNAVAILABLE",
-      });
-      queueDown = false;
     });
   });
 });
