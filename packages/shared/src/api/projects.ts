@@ -28,3 +28,5 @@ export type ProjectResponse = {
   };
   createdAt: string;
 };
+
+export type ProjectListResponse = { projects: ProjectResponse[] };
