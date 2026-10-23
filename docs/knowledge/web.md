@@ -240,3 +240,31 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 2. **Data:** `useRepositories`, `useCreateProject`, relative times; tests.
 3. **Sidebar:** the projects list and its **+**.
 4. **Screen:** `/projects/new` with its states.
+
+## 14. Environment setup in the browser (requirements)
+
+**Goal:** from the Welcome checklist's step 3 (or a project), you start setup, watch it work, answer its questions, and it ends saved; the checklist moves on to step 4.
+
+**The setup page `/projects/:id/environment`** (canvas: Environment setup):
+- **Top bar:** "<project> / Environment setup", a status badge (Queued, Setting up, Waiting for your answer, Saved as vN, Failed, Stopped), time and cost, **Stop setup** while it runs or waits.
+- **Not started:** what setup does, and **Start setup**.
+- **The conversation:** CodeGenie's intro; a **timeline card** built from the events (projects found, installed with a command, checks with their badges, the agent's work grouped and expandable, info lines) with the beam while running and new lines rising in; a **question card** (question, why, options with the first marked Recommended, Something else when allowed, **Answer**; then your answer with your avatar; "Question N · I ask at most 5"); the **result**: saved (the environment's steps, checks and decisions, "Saved. <project> is ready.", **Describe your first task**, coming soon until New task exists), failed (the reason, **Try again**), stopped (**Start again**).
+- **Live:** reloading replays everything and continues; when setup ends the sidebar dot and the checklist update.
+
+**Welcome step 3, in place:** **Start setup** starts it; the step shows a compact live card (beam, "Setting up <project>", the latest 3 lines, **Watch it live →**); while waiting, the question and **Answer** (opens the setup page); done ticks the step; failed or stopped shows the reason and **Try again**.
+
+**Getting started card:** "Next: Set up <project> · in progress", or "· needs your answer".
+
+**Underneath:** `features/setup/` (kept apart from `features/onboarding/`, the Welcome checklist): `api.ts`; `useOnboarding`, `useEnvironments`, and start / answer / stop mutations that update the cached setup; `useOnboardingEvents` (an `EventSource` on `/api/projects/:id/onboarding/events`, in order without repeats, closed on `done` or once ended, refreshing the setup, projects and environments); `buildTimeline(events)` (pure: the lines, the open question, the latest 3, whether it's done). Setup reports `setup_drafted` and phased `setup_completed` events for the timeline ([api.md](./api.md) §6).
+
+**Not here:** the project page's Environment tab (versions, rollback, editing), re-running setup from "needs attention".
+
+**Done when:**
+1. With a new account: step 3 → Start setup → the live card → Watch it live → answer a question if one comes → saved; the step ticks and the sidebar dot turns green.
+2. Reloading mid-setup shows everything so far and keeps going; the stream comes through the Next rewrite as it happens.
+3. Stop works; a failed setup shows its reason with Try again.
+4. Both boards match in light and dark and at phone width.
+5. Tests cover the timeline for each event kind, the hooks (the events hook with a fake stream), each component state, the page states, and step 3.
+
+**Batches:** 1. setup's structured events and the data layer; 2. the missing states on the canvas's Environment setup board; 3. the setup page; 4. Welcome step 3, the card and the sidebar.
+

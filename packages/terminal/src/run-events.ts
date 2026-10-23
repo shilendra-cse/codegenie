@@ -69,6 +69,9 @@ export function createRunReporter(write: (line: string) => void, style: Style) {
         return;
       }
       if (event.type === "agent_step") return;
+      // Environment setup prints its own progress; these reports are for the website.
+      if (event.type === "setup_drafted") return;
+      if (event.type === "setup_completed" && event.phase) return;
       flushText();
       switch (event.type) {
         case "stage_changed":

@@ -94,6 +94,29 @@ export async function runOnboarding(
     return sandbox;
   };
 
+  const now = () => new Date().toISOString();
+  // What each try installed and checked, so a viewer can show it, not only the summary text.
+  const report = (phase: "first" | "agent" | "final", tried: TryResult) =>
+    options.emit?.({
+      type: "setup_completed",
+      runId,
+      ts: now(),
+      phase,
+      success: tried.steps.every((step) => step.status === "ok"),
+      steps: tried.steps.map(({ name, cwd, command, status }) => ({
+        name,
+        cwd,
+        command,
+        status,
+      })),
+      checks: tried.checks.map(({ name, cwd, command, status }) => ({
+        name,
+        cwd,
+        command,
+        status,
+      })),
+    });
+
   const notes: string[] = [];
   let agent: OnboardingResult["agent"] = null;
   const result = (
@@ -113,11 +136,18 @@ export async function runOnboarding(
     const commit = await headCommit(sandbox);
     const draft = await draftEnvironment(sandbox);
     notes.push(...draft.notes);
+    options.emit?.({
+      type: "setup_drafted",
+      runId,
+      ts: now(),
+      projects: draft.projects,
+    });
     if (signal?.aborted) return result("cancelled");
 
     channel.info("Installing dependencies and running checks…");
     const tryEnvironment = createTryEnvironment(sandbox);
     const first = await tryEnvironment(draft);
+    report("first", first);
     let proposal = asProposal(first, draft.checks);
     let lastTry = { proposal, result: first };
     let decisions: EnvironmentDecision[] = [];
@@ -139,6 +169,7 @@ export async function runOnboarding(
         initial: { proposal, result: first, notes: draft.notes },
         tryEnvironment: async (tried) => {
           const tryResult = await tryEnvironment(tried);
+          report("agent", tryResult);
           lastTry = { proposal: tried, result: tryResult };
           return tryResult;
         },
@@ -168,6 +199,7 @@ export async function runOnboarding(
     channel.info("Final check in a fresh sandbox…");
     const fresh = await newSandbox();
     const final = await createTryEnvironment(fresh, "final")(proposal);
+    report("final", final);
     if (sameProposal(lastTry.proposal, proposal)) {
       notes.push(...compareWithLastTry(lastTry.result, final));
     }

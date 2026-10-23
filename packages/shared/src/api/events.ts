@@ -1,4 +1,5 @@
 import type { CheckStatus, StepStatus } from "../types/environment.js";
+import type { PackageManager } from "../types/setup.js";
 import type { FinalRunStatus, RunStage } from "./runs.js";
 
 export type RunEventBase = {
@@ -25,8 +26,21 @@ export type RunEventSetupStarted = RunEventBase & {
 export type RunEventSetupCompleted = RunEventBase & {
   type: "setup_completed";
   success: boolean;
-  steps: { name: string; cwd: string; status: StepStatus }[];
-  checks: { name: string; cwd: string; status?: CheckStatus }[];
+  steps: { name: string; cwd: string; command?: string; status: StepStatus }[];
+  checks: {
+    name: string;
+    cwd: string;
+    command?: string;
+    status?: CheckStatus;
+  }[];
+  /** Environment setup only: its first try, one of the setup agent's, or the final check in a fresh sandbox. */
+  phase?: "first" | "agent" | "final";
+};
+
+/** Environment setup found these projects to install and check. */
+export type RunEventSetupDrafted = RunEventBase & {
+  type: "setup_drafted";
+  projects: { cwd: string; packageManager: PackageManager | null }[];
 };
 
 export type RunEventToolStart = RunEventBase & {
@@ -117,6 +131,7 @@ export type RunEvent =
   | RunEventSandboxCreated
   | RunEventSetupStarted
   | RunEventSetupCompleted
+  | RunEventSetupDrafted
   | RunEventToolStart
   | RunEventToolEnd
   | RunEventTextDelta
