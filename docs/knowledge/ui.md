@@ -74,7 +74,7 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 | `/projects/:id/settings` | Project: Settings | yes |
 | `/tasks/:id` | Task | yes |
 
-The install callback's redirect (today `/build?github=…`) moves to `/welcome` on the first install and `/projects/new` afterwards.
+The install callback returns to `/welcome?github=…`; once Add a repository exists, returning users go to `/projects/new` instead.
 
 ## 4. Screens
 

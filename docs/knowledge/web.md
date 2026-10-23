@@ -1,6 +1,6 @@
 # Web app
 
-> Status: **Accepted** (Phase 4) · Last updated: 2026-10-22 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/21Gfpi2Kmd71mahuxtNSfu), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
+> Status: **Accepted** (Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/21Gfpi2Kmd71mahuxtNSfu), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
 
 How the web app is built: the stack, how it talks to the API, how the code is organized, and the order we build it in. **What** each screen shows is in ui.md; this file is **how**.
 
@@ -106,7 +106,7 @@ apps/web/
 
 - `middleware.ts`: without a session cookie, any `(app)` route redirects to `/signin`; signed in, `/` and `/signin` redirect into the app. Any 401 from the API also sends you to `/signin`.
 - After signing in you land on `/welcome` until you have a task, then `/inbox` (from step 8).
-- GitHub's App install callback returns to `/welcome` on the first install, `/projects/new` afterwards (today it returns to `/build`).
+- GitHub's App install callback returns to `/welcome?github=…` (signing in first returns there too); once Add a repository exists, returning users go to `/projects/new`.
 
 ## 9. Testing
 
@@ -164,3 +164,42 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 3. **Look:** tokens, fonts and theme; `factory/` and the step's atoms; the ESLint layer rule.
 4. **Public pages:** landing and sign-in from the canvas.
 5. **App shell:** the AppShell template, sidebar, account menu (theme, sign out), `/welcome` greeting; screenshots against the canvas.
+
+## 12. Connect GitHub (requirements)
+
+**Goal:** `/welcome` shows the first-run checklist; "Install on GitHub" goes to GitHub and you come back to `/welcome` with that step done.
+
+**Screen `/welcome`** (canvas: Welcome):
+- The greeting ("Welcome, <first name>" and the subtitle), then a checklist of 4 steps. Done steps are ticked, the current one shows its button and hint, later ones are muted:
+  1. **Install the GitHub App**: done when you have any installation (`GET /github/installations`); the button goes to its `installUrl`.
+  2. **Add a repository**: done when you have any project (`GET /projects`); "Choose a repository" → `/projects/new`.
+  3. **Set up its environment**: done when any project has an environment; → that project's environment page.
+  4. **Describe your first task**: done when any task exists (`GET /tasks`, first page); → `/new`.
+- The note about JavaScript and TypeScript repositories under it.
+- **States:** loading (a skeleton of the checklist), an API error (an alert with Try again), GitHub sign-in expired (the API's 401 `GITHUB_SIGN_IN_REQUIRED` → `/signin?next=/welcome`, as any 401).
+- **Back from GitHub**, `/welcome?github=…` shows a notice, then the parameter is removed from the address:
+  - `installed`: "GitHub App installed."
+  - `requested`: "Installation requested. An owner of the organisation needs to approve it."
+  - `cancelled`: "Installation cancelled."
+  - `not-found`: "We couldn't find that installation on your account."
+- **Touches** ([ui.md](./ui.md) §2): the backdrop goes into the AppShell once, below any top bar, so every app page has it; on `/welcome` the greeting and checklist rise in, and the current step's button has the glow.
+- The sidebar's Projects list stays "No projects yet." here; it lists projects once Add a repository exists.
+
+**Server:** the install callback returns to `/welcome?github=<outcome>`, and sends someone signed out to `/signin?next=/welcome`.
+
+**Underneath:**
+- `features/github/` `useInstallations()`, `features/projects/` `useProjects()`, `features/tasks/` `useHasTasks()`: an axios function and a Query hook each, typed by the shared contract.
+- `features/onboarding/checklist.ts`: a pure function from those three results to the 4 steps (done, current or todo, and where each button goes).
+- Molecule `checklist-step`, organism `welcome-checklist` (with its loading and error states); the `Alert` atom for the notices.
+
+**Done when:**
+1. A new user sees step 1 current; installing on GitHub brings them back to `/welcome` with "GitHub App installed." and step 2 current.
+2. Cancelling on GitHub, or requesting an organisation's approval, comes back with the right notice.
+3. The checklist matches the canvas's Welcome board (steps 1 and 2) in light and dark and at phone width.
+4. Tests cover the checklist function for each combination, the step and checklist components with their states, the notices and removing the parameter, and the callback's redirects.
+5. The web and server tests, lint and type-check pass.
+
+**Batches:**
+1. **Server:** the callback's redirects and their test; these requirements.
+2. **Data:** the three query hooks and the checklist function, with tests.
+3. **Screen:** the checklist components, the notices, the AppShell backdrop and `/welcome`, with tests.

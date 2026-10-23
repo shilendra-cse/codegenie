@@ -69,7 +69,7 @@ describe.skipIf(!database)("GitHub install callback", () => {
       await callback(
         `installation_id=${usersInstallation}&setup_action=install`,
       ),
-    ).toBe(`${frontendUrl}/build?github=installed`);
+    ).toBe(`${frontendUrl}/welcome?github=installed`);
     expect(await getInstallation(db, usersInstallation)).toMatchObject({
       accountLogin: "acme",
       accountType: "organization",
@@ -81,7 +81,7 @@ describe.skipIf(!database)("GitHub install callback", () => {
     const someoneElses = randomInt(1, 2 ** 31);
 
     expect(await callback(`installation_id=${someoneElses}`)).toBe(
-      `${frontendUrl}/build?github=not-found`,
+      `${frontendUrl}/welcome?github=not-found`,
     );
     expect(await getInstallation(db, someoneElses)).toBeNull();
   });
@@ -89,20 +89,20 @@ describe.skipIf(!database)("GitHub install callback", () => {
   it("sends someone who isn't signed in, or has no GitHub token, to sign in", async () => {
     signedIn = null;
     expect(await callback(`installation_id=${usersInstallation}`)).toBe(
-      `${frontendUrl}/signin`,
+      `${frontendUrl}/signin?next=%2Fwelcome`,
     );
     signedIn = userId;
     token = null;
     expect(await callback(`installation_id=${usersInstallation}`)).toBe(
-      `${frontendUrl}/signin`,
+      `${frontendUrl}/signin?next=%2Fwelcome`,
     );
     token = "ghu_user";
   });
 
   it("goes back without an installation when it was only requested or cancelled", async () => {
     expect(await callback("setup_action=request")).toBe(
-      `${frontendUrl}/build?github=requested`,
+      `${frontendUrl}/welcome?github=requested`,
     );
-    expect(await callback("")).toBe(`${frontendUrl}/build?github=cancelled`);
+    expect(await callback("")).toBe(`${frontendUrl}/welcome?github=cancelled`);
   });
 });
