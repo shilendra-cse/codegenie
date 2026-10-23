@@ -98,6 +98,7 @@ apps/web/
 - **Tokens:** the canvas's colours named once in `app/globals.css`, with a light and a dark value each: surfaces, borders, text (3 levels), the **mono accent** (black in light mode, white in dark), and status colours (`ok`, `warn`, `err`, `merged`, with soft background and border variants), plus `add` / `del` for diffs. They map onto shadcn's variables, so every atom picks them up. Components use names, never raw colours.
 - **Fonts:** Geist and Geist Mono through `next/font`. **Icons:** lucide. **Logos:** `public/brand/` (black on light, white on dark).
 - **Theme:** follows the system, switchable in the account menu (next-themes).
+- **Motion and glow** ([ui.md](./ui.md) §2): plain CSS in `app/globals.css` (`grid-backdrop`, `glow`, `beam`, `sheen`, `rise`, `reveal`), with one reduced-motion block that stops them all; no animation library. Atoms `GridBackdrop` and `Glow` place the backdrop. Each step's screens apply them as they're built: the beam and sheen on what is working, rise on what arrives, the glow on the page's primary action, hover on what opens.
 - **Diffs:** our own small renderer for the Changes tab.
 - **Layout:** flexbox by default; CSS grid only where a layout really needs two-dimensional alignment (e.g. a table-like set of rows and columns that must line up).
 

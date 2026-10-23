@@ -1,6 +1,6 @@
 # Web UI
 
-> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-21 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/21Gfpi2Kmd71mahuxtNSfu) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
+> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/21Gfpi2Kmd71mahuxtNSfu) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
 
 The screens, what they show in every state, and what each needs from the API. The canvas is the visual source of truth; this file is the written one. Phase 4 builds what's drawn.
 
@@ -21,11 +21,26 @@ The screens, what they show in every state, and what each needs from the API. Th
 | Status colours | green = passing, PR open, succeeded · amber = draft, incomplete, needs attention · red = failed, broken · purple = merged. Used only for status, never decoration |
 | Neutrals | greys for text (3 levels), borders, surfaces (page, sidebar and panels, hover) |
 | Themes | light and dark, both complete |
-| Shape | 8 px radius on controls, 12 px on cards, 1 px borders, shadows only on floating things (menus, the composer) |
+| Shape | 8 px radius on controls, 12 px on cards, 1 px borders, shadows only on floating things (menus, the composer) and on hover (below) |
 | Icons | Lucide, 16 px, 1.75 stroke |
 | Logos | `apps/web/public/brand/` (black on light, white on dark; full logo and icon) |
 
 Tokens map onto the shadcn CSS variables already in `apps/web/app/globals.css` (`--background`, `--foreground`, `--primary`, `--muted`, `--border`…), plus status tokens: `--ok`, `--warn`, `--err`, `--merged`, each with a soft background and border variant, and `--add` / `--del` for diffs. The **Components and states** board on the canvas lists every token, badge, banner and card.
+
+### Motion and glow
+
+The landing page's touches carry into the app, quieter, and only where they mean something (canvas: **App touches**, with each one switchable):
+
+| Touch | Where | Meaning |
+|---|---|---|
+| **Backdrop** | a faint grid and glow behind the top of each app page, fading out under the heading; top bars and tab rows stay solid above it | the same place as the landing page |
+| **Beam** | a light running around the border of a run (or setup) that is working right now; nowhere else | something is alive |
+| **Sheen** | across "Working" badges (task header, run card, Inbox rows) | the one moving label |
+| **Rise** | content fades up once as it arrives: a page's sections on load, a new activity line, a new message | this just arrived |
+| **Button glow** | the page's one primary action | the next thing to do |
+| **Hover** | cards you can open lift slightly; list rows only light up | this opens |
+
+Never on status colours, errors or the diff; nothing loops except the beam, the sheen and the backdrop's glow. With reduced motion (the system setting) nothing moves: the beam is a plain border, content just appears.
 
 ## 3. Navigation
 
