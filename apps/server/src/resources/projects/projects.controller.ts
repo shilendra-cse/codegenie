@@ -1,6 +1,6 @@
 import { ok } from "@/lib/api-response";
 import type { AuthenticatedController } from "@/types/base.types";
-import { createProjectSchema, projectParamsSchema } from "./projects.types";
+import { createProjectSchema, projectParamsSchema } from "@codegenie/shared";
 import {
   createProject,
   type CreateProjectDeps,

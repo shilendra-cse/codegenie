@@ -14,7 +14,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { AuthenticatedRequest } from "@/types/base.types";
 import { createRunControllers } from "../runs/runs.controller";
 import { createTaskControllers } from "./tasks.controller";
-import type { TaskDetail, TaskListItem } from "./tasks.types";
+import type { TaskDetail, TaskListItem } from "@codegenie/shared";
 
 const database = await testDatabaseOrSkip("task and run reads");
 

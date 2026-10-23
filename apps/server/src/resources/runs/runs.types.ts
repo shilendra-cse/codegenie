@@ -1,40 +1,5 @@
 import type { UserRun } from "@codegenie/db";
-import { z } from "zod";
-
-export const runParamsSchema = z.object({
-  id: z.uuid("The run id must be a UUID."),
-});
-
-export const afterSeqSchema = z.coerce
-  .number("The last event id must be a number.")
-  .int()
-  .min(0)
-  .default(0);
-
-export type RunResponse = {
-  id: string;
-  taskId: string;
-  trigger: UserRun["trigger"];
-  status: UserRun["status"];
-  stage: UserRun["stage"];
-  model: string;
-  summary: string | null;
-  checksPassed: boolean | null;
-  commitSha: string | null;
-  error: { code: string; message: string | null } | null;
-  steps: number;
-  inputTokens: number;
-  outputTokens: number;
-  costUsd: number;
-  queuedAt: string;
-  startedAt: string | null;
-  finishedAt: string | null;
-  durationMs: number | null;
-  changes: {
-    files: { path: string; added: number | null; removed: number | null }[];
-    truncated: boolean;
-  } | null;
-};
+import type { RunResponse } from "@codegenie/shared";
 
 export function runDurationMs(run: Pick<UserRun, "startedAt" | "finishedAt">) {
   return run.startedAt && run.finishedAt

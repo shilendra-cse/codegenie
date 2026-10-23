@@ -1,6 +1,7 @@
 import { type Db, findUserTask } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
-import { type TaskDetail, toTaskDetail } from "../tasks.types";
+import type { TaskDetail } from "@codegenie/shared";
+import { toTaskDetail } from "../tasks.types";
 
 export async function getUserTask(
   db: Db,

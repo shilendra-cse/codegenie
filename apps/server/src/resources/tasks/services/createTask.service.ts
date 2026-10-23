@@ -1,11 +1,8 @@
 import { createTaskWithRun, type Db, markRunEnded } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
 import { getRunnableProject } from "../../projects/services/getRunnableProject.service";
-import type {
-  CreatedTaskResponse,
-  CreateTaskInput,
-  WorkQueue,
-} from "../tasks.types";
+import type { CreatedTask, CreateTaskInput } from "@codegenie/shared";
+import type { WorkQueue } from "../tasks.types";
 
 export type CreateTaskDeps = { db: Db; queue: WorkQueue; model: string };
 
@@ -16,7 +13,7 @@ export async function createTask(
   userId: string,
   projectId: string,
   input: CreateTaskInput,
-): Promise<CreatedTaskResponse> {
+): Promise<CreatedTask> {
   const project = await getRunnableProject(deps.db, userId, projectId);
   if (!project.environment) {
     throw new HttpError(

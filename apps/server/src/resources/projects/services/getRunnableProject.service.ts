@@ -1,6 +1,6 @@
 import type { Db } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
-import type { ProjectResponse } from "../projects.types";
+import type { ProjectResponse } from "@codegenie/shared";
 import { getUserProject } from "./getUserProject.service";
 
 export async function getRunnableProject(

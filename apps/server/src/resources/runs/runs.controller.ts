@@ -5,7 +5,7 @@ import type {
   AuthenticatedController,
   AuthenticatedStream,
 } from "@/types/base.types";
-import { afterSeqSchema, runParamsSchema } from "./runs.types";
+import { afterSeqSchema, runParamsSchema } from "@codegenie/shared";
 import { cancelRun, type Publisher } from "./services/cancelRun.service";
 import { getUserRun } from "./services/getUserRun.service";
 import { getUserRunDiff } from "./services/getUserRunDiff.service";

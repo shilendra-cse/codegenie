@@ -1,14 +1,14 @@
 import { ok } from "@/lib/api-response";
 import type { AuthenticatedController } from "@/types/base.types";
-import { projectParamsSchema } from "../projects/projects.types";
 import { createTask, type CreateTaskDeps } from "./services/createTask.service";
 import { getUserTask } from "./services/getUserTask.service";
 import { listUserTasks } from "./services/listUserTasks.service";
 import {
   createTaskSchema,
   listTasksQuerySchema,
+  projectParamsSchema,
   taskParamsSchema,
-} from "./tasks.types";
+} from "@codegenie/shared";
 
 export type TaskControllerDeps = CreateTaskDeps;
 
