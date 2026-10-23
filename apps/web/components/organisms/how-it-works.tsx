@@ -3,16 +3,16 @@ import { StepCard } from "@/components/molecules/step-card";
 export function HowItWorks() {
   return (
     <section id="how" className="border-t border-border bg-surface">
-      <div className="mx-auto flex max-w-[1160px] flex-col gap-10 px-6 py-[88px]">
-        <div className="flex max-w-[640px] flex-col gap-2.5">
+      <div className="mx-auto flex max-w-[1160px] flex-col gap-10 px-6 py-24">
+        <div className="reveal flex max-w-[640px] flex-col gap-2.5">
           <span className="text-[13px] font-medium text-faint">
             How it works
           </span>
-          <h2 className="text-4xl leading-tight font-semibold tracking-[-0.025em]">
+          <h2 className="text-[40px] leading-[1.1] font-semibold tracking-[-0.03em]">
             From a sentence to a pull request
           </h2>
         </div>
-        <div className="flex flex-wrap gap-4">
+        <div className="reveal flex flex-wrap gap-4">
           <StepCard number="01" title="Connect a repository">
             Install the GitHub App on the repositories you choose. CodeGenie
             learns how to install and check each one, and asks you only what it

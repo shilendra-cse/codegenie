@@ -7,7 +7,7 @@ export type SiteHeaderProps = { signedIn: boolean };
 
 export function SiteHeader({ signedIn }: SiteHeaderProps) {
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-background">
+    <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1160px] flex-wrap items-center gap-4 px-6 py-3.5">
         <Link href="/" aria-label="CodeGenie home">
           <Logo />

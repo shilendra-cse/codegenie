@@ -93,6 +93,13 @@
   --del: #fcebec;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(0, 0, 0, 0.07);
+  --shadow-window:
+    0 1px 2px rgba(0, 0, 0, 0.04), 0 24px 64px -16px rgba(0, 0, 0, 0.14);
+
+  --grid: rgba(15, 15, 18, 0.06);
+  --glow: rgba(15, 15, 18, 0.1);
+  --beam: rgba(15, 15, 18, 0.55);
+  --sheen: rgba(15, 15, 18, 0.08);
 }
 
 .dark {
@@ -129,6 +136,13 @@
   --del: rgba(242, 102, 108, 0.14);
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-window:
+    0 1px 2px rgba(0, 0, 0, 0.5), 0 32px 80px -20px rgba(0, 0, 0, 0.8);
+
+  --grid: rgba(255, 255, 255, 0.055);
+  --glow: rgba(255, 255, 255, 0.13);
+  --beam: rgba(255, 255, 255, 0.85);
+  --sheen: rgba(255, 255, 255, 0.14);
 }
 
 @layer base {
@@ -140,5 +154,335 @@
   }
   body {
     @apply bg-background text-foreground font-sans text-sm leading-normal;
+  }
+}
+
+/* Landing motion. Everything here stops under prefers-reduced-motion. */
+
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@layer components {
+  .grid-backdrop {
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: center -1px;
+    mask-image: radial-gradient(
+      ellipse 75% 65% at 50% 0%,
+      #000 30%,
+      transparent 75%
+    );
+  }
+
+  .glow {
+    background: radial-gradient(closest-side, var(--glow), transparent);
+    filter: blur(30px);
+    animation: glow-breathe 8s ease-in-out infinite;
+  }
+
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      var(--sheen) 50%,
+      transparent 70%
+    );
+    transform: translateX(-120%);
+    animation: sheen 4.5s ease-in-out infinite;
+  }
+
+  .beam {
+    padding: 1px;
+    border-radius: 14px;
+    background:
+      conic-gradient(
+        from var(--beam-angle),
+        transparent 0deg 280deg,
+        var(--beam) 330deg,
+        transparent 360deg
+      ),
+      var(--border);
+    box-shadow: var(--shadow-window);
+    animation: beam 7s linear infinite;
+  }
+
+  .flow-line {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--border-strong) 0 6px,
+      transparent 6px 10px
+    );
+  }
+  .flow-line::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -30%;
+    width: 30%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--beam), transparent);
+    animation: flow 2.6s ease-in-out infinite;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    margin-left: 3px;
+    vertical-align: -2px;
+    background: var(--text-faint);
+    animation: blink 1s steps(1) infinite;
+  }
+
+  /* The product preview replays a run every 12 s; play-N appears at step N. */
+  .play-0 {
+    animation: play-0 12s infinite;
+  }
+  .play-1 {
+    animation: play-1 12s infinite;
+  }
+  .play-2 {
+    animation: play-2 12s infinite;
+  }
+  .play-3 {
+    animation: play-3 12s infinite;
+  }
+  .play-4 {
+    animation: play-4 12s infinite;
+  }
+  .play-5 {
+    animation: play-5 12s infinite;
+  }
+  .play-6 {
+    animation: play-6 12s infinite;
+  }
+  .play-7 {
+    animation: play-7 12s infinite;
+  }
+  .play-working {
+    animation: play-working 12s infinite;
+  }
+
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 28%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glow,
+    .sheen::after,
+    .beam,
+    .flow-line::after,
+    .caret,
+    .reveal,
+    .play-0,
+    .play-1,
+    .play-2,
+    .play-3,
+    .play-4,
+    .play-5,
+    .play-6,
+    .play-7 {
+      animation: none !important;
+    }
+    .play-working {
+      display: none;
+    }
+  }
+}
+
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes sheen {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  85%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes beam {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+@keyframes flow {
+  to {
+    left: 100%;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes play-0 {
+  0%,
+  2% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  6%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-1 {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  13%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-2 {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  21%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-3 {
+  0%,
+  27% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  30%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-4 {
+  0%,
+  35% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  38%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-5 {
+  0%,
+  43% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  46%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-6 {
+  0%,
+  53% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  56%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-7 {
+  0%,
+  61% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  64% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  67%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes play-working {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  62%,
+  100% {
+    opacity: 0;
   }
 }
