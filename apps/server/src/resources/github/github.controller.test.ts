@@ -17,6 +17,7 @@ const repo = (id: number, name: string, updatedAt: string) => ({
   private: true,
   html_url: `https://github.com/acme/${name}`,
   updated_at: updatedAt,
+  language: id === 1 ? "TypeScript" : null,
 });
 
 const githubFetch: typeof fetch = (input) => {
@@ -85,8 +86,13 @@ describe("GitHub controllers", () => {
       status: 200,
       data: {
         repositories: [
-          { id: 2, fullName: "acme/new", projectId: null },
-          { id: 1, fullName: "acme/old", projectId: "project-1" },
+          { id: 2, fullName: "acme/new", language: null, projectId: null },
+          {
+            id: 1,
+            fullName: "acme/old",
+            language: "TypeScript",
+            projectId: "project-1",
+          },
         ],
       },
     });

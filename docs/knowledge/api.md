@@ -40,7 +40,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | Method | Path | |
 |---|---|---|
 | GET | `/github/installations` | The user's installations and the install link ([github.md](./github.md) §6) |
-| GET | `/github/installations/:id/repositories` | Repositories the user can access there, each with its `projectId` or `null` |
+| GET | `/github/installations/:id/repositories` | Repositories the user can access there (most recently updated first), each with its `language` and its `projectId`, or `null` |
 | GET | `/projects` | The user's projects, newest first |
 | POST | `/projects` | `{ installationId, repoId }` → 201 created, or 200 with the existing project |
 | GET | `/projects/:id` | One project |

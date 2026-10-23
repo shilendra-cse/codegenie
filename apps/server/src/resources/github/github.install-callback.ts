@@ -13,26 +13,33 @@ export type InstallCallbackDeps = {
 export function createInstallCallbackHandler(
   deps: InstallCallbackDeps,
 ): RequestHandler {
-  const signIn = `${deps.frontendUrl}/signin?next=${encodeURIComponent("/welcome")}`;
-  const back = (outcome: string) =>
-    `${deps.frontendUrl}/welcome?github=${outcome}`;
+  // The install link's state names the page to return to; only known pages, so it can't redirect anywhere else.
+  const returnPage = (req: Request) =>
+    req.query.state === "add-repo" ? "/projects/new" : "/welcome";
+  const signIn = (req: Request) =>
+    `${deps.frontendUrl}/signin?next=${encodeURIComponent(returnPage(req))}`;
+  const back = (req: Request, outcome: string) =>
+    `${deps.frontendUrl}${returnPage(req)}?github=${outcome}`;
 
   return async (req, res) => {
     const userId = await deps.currentUserId(req);
     if (!userId) {
-      res.redirect(signIn);
+      res.redirect(signIn(req));
       return;
     }
     const installationId = Number(req.query.installation_id);
     if (!Number.isInteger(installationId) || installationId <= 0) {
       res.redirect(
-        back(req.query.setup_action === "request" ? "requested" : "cancelled"),
+        back(
+          req,
+          req.query.setup_action === "request" ? "requested" : "cancelled",
+        ),
       );
       return;
     }
     const token = await deps.githubToken(userId);
     if (!token) {
-      res.redirect(signIn);
+      res.redirect(signIn(req));
       return;
     }
 
@@ -42,7 +49,7 @@ export function createInstallCallbackHandler(
     });
     const installation = installations.find((i) => i.id === installationId);
     if (!installation) {
-      res.redirect(back("not-found"));
+      res.redirect(back(req, "not-found"));
       return;
     }
     await recordInstallation(deps.db, {
@@ -51,6 +58,6 @@ export function createInstallCallbackHandler(
       accountType: installation.accountType,
       installedByUserId: userId,
     });
-    res.redirect(back("installed"));
+    res.redirect(back(req, "installed"));
   };
 }

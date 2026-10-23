@@ -52,6 +52,7 @@ export type InstallationRepo = {
   private: boolean;
   htmlUrl: string;
   updatedAt: string | null;
+  language: string | null;
 };
 
 export async function listInstallationRepos(
@@ -79,5 +80,6 @@ export async function listInstallationRepos(
     private: repo.private,
     htmlUrl: repo.html_url,
     updatedAt: repo.updated_at ?? null,
+    language: repo.language ?? null,
   }));
 }
