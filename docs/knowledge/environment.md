@@ -177,6 +177,18 @@ backend tests: 6 pass, 9 fail: "connect ECONNREFUSED localhost:5433"
 Using "npm run test" for backend. Re-running… ✓ 6/6 pass.
 ```
 
+### 3.5 Setup from the website
+
+The website starts setup, shows it live and asks its questions in the browser.
+
+- **Stored:** each setup is an `onboardings` row (status `queued` → `running` ⇄ `waiting` → `succeeded` / `failed` / `cancelled`, what it saved, what it cost) with its events in `onboarding_events` ([database.md](./database.md)). At most one active setup per project; starting again returns it.
+- **Watched:** the worker stores every event, then publishes it; the browser follows `GET /projects/:id/onboarding/events`, replayed from the database then live, the same way as run events ([api.md](./api.md) §6).
+- **Questions (`EventChannel`):** the worker records `question_asked` and waits; the answer comes through `POST /projects/:id/onboarding/answer` and reaches the worker over Redis; the worker records `question_answered` and carries on.
+- **Waiting:** the sandbox stays open while a question is unanswered. After **30 minutes** setup stops (`failed`, `NO_ANSWER`: "Setup stopped after waiting 30 minutes for an answer.") and the sandbox goes; it can be started again.
+- **Stop:** a queued setup is cancelled directly; a running or waiting one is told to stop and ends `cancelled`.
+- **Saving:** a setup that succeeds is saved straight away as the project's next active version, as the worker did before; re-running setup makes a newer one.
+- **API:** `POST /onboarding` (start), `GET /onboarding` (latest), `GET /onboarding/events` (stream), `POST /onboarding/answer`, `POST /onboarding/cancel`, `GET /environments` (versions), all under `/projects/:id`. Rollback comes with the project page.
+
 ## 4. Task runs
 
 ```
@@ -287,7 +299,7 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 | C ✅ | C1 setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>` | the guided conversation works |
 | D ✅ | `EnvironmentStore` + CLI file store (versions); `agent:setup` saves and `--show`s, `agent:run` loads; health signals | complete onboarding in the CLI |
 | Phase 2 | DB migration + `DbEnvironmentStore` | product storage |
-| Phase 4 | `EventChannel`, question cards, config panel, needs-attention banner | onboarding on the website |
+| Phase 4 | `EventChannel`, stored setups and events, the setup API (§3.5); then question cards, config panel, needs-attention banner | onboarding on the website |
 
 ## 9. Not in the MVP
 

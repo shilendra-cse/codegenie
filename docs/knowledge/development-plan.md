@@ -151,6 +151,7 @@ Branches, each built in small batches (see Ways of working):
 - [x] **1. `feat/projects-api`**: list, get, add (checked against the installation and the user's GitHub access) and remove projects; `projectId` on the repo picker; ownership rule; OpenAPI; api.md.
 - [x] **2. `feat/tasks-api`**: create tasks (the server queues work), get tasks and runs, cancel, start onboarding; the worker's dev enqueue script goes.
 - [x] **3. `feat/run-events`**: `GET /runs/:id/events`, SSE with replay and `Last-Event-ID` ([api.md](./api.md) §6).
+- [ ] **`feat/onboarding-api`**: setups stored with their events, questions answered from the browser (30-minute wait), stop, versions ([environment.md](./environment.md) §3.5). Before the web app's environment setup step.
 - [ ] **4–12. The web app, step by step through the user's journey** ([web.md](./web.md) §10): sign in → connect GitHub → add a repository → set up the environment (with onboarding events stored server-side) → start a task → watch it work → get the PR → find your work → end-to-end test. Each step's requirements are written in web.md and approved before it's built.
 
 Checklist:

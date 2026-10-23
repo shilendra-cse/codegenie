@@ -5,6 +5,8 @@ import { runDiffs } from "./runs/run-diffs-schema";
 import { runEvents } from "./runs/run-events-schema";
 import { runs } from "./runs/runs-schema";
 import { messages } from "./tasks/messages-schema";
+import { onboardingEvents } from "./projects/onboarding-events-schema";
+import { onboardings } from "./projects/onboardings-schema";
 import { projectEnvironments } from "./projects/project-environments-schema";
 import { projects } from "./projects/projects-schema";
 import { tasks } from "./tasks/tasks-schema";
@@ -28,6 +30,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   }),
   tasks: many(tasks),
   environments: many(projectEnvironments),
+  onboardings: many(onboardings),
 }));
 
 export const projectEnvironmentsRelations = relations(
@@ -42,6 +45,32 @@ export const projectEnvironmentsRelations = relations(
       references: [user.id],
     }),
     runs: many(runs),
+  }),
+);
+
+export const onboardingsRelations = relations(onboardings, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [onboardings.projectId],
+    references: [projects.id],
+  }),
+  createdBy: one(user, {
+    fields: [onboardings.createdByUserId],
+    references: [user.id],
+  }),
+  environment: one(projectEnvironments, {
+    fields: [onboardings.environmentId],
+    references: [projectEnvironments.id],
+  }),
+  events: many(onboardingEvents),
+}));
+
+export const onboardingEventsRelations = relations(
+  onboardingEvents,
+  ({ one }) => ({
+    onboarding: one(onboardings, {
+      fields: [onboardingEvents.onboardingId],
+      references: [onboardings.id],
+    }),
   }),
 );
 
