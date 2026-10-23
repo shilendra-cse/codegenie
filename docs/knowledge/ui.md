@@ -85,7 +85,9 @@ Hero ("Describe the change. Review the pull request."), Sign in with GitHub, a s
 One card: Continue with GitHub, what's shared (name and email; repository access comes separately). **States:** default, sign-in failed. **Data:** Better Auth.
 
 ### Welcome (first run)
-A 4-step checklist: install the GitHub App → add a repository → set up its environment → describe your first task. The current step has the action; finished steps are ticked. Shown until the first task exists. **Data:** has an installation? any project? its environment? any task?
+A 4-step checklist: install the GitHub App → add a repository → set up its environment → describe your first task. Finished steps are ticked and say what happened ("dodesk added."); later steps are muted. **Every step happens in place**, so you never lose the thread: the current step opens up inside the checklist (the repository picker in step 2, a compact live setup card with "Watch it live" and any question in step 3, a small task box in step 4); only the GitHub install leaves the page, and comes back to it. Shown until the first task exists. **Data:** has an installation? any project? its environment? any task?
+
+**Getting started card:** until the four steps are done, a small card at the bottom of the sidebar (above the account) shows "2 of 4", a progress bar and "Next: …", linking back to the checklist. It's hidden on the welcome page itself, and wherever you are (watching setup, exploring) it's the way back.
 
 ### Add a repository
 Installation picker (accounts and orgs), search, repository rows: name, private badge, language, updated time, **Add** or **Added · Open**, and a warning for repositories that don't look like JS/TS (U3). A link to change repository access on GitHub. **States:** loading, empty search, no installations (→ install), GitHub sign-in expired (→ sign in). **Data:** the repo picker API that exists ([github.md](./github.md) §6) plus, per repository, whether it's already a project.

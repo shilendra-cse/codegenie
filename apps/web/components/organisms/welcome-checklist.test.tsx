@@ -51,4 +51,34 @@ describe("WelcomeChecklist", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
+
+  it("lets the current step happen in place, and names what was added", () => {
+    const { rerender } = render(
+      <WelcomeChecklist
+        status="ready"
+        steps={steps}
+        panels={{ "add-repo": <p>The repository picker</p> }}
+      />,
+    );
+    expect(screen.getByText("The repository picker")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Choose a repository" }),
+    ).toBeNull();
+
+    rerender(
+      <WelcomeChecklist
+        status="ready"
+        steps={[
+          steps[0],
+          { ...steps[1], state: "done", projectName: "dodesk" },
+          { ...steps[2], state: "current", projectName: "dodesk" },
+          steps[3],
+        ]}
+      />,
+    );
+    expect(screen.getAllByRole("listitem")[1]).toHaveTextContent(
+      "dodesk added.",
+    );
+    expect(screen.getByRole("button", { name: "Start setup" })).toBeDisabled();
+  });
 });

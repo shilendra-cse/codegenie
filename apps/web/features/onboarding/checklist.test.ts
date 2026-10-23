@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildChecklist, type ChecklistInput } from "./checklist";
 
 const installUrl = "https://github.com/apps/codegenie/installations/new";
+const project = (
+  id: string,
+  env: ChecklistInput["projects"][number]["environment"],
+) => ({ id, repo: { githubId: 1, owner: "ada", name: id }, environment: env });
+
 const environment = {
   version: 1,
   health: "ok" as const,
@@ -42,11 +47,11 @@ describe("buildChecklist", () => {
     expect(
       states({
         hasInstallation: true,
-        projects: [{ id: "p1", environment: null }],
+        projects: [project("p1", null)],
       }),
     ).toEqual(["done", "done", "current", "todo"]);
     expect(
-      states({ hasInstallation: true, projects: [{ id: "p1", environment }] }),
+      states({ hasInstallation: true, projects: [project("p1", environment)] }),
     ).toEqual(["done", "done", "done", "current"]);
   });
 
@@ -54,7 +59,7 @@ describe("buildChecklist", () => {
     expect(
       states({
         hasInstallation: true,
-        projects: [{ id: "p1", environment }],
+        projects: [project("p1", environment)],
         hasTasks: true,
       }),
     ).toEqual(["done", "done", "done", "done"]);
@@ -62,7 +67,7 @@ describe("buildChecklist", () => {
 
   it("goes back to installing when the App was removed after a project was added", () => {
     expect(
-      states({ projects: [{ id: "p1", environment }], hasTasks: true }),
+      states({ projects: [project("p1", environment)], hasTasks: true }),
     ).toEqual(["current", "done", "done", "done"]);
   });
 
@@ -70,10 +75,7 @@ describe("buildChecklist", () => {
     const steps = buildChecklist({
       installUrl,
       hasInstallation: true,
-      projects: [
-        { id: "ready", environment },
-        { id: "fresh", environment: null },
-      ],
+      projects: [project("ready", environment), project("fresh", null)],
       hasTasks: false,
     });
 
@@ -83,5 +85,18 @@ describe("buildChecklist", () => {
       ["set-up", "/projects/fresh/environment"],
       ["first-task", "/new"],
     ]);
+  });
+
+  it("names the project the repository and setup steps are about", () => {
+    const steps = buildChecklist({
+      installUrl,
+      hasInstallation: true,
+      projects: [project("dodesk", null)],
+      hasTasks: false,
+    });
+
+    expect(steps[1]).toMatchObject({ state: "done", projectName: "dodesk" });
+    expect(steps[2]).toMatchObject({ state: "current", projectName: "dodesk" });
+    expect(steps[0].projectName).toBeUndefined();
   });
 });

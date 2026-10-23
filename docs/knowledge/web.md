@@ -185,6 +185,10 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 - **Touches** ([ui.md](./ui.md) §2): the backdrop goes into the AppShell once, below any top bar, so every app page has it; on `/welcome` the greeting and checklist rise in, and the current step's button has the glow.
 - The sidebar's Projects list stays "No projects yet." here; it lists projects once Add a repository exists.
 
+**Steps in place** (added after trying the first version, [ui.md](./ui.md) Welcome): the current step opens inside the checklist instead of linking away. Step 2 holds the repository picker (`useRepositoryPicker`, shared with `/projects/new`; on Welcome it loads repositories only while step 2 is open, and its install link returns to Welcome); once added, step 2 reads "<name> added." and step 3 opens. Step 3's "Start setup" and step 4's "New task" show as coming soon until environment setup and New task fill them in place (the live setup card, the task box).
+
+**Getting started card:** in the sidebar until the four steps are done, from the same checklist data; "N of 4", a progress bar, "Next: …", linking to `/welcome`; hidden on `/welcome`.
+
 **Server:** the install callback returns to `/welcome?github=<outcome>`, and sends someone signed out to `/signin?next=/welcome`.
 
 **Underneath:**
@@ -203,3 +207,36 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 1. **Server:** the callback's redirects and their test; these requirements.
 2. **Data:** the three query hooks and the checklist function, with tests.
 3. **Screen:** the checklist components, the notices, the AppShell backdrop and `/welcome`, with tests.
+
+## 13. Add a repository (requirements)
+
+**Goal:** from the checklist's "Choose a repository" you pick a repository; it becomes a project in the sidebar and the checklist moves on to setting it up.
+
+**Screen `/projects/new`** (canvas: Add a repository):
+- A solid top bar "Add a repository", then "Choose a repository" and its subtitle.
+- **Account picker:** the user's installations (personal account and organisations), the first selected.
+- **Search:** filters the list by name as you type, without new requests.
+- **Rows:** name and a Private badge; language with its coloured dot and "Updated 2 hours ago"; **Add**, or **Added · Open** for a repository that is already a project; for one that isn't JavaScript or TypeScript and isn't added, "Doesn't look like JavaScript or TypeScript. CodeGenie may not be able to set it up."
+- **Adding:** the button is busy while `POST /projects` runs; the row becomes **Added · Open**, the project appears in the sidebar and the checklist moves to step 3. Open goes to `/projects/:id` (its page comes later).
+- **Footer:** "Change which repositories CodeGenie can access on GitHub", to the installation's settings (a personal account's and an organisation's URLs differ).
+- **States:** loading (skeleton rows); no installations (install the GitHub App); an installation with no repositories (a note and the access link); no search match ("No repositories match …"); an API error (alert with Try again); GitHub sign-in expired (any 401 → sign in); adding fails, shown in the row: suspended installation (409) "The GitHub App is suspended on this account.", repository gone (404) "This repository is no longer available to CodeGenie."
+- **Installing on another account** from this page adds `state=add-repo` to the install link, so GitHub returns here with the same notices as on `/welcome`.
+- **Touches:** the backdrop below the top bar; the heading and list rise in; rows light up on hover; no button glow (every row has an Add).
+
+**Sidebar:** Projects lists your projects with a dot for the environment (green ready, amber needs attention, grey not set up), each linking to `/projects/:id` and marked when current; a **+** beside the heading goes to `/projects/new`; "No projects yet." when there are none.
+
+**Server:** repositories gain `language`; the install callback returns to the page named by the install link's `state` (`add-repo` → `/projects/new`, anything else → `/welcome`).
+
+**Underneath:** `features/github` `useRepositories(installationId)`; `features/projects` `useCreateProject()`, which refreshes the projects and that installation's repositories after adding; `lib/format.ts` for relative times (`Intl.RelativeTimeFormat`).
+
+**Done when:**
+1. With a new account: pick a repository, Add, and it shows **Added · Open**, appears in the sidebar, and `/welcome` shows step 3 current.
+2. Installing on another account from this page comes back to `/projects/new` with the notice.
+3. The page matches the canvas in light and dark and at phone width.
+4. Tests cover the row in each state (add, adding, added, warning, error), the search, every page state, the sidebar's projects, the hooks, and the server's `language` and `state`.
+
+**Batches:**
+1. **Server:** `language`; the install link's `state` and the callback's return page; these requirements.
+2. **Data:** `useRepositories`, `useCreateProject`, relative times; tests.
+3. **Sidebar:** the projects list and its **+**.
+4. **Screen:** `/projects/new` with its states.

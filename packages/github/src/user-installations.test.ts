@@ -74,6 +74,7 @@ const repo = (id: number, name: string) => ({
   private: id % 2 === 0,
   html_url: `https://github.com/acme/${name}`,
   updated_at: "2026-10-20T10:00:00Z",
+  language: id === 1 ? "TypeScript" : null,
 });
 
 describe("listInstallationRepos", () => {
@@ -93,8 +94,14 @@ describe("listInstallationRepos", () => {
         private: false,
         htmlUrl: "https://github.com/acme/api",
         updatedAt: "2026-10-20T10:00:00Z",
+        language: "TypeScript",
       },
-      expect.objectContaining({ id: 2, fullName: "acme/web", private: true }),
+      expect.objectContaining({
+        id: 2,
+        fullName: "acme/web",
+        private: true,
+        language: null,
+      }),
     ]);
     expect(github.requests[0]).toMatchObject({
       path: "/user/installations/42/repositories",

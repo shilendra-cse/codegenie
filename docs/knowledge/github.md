@@ -94,9 +94,10 @@ Keep the private key and secrets in the git-ignored `.env` files only.
 ```
 Sign in:   web "Continue with Github" → Better Auth (the App's client id) → session + the user's GitHub token
 
-Install:   installUrl → GitHub → Setup URL: GET /api/github/installations/callback?installation_id=…
+Install:   installUrl[?state=add-repo] → GitHub → Setup URL: GET /api/github/installations/callback?installation_id=…&state=…
              → signed in? the user's token lists their installations → is this one of them? → github_installations
-             → back to the web app (/welcome?github=installed | not-found | requested | cancelled)
+             → back to the page it started from: state=add-repo → /projects/new, anything else → /welcome
+               (?github=installed | not-found | requested | cancelled; signed out → /signin?next=that page)
 
 Webhooks:  GitHub → (smee in development) → POST /api/github/webhooks
              → signature over the raw body ✓ → delivery seen before? (webhook_deliveries) → skip

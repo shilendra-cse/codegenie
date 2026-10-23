@@ -105,4 +105,29 @@ describe.skipIf(!database)("GitHub install callback", () => {
     );
     expect(await callback("")).toBe(`${frontendUrl}/welcome?github=cancelled`);
   });
+
+  it("returns to adding a repository when the install started there", async () => {
+    expect(
+      await callback(
+        `installation_id=${usersInstallation}&setup_action=install&state=add-repo`,
+      ),
+    ).toBe(`${frontendUrl}/projects/new?github=installed`);
+    expect(await callback("state=add-repo")).toBe(
+      `${frontendUrl}/projects/new?github=cancelled`,
+    );
+  });
+
+  it("goes to the welcome page for any other state", async () => {
+    expect(
+      await callback(`state=${encodeURIComponent("https://evil.example")}`),
+    ).toBe(`${frontendUrl}/welcome?github=cancelled`);
+  });
+
+  it("signs in first, then returns to the page the install started from", async () => {
+    signedIn = null;
+    expect(
+      await callback(`installation_id=${usersInstallation}&state=add-repo`),
+    ).toBe(`${frontendUrl}/signin?next=%2Fprojects%2Fnew`);
+    signedIn = userId;
+  });
 });

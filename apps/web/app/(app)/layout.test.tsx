@@ -8,6 +8,8 @@ const auth = vi.hoisted(() => ({
   signOut: vi.fn(),
 }));
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
+const page = vi.hoisted(() => ({ pathname: "/welcome" }));
+const checklist = vi.hoisted(() => ({ done: 1 }));
 
 vi.mock("@/lib/auth-client", () => ({
   useSession: () => auth.session,
@@ -15,7 +17,30 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
-  usePathname: () => "/welcome",
+  usePathname: () => page.pathname,
+}));
+vi.mock("@/features/projects/projects", async (original) => ({
+  ...(await original<typeof import("@/features/projects/projects")>()),
+  useProjects: () => ({ data: [], isError: false }),
+}));
+vi.mock("@/features/onboarding/use-welcome-checklist", () => ({
+  useWelcomeChecklist: () => ({
+    status: "ready",
+    steps: (["install", "add-repo", "set-up", "first-task"] as const).map(
+      (id, index) => ({
+        id,
+        state:
+          index < checklist.done
+            ? "done"
+            : index === checklist.done
+              ? "current"
+              : "todo",
+        href: "/",
+        external: false,
+      }),
+    ),
+    retry: vi.fn(),
+  }),
 }));
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "system", setTheme: vi.fn() }),
@@ -39,6 +64,8 @@ describe("the app shell", () => {
   beforeEach(() => {
     router.replace.mockReset();
     auth.signOut.mockReset().mockResolvedValue({});
+    page.pathname = "/welcome";
+    checklist.done = 1;
   });
 
   it("shows the page with the signed-in user's account menu", () => {
@@ -78,5 +105,26 @@ describe("the app shell", () => {
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
     expect(auth.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("shows the getting-started card away from the welcome page", () => {
+    auth.session = { data: ada, isPending: false };
+    page.pathname = "/projects/new";
+    renderApp();
+
+    expect(
+      screen.getByRole("link", { name: /Getting started/ }),
+    ).toHaveTextContent("1 of 4");
+  });
+
+  it("hides the card on the welcome page, and once everything is done", () => {
+    auth.session = { data: ada, isPending: false };
+    renderApp();
+    expect(screen.queryByRole("link", { name: /Getting started/ })).toBeNull();
+
+    page.pathname = "/projects/new";
+    checklist.done = 4;
+    renderApp();
+    expect(screen.queryByRole("link", { name: /Getting started/ })).toBeNull();
   });
 });

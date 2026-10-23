@@ -13,6 +13,7 @@ export type GitHubRepo = {
   private: boolean;
   htmlUrl: string;
   updatedAt: string | null;
+  language: string | null;
   projectId: string | null;
 };
 
