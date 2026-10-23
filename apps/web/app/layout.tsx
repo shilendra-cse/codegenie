@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,26 +25,28 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <div className="h-screen w-screen relative">
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
-          {/* Dark Dot Matrix */}
-          <div
-            className="absolute inset-0 -z-1"
-            style={{
-              backgroundColor: "#0a0a0a",
-              backgroundImage: `
+          <Providers>
+            {/* Dark Dot Matrix */}
+            <div
+              className="absolute inset-0 -z-1"
+              style={{
+                backgroundColor: "#0a0a0a",
+                backgroundImage: `
                 radial-gradient(circle at 25% 25%, #222222 0.5px, transparent 1px),
                 radial-gradient(circle at 75% 75%, #111111 0.5px, transparent 1px)
               `,
-              backgroundSize: "10px 10px",
-              imageRendering: "pixelated",
-            }}
-          />
-          
+                backgroundSize: "10px 10px",
+                imageRendering: "pixelated",
+              }}
+            />
+
             {/* Your Content Here */}
             {children}
-          </ThemeProvider>
+          </Providers>
         </div>
       </body>
     </html>

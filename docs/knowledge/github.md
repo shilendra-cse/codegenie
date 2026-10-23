@@ -58,10 +58,10 @@ On GitHub: **Settings → Developer settings → GitHub Apps → New GitHub App*
 |---|---|
 | GitHub App name | unique on GitHub, e.g. `codegenie-dev-<you>`; it becomes the bot's name (`<name>[bot]`) |
 | Homepage URL | `http://localhost:3000` |
-| Callback URL | `http://localhost:3001/api/auth/callback/github` (sign-in) |
+| Callback URL | `http://localhost:3000/api/auth/callback/github` (sign-in, through the web app's `/api` rewrite; must match `BETTER_AUTH_URL`) |
 | Expire user authorization tokens | checked |
 | Request user authorization (OAuth) during installation | unchecked |
-| Setup URL | `http://localhost:3001/api/github/installations/callback` |
+| Setup URL | `http://localhost:3000/api/github/installations/callback` (through the web app's `/api` rewrite) |
 | Redirect on update | checked |
 | Webhook → Active | checked |
 | Webhook URL | a smee.io channel (create one at https://smee.io/new); `pnpm dev:webhooks` forwards it to the server |

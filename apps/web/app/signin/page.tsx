@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { githubSignIn } from "@/lib/auth-client";
+import { signInWithGitHub } from "@/lib/auth-client";
 import Image from "next/image";
 
 export default function SignInPage() {
@@ -25,7 +25,9 @@ export default function SignInPage() {
           size="lg"
           className="gap-2 w-64"
           onClick={() => {
-            githubSignIn();
+            void signInWithGitHub(
+              new URLSearchParams(window.location.search).get("next"),
+            );
           }}
         >
           <div className="overflow-hidden">
