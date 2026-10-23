@@ -1,7 +1,11 @@
+import type { ReactNode } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Skeleton } from "@/components/atoms/skeleton";
-import { ChecklistStep } from "@/components/molecules/checklist-step";
+import {
+  ChecklistStep,
+  type ChecklistStepAction,
+} from "@/components/molecules/checklist-step";
 import { cn } from "@/lib/utils";
 
 type StepId = "install" | "add-repo" | "set-up" | "first-task";
@@ -11,17 +15,29 @@ export type WelcomeStep = {
   state: "done" | "current" | "todo";
   href: string;
   external: boolean;
+  projectName?: string;
 };
 
 export type WelcomeChecklistProps =
   | { status: "pending" }
   | { status: "error"; onRetry: () => void }
-  | { status: "ready"; steps: WelcomeStep[] };
+  | {
+      status: "ready";
+      steps: WelcomeStep[];
+      /** A step that happens in place shows this instead of its button. */
+      panels?: Partial<Record<StepId, ReactNode>>;
+    };
 
-const COPY: Record<
-  StepId,
-  { title: string; body: string; label: string; hint?: string }
-> = {
+type Copy = {
+  title: string;
+  body: string;
+  label: string;
+  hint?: string;
+  comingSoon?: true;
+  done?: (projectName: string) => ReactNode;
+};
+
+const COPY: Record<StepId, Copy> = {
   install: {
     title: "Install the GitHub App",
     body: "Choose which repositories CodeGenie can see. You can change the selection on GitHub at any time.",
@@ -32,19 +48,32 @@ const COPY: Record<
     title: "Add a repository",
     body: "Pick one of the repositories you gave access to. It becomes a project.",
     label: "Choose a repository",
+    done: (name) => (
+      <>
+        <strong className="font-semibold text-foreground">{name}</strong> added.
+      </>
+    ),
   },
   "set-up": {
     title: "Set up its environment",
     body: "CodeGenie finds out how to install and check it, and asks you if it can’t decide. Once per repository, a few minutes.",
     label: "Start setup",
-    hint: "You can watch it live.",
+    comingSoon: true,
+    done: (name) => `${name} is ready.`,
   },
   "first-task": {
     title: "Describe your first task",
     body: "Say what should change. You get a pull request to review.",
     label: "New task",
+    comingSoon: true,
   },
 };
+
+function actionFor(step: WelcomeStep, copy: Copy): ChecklistStepAction {
+  return copy.comingSoon
+    ? { label: copy.label, comingSoon: true }
+    : { label: copy.label, href: step.href, external: step.external };
+}
 
 const DELAYS = [
   "",
@@ -99,11 +128,9 @@ export function WelcomeChecklist(props: WelcomeChecklistProps) {
             title={copy.title}
             body={copy.body}
             hint={copy.hint}
-            action={{
-              label: copy.label,
-              href: step.href,
-              external: step.external,
-            }}
+            doneBody={step.projectName && copy.done?.(step.projectName)}
+            action={actionFor(step, copy)}
+            panel={props.panels?.[step.id]}
           />
         );
       })}

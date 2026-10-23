@@ -185,6 +185,10 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 - **Touches** ([ui.md](./ui.md) §2): the backdrop goes into the AppShell once, below any top bar, so every app page has it; on `/welcome` the greeting and checklist rise in, and the current step's button has the glow.
 - The sidebar's Projects list stays "No projects yet." here; it lists projects once Add a repository exists.
 
+**Steps in place** (added after trying the first version, [ui.md](./ui.md) Welcome): the current step opens inside the checklist instead of linking away. Step 2 holds the repository picker (`useRepositoryPicker`, shared with `/projects/new`; on Welcome it loads repositories only while step 2 is open, and its install link returns to Welcome); once added, step 2 reads "<name> added." and step 3 opens. Step 3's "Start setup" and step 4's "New task" show as coming soon until environment setup and New task fill them in place (the live setup card, the task box).
+
+**Getting started card:** in the sidebar until the four steps are done, from the same checklist data; "N of 4", a progress bar, "Next: …", linking to `/welcome`; hidden on `/welcome`.
+
 **Server:** the install callback returns to `/welcome?github=<outcome>`, and sends someone signed out to `/signin?next=/welcome`.
 
 **Underneath:**

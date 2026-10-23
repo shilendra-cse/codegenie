@@ -70,4 +70,27 @@ describe("ChecklistStep", () => {
       "text-muted-foreground",
     );
   });
+
+  it("shows its panel instead of the button while current", () => {
+    renderStep({ panel: <p>The repository picker</p> });
+
+    expect(screen.getByText("The repository picker")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("says what happened once done", () => {
+    renderStep({ state: "done", doneBody: "dodesk added." });
+
+    expect(screen.getByText("dodesk added.")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Pick one of the repositories you gave access to."),
+    ).toBeNull();
+  });
+
+  it("shows an action that isn't built yet as coming soon", () => {
+    renderStep({ action: { label: "Start setup", comingSoon: true } });
+
+    expect(screen.getByRole("button", { name: "Start setup" })).toBeDisabled();
+    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+  });
 });

@@ -48,17 +48,22 @@ describe("RepositoryRow", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("warns about a repository that isn't JavaScript or TypeScript, until it's added", () => {
+  it("marks a repository that isn't JavaScript or TypeScript, with the reason on hover", async () => {
+    vi.useRealTimers();
     renderRow({ repo: { ...repo, language: "Python" } });
-    expect(
-      screen.getByText(/Doesn't look like JavaScript or TypeScript/),
-    ).toBeInTheDocument();
+    const badge = screen.getByText("Not JS/TS");
+
+    fireEvent.focus(badge.closest("[tabindex]")!);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "CodeGenie supports JavaScript and TypeScript.",
+    );
   });
 
-  it("doesn't warn once added, or for JavaScript", () => {
+  it("doesn't mark it once added, or for JavaScript", () => {
     renderRow({ repo: { ...repo, language: "Python", projectId: "p1" } });
     renderRow({ repo: { ...repo, language: "JavaScript" } });
-    expect(screen.queryByText(/Doesn't look like/)).toBeNull();
+    expect(screen.queryByText("Not JS/TS")).toBeNull();
   });
 
   it("explains why adding failed", () => {
@@ -67,5 +72,12 @@ describe("RepositoryRow", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "The GitHub App is suspended on this account.",
     );
+  });
+
+  it("doesn't warn when GitHub hasn't reported a language yet", () => {
+    renderRow({ repo: { ...repo, language: null } });
+
+    expect(screen.queryByText("Not JS/TS")).toBeNull();
+    expect(screen.queryByText("TypeScript")).toBeNull();
   });
 });

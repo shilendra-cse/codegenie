@@ -19,6 +19,8 @@ export type SidebarProps = {
   pathname: string;
   projects: SidebarProject[] | undefined;
   projectsFailed: boolean;
+  /** Shown above the account until the first-run steps are done. */
+  gettingStarted?: ReactNode;
   account: ReactNode;
 };
 
@@ -64,7 +66,11 @@ function ProjectList({
   );
 }
 
-export function Sidebar({ account, ...projects }: SidebarProps) {
+export function Sidebar({
+  account,
+  gettingStarted,
+  ...projects
+}: SidebarProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-0.5 p-3">
       <Link
@@ -107,6 +113,7 @@ export function Sidebar({ account, ...projects }: SidebarProps) {
           <ProjectList {...projects} />
         </div>
       </nav>
+      {gettingStarted && <div className="mt-3">{gettingStarted}</div>}
       <div className="mt-3">{account}</div>
     </div>
   );
