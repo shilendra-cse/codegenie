@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import type { ReactNode } from "react";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -15,39 +12,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CodeGenie",
-  description: "Your personal engineer, just one prompt away.",
+  description:
+    "Describe the change, review the pull request. CodeGenie works on your GitHub repositories in an isolated sandbox.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <div className="h-screen w-screen relative">
-          <Providers>
-            {/* Dark Dot Matrix */}
-            <div
-              className="absolute inset-0 -z-1"
-              style={{
-                backgroundColor: "#0a0a0a",
-                backgroundImage: `
-                radial-gradient(circle at 25% 25%, #222222 0.5px, transparent 1px),
-                radial-gradient(circle at 75% 75%, #111111 0.5px, transparent 1px)
-              `,
-                backgroundSize: "10px 10px",
-                imageRendering: "pixelated",
-              }}
-            />
-
-            {/* Your Content Here */}
-            {children}
-          </Providers>
-        </div>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

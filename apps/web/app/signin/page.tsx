@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/atoms/button";
 import { signInWithGitHub } from "@/lib/auth-client";
 import Image from "next/image";
 
@@ -21,7 +21,7 @@ export default function SignInPage() {
           </p>
         </div>
         <Button
-          variant="outline"
+          variant="secondary"
           size="lg"
           className="gap-2 w-64"
           onClick={() => {
