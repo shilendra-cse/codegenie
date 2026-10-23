@@ -1,5 +1,6 @@
 import { type Db, findUserProjects } from "@codegenie/db";
-import { type ProjectResponse, toProjectResponse } from "../projects.types";
+import type { ProjectResponse } from "@codegenie/shared";
+import { toProjectResponse } from "../projects.types";
 
 export async function listUserProjects(
   db: Db,

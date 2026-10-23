@@ -2,6 +2,10 @@ import {
   listInstallationRepos,
   listUserInstallations,
 } from "@codegenie/github";
+import type {
+  GitHubInstallationsResponse,
+  GitHubReposResponse,
+} from "@codegenie/shared";
 import { ok } from "@/lib/api-response";
 import { HttpError } from "@/lib/http-error";
 import type { AuthenticatedController } from "@/types/base.types";
@@ -33,10 +37,11 @@ export function createGithubControllers(deps: GithubControllerDeps) {
     const installations = await listUserInstallations(token, {
       fetch: deps.fetch,
     });
-    return ok(200, "OK", {
+    const data: GitHubInstallationsResponse = {
       installations,
       installUrl: await deps.installUrl(),
-    });
+    };
+    return ok(200, "OK", data);
   };
 
   const getInstallationRepositories: AuthenticatedController = async (req) => {
@@ -67,12 +72,13 @@ export function createGithubControllers(deps: GithubControllerDeps) {
     repositories.sort((a, b) =>
       (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
     );
-    return ok(200, "OK", {
+    const data: GitHubReposResponse = {
       repositories: repositories.map((repo) => ({
         ...repo,
         projectId: projectIds.get(repo.id) ?? null,
       })),
-    });
+    };
+    return ok(200, "OK", data);
   };
 
   return { getInstallations, getInstallationRepositories };

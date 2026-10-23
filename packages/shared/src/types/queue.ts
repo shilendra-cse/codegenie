@@ -1,4 +1,4 @@
-import type { RunEvent } from "./api.js";
+import type { RunEvent } from "../api/events.js";
 import type { OnboardingStatus } from "./environment.js";
 
 export const WORK_QUEUE = "codegenie-work";
@@ -14,6 +14,10 @@ export type QueuedWork = {
 export type QueuedWorkKind = keyof QueuedWork;
 
 export const CANCEL_CHANNEL = "run-cancel";
+
+export function runChannel(runId: string): string {
+  return `run:${runId}`;
+}
 
 export function onboardingChannel(projectId: string): string {
   return `project:${projectId}:onboarding`;

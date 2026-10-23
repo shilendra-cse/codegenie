@@ -1,5 +1,6 @@
 import { type Db, findUserTasks } from "@codegenie/db";
-import { type TaskListItem, toTaskListItem } from "../tasks.types";
+import type { TaskPage } from "@codegenie/shared";
+import { toTaskListItem } from "../tasks.types";
 
 const PAGE_SIZE = 50;
 
@@ -7,7 +8,7 @@ export async function listUserTasks(
   db: Db,
   userId: string,
   options: { projectId?: string; cursor?: string },
-): Promise<{ tasks: TaskListItem[]; nextCursor: string | null }> {
+): Promise<TaskPage> {
   const rows = await findUserTasks(db, userId, {
     projectId: options.projectId,
     afterTaskId: options.cursor,

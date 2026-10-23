@@ -1,16 +1,15 @@
-import { createAuthClient } from "better-auth/react"
+import { createAuthClient } from "better-auth/react";
+import { SIGN_IN } from "./routes";
+import { safeNext } from "./safe-next";
 
-export const authClient = createAuthClient({
-    // The base URL of the server
-    baseURL: "http://localhost:3001"
-});
+export const authClient = createAuthClient();
 
-export const githubSignIn = async () => {
-    const data = await authClient.signIn.social({
-        provider: 'github',
-        callbackURL: 'http://localhost:3000/build',
-    });
-    return data;
+export function signInWithGitHub(next?: string | null) {
+  return authClient.signIn.social({
+    provider: "github",
+    callbackURL: safeNext(next),
+    errorCallbackURL: SIGN_IN,
+  });
 }
 
-export const { signIn, signOut, getSession, useSession } = authClient;
+export const { signOut, useSession } = authClient;

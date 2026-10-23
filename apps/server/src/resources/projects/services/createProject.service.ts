@@ -7,11 +7,8 @@ import {
 } from "@codegenie/db";
 import { listInstallationRepos } from "@codegenie/github";
 import { HttpError } from "@/lib/http-error";
-import {
-  type CreateProjectInput,
-  type ProjectResponse,
-  toProjectResponse,
-} from "../projects.types";
+import type { CreateProjectInput, ProjectResponse } from "@codegenie/shared";
+import { toProjectResponse } from "../projects.types";
 
 export type CreateProjectDeps = {
   db: Db;

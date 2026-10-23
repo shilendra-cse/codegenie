@@ -1,34 +1,12 @@
 import type { UserTask, UserTaskListItem } from "@codegenie/db";
-import type { QueuedWork } from "@codegenie/shared";
+import type {
+  QueuedWork,
+  TaskDetail,
+  TaskLabel,
+  TaskListItem,
+} from "@codegenie/shared";
 import type { JobsOptions } from "bullmq";
-import { z } from "zod";
-import {
-  runDurationMs,
-  type RunResponse,
-  toRunResponse,
-} from "../runs/runs.types";
-
-export const createTaskSchema = z.object({
-  prompt: z.string().trim().min(1, "Describe the task.").max(20_000),
-  baseBranch: z
-    .string()
-    .trim()
-    .min(1)
-    .max(255)
-    .regex(/^(?!-)[^\s~^:?*[\\]+$/, "Not a valid branch name.")
-    .optional(),
-});
-
-export type CreateTaskInput = z.infer<typeof createTaskSchema>;
-
-export const listTasksQuerySchema = z.object({
-  projectId: z.uuid("The project id must be a UUID.").optional(),
-  cursor: z.uuid("Not a valid cursor.").optional(),
-});
-
-export const taskParamsSchema = z.object({
-  id: z.uuid("The task id must be a UUID."),
-});
+import { runDurationMs, toRunResponse } from "../runs/runs.types";
 
 export type WorkQueue = {
   add<K extends keyof QueuedWork>(
@@ -37,28 +15,6 @@ export type WorkQueue = {
     options?: JobsOptions,
   ): Promise<unknown>;
 };
-
-export type CreatedTaskResponse = {
-  task: {
-    id: string;
-    projectId: string;
-    title: string;
-    baseBranch: string;
-    createdAt: string;
-  };
-  run: { id: string; status: "queued"; model: string };
-};
-
-export type TaskLabel =
-  | "queued"
-  | "working"
-  | "pr_open"
-  | "pr_draft"
-  | "merged"
-  | "closed"
-  | "no_changes"
-  | "failed"
-  | "cancelled";
 
 export function taskLabel(task: UserTaskListItem): TaskLabel {
   const latest = task.runs[0];
@@ -71,34 +27,6 @@ export function taskLabel(task: UserTaskListItem): TaskLabel {
   if (latest?.status === "cancelled") return "cancelled";
   return "no_changes";
 }
-
-export type TaskListItem = {
-  id: string;
-  title: string;
-  project: { id: string; owner: string; name: string };
-  label: TaskLabel;
-  baseBranch: string;
-  branchName: string | null;
-  pullRequest: { number: number; url: string; draft: boolean } | null;
-  latestRun: Pick<RunResponse, "id" | "status" | "stage" | "error"> | null;
-  runCount: number;
-  durationMs: number;
-  costUsd: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type TaskDetail = TaskListItem & {
-  messages: {
-    id: string;
-    role: "user" | "assistant" | "system";
-    authorUserId: string | null;
-    runId: string | null;
-    content: string;
-    createdAt: string;
-  }[];
-  runs: RunResponse[];
-};
 
 const latestOf = (dates: (Date | null)[]) =>
   new Date(Math.max(...dates.map((d) => d?.getTime() ?? 0)));

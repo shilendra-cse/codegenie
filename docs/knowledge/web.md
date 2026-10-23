@@ -26,6 +26,8 @@ browser ──► localhost:3000/api/*  ──(next.config rewrites)──► lo
 
 The browser only ever calls `/api/...` on the web app's own address; Next forwards it to the API. To a browser, `:3000` and `:3001` are different websites, and it limits what one may do with another: cookies aren't sent across and every request needs CORS permission. Forwarding makes the API part of the web app's own site, so the session cookie just works and there's no CORS. In production it's one domain.
 
+**Sign-in** goes through the same door: `BETTER_AUTH_URL` is the web app's address and the GitHub App's callback URL is `http://localhost:3000/api/auth/callback/github`, so the session cookie is created for the web app's address.
+
 **Security.** Nothing new is exposed: only `/api/*` is forwarded, and the API still checks the session on every request. The cookie stays on one site (`httpOnly`, `SameSite=Lax`), and Better Auth trusts only the web app's origin (`FRONTEND_URL`). The forwarding target comes from `API_URL` (server-side only).
 
 **The client** (`lib/api/`):
@@ -96,6 +98,7 @@ apps/web/
 - **Tokens:** the canvas's colours named once in `app/globals.css`, with a light and a dark value each: surfaces, borders, text (3 levels), the **mono accent** (black in light mode, white in dark), and status colours (`ok`, `warn`, `err`, `merged`, with soft background and border variants), plus `add` / `del` for diffs. They map onto shadcn's variables, so every atom picks them up. Components use names, never raw colours.
 - **Fonts:** Geist and Geist Mono through `next/font`. **Icons:** lucide. **Logos:** `public/brand/` (black on light, white on dark).
 - **Theme:** follows the system, switchable in the account menu (next-themes).
+- **Motion and glow** ([ui.md](./ui.md) §2): plain CSS in `app/globals.css` (`grid-backdrop`, `glow`, `beam`, `sheen`, `rise`, `reveal`), with one reduced-motion block that stops them all; no animation library. Atoms `GridBackdrop` and `Glow` place the backdrop. Each step's screens apply them as they're built: the beam and sheen on what is working, rise on what arrives, the glow on the page's primary action, hover on what opens.
 - **Diffs:** our own small renderer for the Changes tab.
 - **Layout:** flexbox by default; CSS grid only where a layout really needs two-dimensional alignment (e.g. a table-like set of rows and columns that must line up).
 
