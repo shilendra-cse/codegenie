@@ -182,7 +182,7 @@ Using "npm run test" for backend. Re-running… ✓ 6/6 pass.
 The website starts setup, shows it live and asks its questions in the browser.
 
 - **Stored:** each setup is an `onboardings` row (status `queued` → `running` ⇄ `waiting` → `succeeded` / `failed` / `cancelled`, what it saved, what it cost) with its events in `onboarding_events` ([database.md](./database.md)). At most one active setup per project; starting again returns it.
-- **Watched:** the worker stores every event, then publishes it; the browser follows `GET /projects/:id/onboarding/events`, replayed from the database then live, the same way as run events ([api.md](./api.md) §6).
+- **Watched:** the worker stores every event, then publishes it; the browser follows `GET /projects/:id/onboarding/events`, replayed from the database then live, through the same hub and stream as run events ([api.md](./api.md) §6); it stays open while a question waits.
 - **Questions (`EventChannel`):** the worker records `question_asked` and waits; the answer comes through `POST /projects/:id/onboarding/answer` and reaches the worker over Redis; the worker records `question_answered` and carries on.
 - **Waiting:** the sandbox stays open while a question is unanswered. After **30 minutes** setup stops (`failed`, `NO_ANSWER`: "Setup stopped after waiting 30 minutes for an answer.") and the sandbox goes; it can be started again.
 - **Stop:** a queued setup is cancelled directly; a running or waiting one is told to stop and ends `cancelled`.

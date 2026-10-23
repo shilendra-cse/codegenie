@@ -1,7 +1,15 @@
 import type { Db } from "@codegenie/db";
-import { answerOnboardingSchema, projectParamsSchema } from "@codegenie/shared";
+import {
+  afterSeqSchema,
+  answerOnboardingSchema,
+  projectParamsSchema,
+} from "@codegenie/shared";
 import { ok } from "@/lib/api-response";
-import type { AuthenticatedController } from "@/types/base.types";
+import { openSse } from "@/lib/sse";
+import type {
+  AuthenticatedController,
+  AuthenticatedStream,
+} from "@/types/base.types";
 import type { Publisher } from "../runs/services/cancelRun.service";
 import type { WorkQueue } from "../tasks/tasks.types";
 import { toOnboardingResponse } from "./onboarding.types";
@@ -9,12 +17,16 @@ import { answerOnboarding } from "./services/answerOnboarding.service";
 import { cancelOnboarding } from "./services/cancelOnboarding.service";
 import { getLatestOnboarding } from "./services/getLatestOnboarding.service";
 import { startOnboarding } from "./services/startOnboarding.service";
+import {
+  streamOnboardingEvents,
+  type StreamOnboardingEventsDeps,
+} from "./services/streamOnboardingEvents.service";
 
 export type OnboardingControllerDeps = {
   db: Db;
   queue: WorkQueue;
   publisher: Publisher;
-};
+} & Pick<StreamOnboardingEventsDeps, "hub" | "heartbeatMs">;
 
 export function createOnboardingControllers(deps: OnboardingControllerDeps) {
   const start: AuthenticatedController = async (req) => {
@@ -44,5 +56,18 @@ export function createOnboardingControllers(deps: OnboardingControllerDeps) {
     return ok(202, "Accepted", { outcome });
   };
 
-  return { start, getLatest, answer, cancel };
+  const streamEvents: AuthenticatedStream = async (req, res) => {
+    const { id } = projectParamsSchema.parse(req.params);
+    const afterSeq = afterSeqSchema.parse(
+      req.get("last-event-id") ?? req.query.after,
+    );
+    await streamOnboardingEvents(deps, {
+      userId: req.user.id,
+      projectId: id,
+      afterSeq,
+      open: () => openSse(res),
+    });
+  };
+
+  return { start, getLatest, answer, cancel, streamEvents };
 }

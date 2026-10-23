@@ -50,6 +50,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | DELETE | `/projects/:id` | Removes it with its tasks, runs and environments; GitHub untouched |
 | POST | `/projects/:id/onboarding` | Records a setup and queues it: 202 `{ onboarding }`; while one is queued, running or waiting, that one is returned |
 | GET | `/projects/:id/onboarding` | The latest setup with its open question, or `null` |
+| GET | `/projects/:id/onboarding/events` | The latest setup's events as a stream, replayed then live (§6) |
 | POST | `/projects/:id/onboarding/answer` | `{ questionId, answer: { option } \| { other } }` → 202; checked against the open question, then handed to the worker |
 | POST | `/projects/:id/onboarding/cancel` | 202 `{ outcome: "cancelled" }` for a queued setup, `"stopping"` for a running or waiting one |
 | GET | `/projects/:id/environments` | The saved environment versions, newest (active) first |
@@ -114,4 +115,6 @@ data: {"type":"done","status":"succeeded","runId":"…","seq":9,"ts":"…"}
 - **Order of work:** the server listens on the run's Redis channel first, then replays stored events from `run_events` 500 at a time, then forwards live ones. Each stored event is sent once; a jump in `seq` is filled from `run_events`.
 - **Ending:** after the `done` event, or as soon as the run has ended without one (e.g. a queued run that was cancelled). A `: ping` every 15 s keeps proxies from closing the connection and re-checks the run's status. `EventSource` reconnects when a stream ends, so clients close it on `done`.
 - **Errors** before streaming are normal JSON: 401, 404 `RUN_NOT_FOUND`, 400 for a bad `Last-Event-ID`.
-- **Redis:** one subscriber connection per server, shared by every viewer; it subscribes to `run:{id}` for a run's first viewer and unsubscribes after its last (`lib/run-event-hub.ts`).
+- **Redis:** one subscriber connection per server, shared by every viewer of runs and setups; it subscribes to a channel (`run:{id}`, `onboarding:{id}`) for its first viewer and unsubscribes after its last (`lib/event-hub.ts`). The replay-then-live logic is shared too (`lib/event-stream.ts`).
+
+**A setup's events** stream the same way from `GET /api/projects/:id/onboarding/events`: the project's latest setup at the moment you connect (the one `GET /onboarding` returns), with `data` an `OnboardingEvent` (`onboardingId` instead of `runId`; also `info`, `question_asked`, `question_answered`, and `done` with `succeeded`, `failed` or `cancelled`). It stays open while the setup waits for an answer, and ends after `done` or once the setup has ended (a setup cancelled before it started has no events). Errors: 404 `PROJECT_NOT_FOUND`, 404 `ONBOARDING_NOT_FOUND` before the first setup.

@@ -1,14 +1,14 @@
 import { db } from "@/db";
 import { api } from "@/lib/ApiRouter";
 import { redis } from "@/lib/redis";
-import { runEventHub } from "@/lib/run-events";
+import { eventHub } from "@/lib/events";
 import { stream } from "@/lib/sse";
 import { createRunControllers } from "./runs.controller";
 
 const runs = createRunControllers({
   db,
   publisher: redis,
-  hub: runEventHub,
+  hub: eventHub,
   heartbeatMs: 15_000,
 });
 

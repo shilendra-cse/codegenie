@@ -54,6 +54,8 @@ describe.skipIf(!database)("onboarding controllers against Postgres", () => {
         return Promise.resolve(1);
       },
     },
+    hub: { listen: () => Promise.resolve(() => Promise.resolve()) },
+    heartbeatMs: 60_000,
   });
   const response = {} as Response;
   afterAll(() => database?.drop());

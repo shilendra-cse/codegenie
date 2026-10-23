@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import express, { type ErrorRequestHandler } from "express";
 import { afterAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { RunEventHub } from "@/lib/run-event-hub";
+import { EventHub } from "@/lib/event-hub";
 import { handleStream } from "@/lib/sse";
 import { HttpError } from "@/lib/http-error";
 import type { AuthenticatedRequest } from "@/types/base.types";
@@ -40,7 +40,7 @@ describe.skipIf(!database)("run event stream over HTTP", () => {
       `run:${runId}`,
       JSON.stringify({ runId, ts: new Date().toISOString(), ...event }),
     );
-  const realHub = new RunEventHub({
+  const realHub = new EventHub({
     subscribe: () => Promise.resolve(1),
     unsubscribe: () => Promise.resolve(0),
     on: (event, listener) => redis.on(event, listener),
@@ -55,8 +55,9 @@ describe.skipIf(!database)("run event stream over HTTP", () => {
       publisher: { publish: () => Promise.resolve(0) },
       heartbeatMs: options.heartbeatMs ?? 60_000,
       hub: {
-        async listen(runId, viewer) {
-          const stop = await realHub.listen(runId, viewer);
+        async listen(channel, viewer) {
+          const runId = channel.replace(/^run:/, "");
+          const stop = await realHub.listen(channel, viewer);
           options.onListen?.(runId);
           return async () => {
             stopped.push(runId);

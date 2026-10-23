@@ -437,6 +437,56 @@ paths:
         "404":
           $ref: "#/components/responses/ProjectNotFound"
 
+  /api/projects/{projectId}/onboarding/events:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Onboarding]
+      summary: The latest setup's events, replayed then live (server-sent events)
+      description: |
+        Same frames as a run's stream, with `data: <OnboardingEvent JSON>` (`info`, `question_asked`, `question_answered`, the runner's events, and `done`).
+        Follows the project's latest setup at the moment of connecting; stays open while it waits for an answer; ends after `done` or once the setup has ended. See docs/knowledge/api.md §6.
+      operationId: streamOnboardingEvents
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          description: Resume after this event (EventSource sends it on reconnect)
+          schema:
+            type: integer
+            minimum: 0
+        - name: after
+          in: query
+          description: Same as Last-Event-ID, for clients that can't set headers
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: The event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                id: 1
+                data: {"type":"info","message":"Found a pnpm workspace with 2 projects","onboardingId":"…","seq":1,"ts":"…"}
+
+                id: 2
+                data: {"type":"question_asked","questionId":"…","question":"Backend tests need PostgreSQL. What should I do?","options":[{"label":"Skip them"},{"label":"Keep them"}],"allowOther":true,"onboardingId":"…","seq":2,"ts":"…"}
+
+                : ping
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/OnboardingNotFound"
+
   /api/projects/{projectId}/onboarding/answer:
     parameters:
       - name: projectId
