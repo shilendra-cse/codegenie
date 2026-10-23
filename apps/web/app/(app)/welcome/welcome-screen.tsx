@@ -1,36 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Alert, type AlertProps } from "@/components/atoms/alert";
+import { InstallNotice } from "@/components/molecules/install-notice";
 import { WelcomeChecklist } from "@/components/organisms/welcome-checklist";
 import { useAccount } from "@/features/account/use-account";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
 import { APP_HOME } from "@/lib/routes";
-
-const NOTICES: Record<string, { tone: AlertProps["tone"]; text: string }> = {
-  installed: { tone: "ok", text: "GitHub App installed." },
-  requested: {
-    tone: "info",
-    text: "Installation requested. An owner of the organisation needs to approve it.",
-  },
-  cancelled: { tone: "info", text: "Installation cancelled." },
-  "not-found": {
-    tone: "warn",
-    text: "We couldn't find that installation on your account.",
-  },
-};
+import { useInstallOutcome } from "../use-install-outcome";
 
 export type WelcomeScreenProps = { github?: string };
 
 export function WelcomeScreen({ github }: WelcomeScreenProps) {
-  const router = useRouter();
   const { account } = useAccount();
   const checklist = useWelcomeChecklist();
-  // Kept in state so the notice outlives the address change below.
-  const [notice] = useState(() =>
-    github && Object.hasOwn(NOTICES, github) ? NOTICES[github] : null,
-  );
+  const outcome = useInstallOutcome(github, APP_HOME);
   const firstName = account?.name.trim().split(/\s+/)[0];
   const checklistView =
     checklist.status === "ready"
@@ -38,10 +20,6 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
       : checklist.status === "error"
         ? { status: checklist.status, onRetry: checklist.retry }
         : { status: checklist.status };
-
-  useEffect(() => {
-    if (github !== undefined) router.replace(APP_HOME, { scroll: false });
-  }, [github, router]);
 
   return (
     <div className="mx-auto flex w-full max-w-[640px] flex-col gap-7 px-6 py-[72px]">
@@ -53,7 +31,7 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
           A few steps and CodeGenie is ready to work on your code.
         </p>
       </div>
-      {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
+      <InstallNotice outcome={outcome} />
       <WelcomeChecklist {...checklistView} />
       <p className="text-[13px] text-faint">
         CodeGenie works best on JavaScript and TypeScript repositories whose
