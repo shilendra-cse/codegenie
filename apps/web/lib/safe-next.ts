@@ -1,4 +1,4 @@
-const AFTER_SIGN_IN = "/build";
+import { APP_HOME } from "./routes";
 
 export function safeNext(next: string | null | undefined): string {
   if (
@@ -8,5 +8,5 @@ export function safeNext(next: string | null | undefined): string {
   ) {
     return next;
   }
-  return AFTER_SIGN_IN;
+  return APP_HOME;
 }

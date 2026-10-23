@@ -28,14 +28,14 @@ export function Logo({ variant = "full", className }: LogoProps) {
           alt=""
           width={24}
           height={18}
-          className="dark:hidden"
+          className="size-full object-contain dark:hidden"
         />
         <Image
           src={MARK.dark}
           alt=""
           width={24}
           height={18}
-          className="hidden dark:block"
+          className="hidden size-full object-contain dark:block"
         />
       </span>
     );
