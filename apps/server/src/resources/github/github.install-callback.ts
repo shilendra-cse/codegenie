@@ -13,13 +13,14 @@ export type InstallCallbackDeps = {
 export function createInstallCallbackHandler(
   deps: InstallCallbackDeps,
 ): RequestHandler {
+  const signIn = `${deps.frontendUrl}/signin?next=${encodeURIComponent("/welcome")}`;
   const back = (outcome: string) =>
-    `${deps.frontendUrl}/build?github=${outcome}`;
+    `${deps.frontendUrl}/welcome?github=${outcome}`;
 
   return async (req, res) => {
     const userId = await deps.currentUserId(req);
     if (!userId) {
-      res.redirect(`${deps.frontendUrl}/signin`);
+      res.redirect(signIn);
       return;
     }
     const installationId = Number(req.query.installation_id);
@@ -31,7 +32,7 @@ export function createInstallCallbackHandler(
     }
     const token = await deps.githubToken(userId);
     if (!token) {
-      res.redirect(`${deps.frontendUrl}/signin`);
+      res.redirect(signIn);
       return;
     }
 

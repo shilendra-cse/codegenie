@@ -17,12 +17,7 @@ export function ClosingCta({ signedIn }: ClosingCtaProps) {
           Connect a repository in a minute. Review your first pull request soon
           after.
         </p>
-        <Button
-          asChild
-          variant="primary"
-          size="lg"
-          className="shadow-[0_8px_24px_-8px_var(--glow)]"
-        >
+        <Button asChild variant="primary" size="lg" glow>
           {signedIn ? (
             <Link href={APP_HOME}>Open CodeGenie</Link>
           ) : (

@@ -96,7 +96,7 @@ Sign in:   web "Continue with Github" → Better Auth (the App's client id) → 
 
 Install:   installUrl → GitHub → Setup URL: GET /api/github/installations/callback?installation_id=…
              → signed in? the user's token lists their installations → is this one of them? → github_installations
-             → back to the web app (/build?github=installed | not-found | requested | cancelled)
+             → back to the web app (/welcome?github=installed | not-found | requested | cancelled)
 
 Webhooks:  GitHub → (smee in development) → POST /api/github/webhooks
              → signature over the raw body ✓ → delivery seen before? (webhook_deliveries) → skip

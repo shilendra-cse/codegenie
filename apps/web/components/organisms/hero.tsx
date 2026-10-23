@@ -6,8 +6,6 @@ import { GitHubMark } from "@/components/atoms/github-mark";
 import { Icon } from "@/components/atoms/icon";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
 
-const glow = "shadow-[0_8px_24px_-8px_var(--glow)]";
-
 export type HeroProps = { signedIn: boolean };
 
 export function Hero({ signedIn }: HeroProps) {
@@ -29,11 +27,11 @@ export function Hero({ signedIn }: HeroProps) {
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
         {signedIn ? (
-          <Button asChild variant="primary" size="lg" className={glow}>
+          <Button asChild variant="primary" size="lg" glow>
             <Link href={APP_HOME}>Open CodeGenie</Link>
           </Button>
         ) : (
-          <Button asChild variant="primary" size="lg" className={glow}>
+          <Button asChild variant="primary" size="lg" glow>
             <Link href={SIGN_IN}>
               <GitHubMark />
               Sign in with GitHub

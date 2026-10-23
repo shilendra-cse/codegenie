@@ -23,10 +23,9 @@ export function Sidebar({ pathname, account }: SidebarProps) {
         <Logo />
       </Link>
       <Button
-        variant="primary"
         disabled
         title="Coming soon"
-        className="w-full justify-start"
+        className="w-full justify-start disabled:text-faint disabled:opacity-100"
       >
         <Icon icon={Plus} />
         New task

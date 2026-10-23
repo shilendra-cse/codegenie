@@ -98,6 +98,7 @@
 
   --grid: rgba(15, 15, 18, 0.06);
   --glow: rgba(15, 15, 18, 0.1);
+  --glow-soft: rgba(15, 15, 18, 0.06);
   --beam: rgba(15, 15, 18, 0.55);
   --sheen: rgba(15, 15, 18, 0.08);
 }
@@ -141,6 +142,7 @@
 
   --grid: rgba(255, 255, 255, 0.055);
   --glow: rgba(255, 255, 255, 0.13);
+  --glow-soft: rgba(255, 255, 255, 0.07);
   --beam: rgba(255, 255, 255, 0.85);
   --sheen: rgba(255, 255, 255, 0.14);
 }
@@ -196,6 +198,9 @@
     background: radial-gradient(closest-side, var(--glow), transparent);
     filter: blur(30px);
     animation: glow-breathe 8s ease-in-out infinite;
+  }
+  .glow-soft {
+    background: radial-gradient(closest-side, var(--glow-soft), transparent);
   }
 
   .sheen {

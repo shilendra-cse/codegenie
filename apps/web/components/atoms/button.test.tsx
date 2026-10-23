@@ -34,4 +34,11 @@ describe("Button", () => {
     expect(link).toHaveClass("bg-primary");
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  it("glows when it is the page's main action", () => {
+    render(<Button glow>Start</Button>);
+    expect(screen.getByRole("button", { name: "Start" })).toHaveClass(
+      "shadow-[0_8px_24px_-8px_var(--glow)]",
+    );
+  });
 });
