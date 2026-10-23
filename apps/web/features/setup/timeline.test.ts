@@ -116,7 +116,9 @@ describe("buildTimeline", () => {
     expect(timeline.lines[0]).toEqual({
       kind: "info",
       seq: 1,
+      ts,
       text: "Preparing a sandbox",
+      progress: true,
     });
     expect(timeline.lines[4]).toMatchObject({
       items: ['Check "test" (backend) is failing.'],
@@ -131,6 +133,7 @@ describe("buildTimeline", () => {
     expect(timeline.lines.at(-1)).toEqual({
       kind: "done",
       seq: 15,
+      ts,
       status: "succeeded",
       version: 1,
       error: null,
@@ -141,6 +144,25 @@ describe("buildTimeline", () => {
       "Final check: 2 of 2 checks passing",
       "Saved",
     ]);
+  });
+
+  it("tells results apart from what's happening now", () => {
+    const [working, result] = buildTimeline(
+      numbered(
+        {
+          type: "info",
+          message: "Installing dependencies and running checks…",
+        },
+        {
+          type: "info",
+          message:
+            "Everything installed and every check passed; no changes needed.",
+        },
+      ),
+    ).lines;
+
+    expect(working).toMatchObject({ progress: true });
+    expect(result).toMatchObject({ progress: false });
   });
 
   it("keeps a question open until it's answered", () => {

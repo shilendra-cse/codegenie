@@ -11,29 +11,29 @@ type Tried = Pick<RunEventSetupCompleted, "steps" | "checks">;
 /** One thing the agent did while looking into a problem. */
 export type AgentAction = { id: string; tool: string; target: string | null };
 
-export type TimelineLine =
-  | { kind: "info"; seq: number; text: string }
-  | { kind: "problems"; seq: number; items: string[] }
+/** Every line has when it started (`ts`), so the page can show how long each took. */
+export type TimelineLine = { seq: number; ts: string } & (
+  | {
+      kind: "info";
+      text: string;
+      /** "Installing…"-style messages: what's happening now, not a result. */
+      progress: boolean;
+    }
+  | { kind: "problems"; items: string[] }
   | {
       kind: "projects";
-      seq: number;
       projects: { cwd: string; packageManager: PackageManager | null }[];
     }
-  | ({ kind: "tried"; seq: number; phase: "first" | "agent" | "final" } & Tried)
-  | { kind: "agent"; seq: number; actions: AgentAction[] }
-  | {
-      kind: "question";
-      seq: number;
-      question: OnboardingQuestion;
-      answer: string | null;
-    }
+  | ({ kind: "tried"; phase: "first" | "agent" | "final" } & Tried)
+  | { kind: "agent"; actions: AgentAction[] }
+  | { kind: "question"; question: OnboardingQuestion; answer: string | null }
   | {
       kind: "done";
-      seq: number;
       status: OnboardingEndStatus;
       version: number | null;
       error: string | null;
-    };
+    }
+);
 
 export type Timeline = {
   lines: TimelineLine[];
@@ -103,7 +103,7 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
   let agent: Extract<TimelineLine, { kind: "agent" }> | null = null;
 
   for (const event of events) {
-    const seq = event.seq ?? 0;
+    const at = { seq: event.seq ?? 0, ts: event.ts };
     // Consecutive tool calls (and their ends) are one group of the agent's work.
     if (event.type !== "tool_start" && event.type !== "tool_end") agent = null;
     switch (event.type) {
@@ -113,7 +113,7 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
         if (rest.length > 0 && first?.startsWith("Found")) {
           lines.push({
             kind: "problems",
-            seq,
+            ...at,
             items: rest
               .map((item) => item.replace(/^\s*-\s*/, ""))
               .filter(Boolean),
@@ -121,19 +121,20 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
         } else if (rest.length === 0) {
           lines.push({
             kind: "info",
-            seq,
+            ...at,
             text: event.message.replace(/…$/, ""),
+            progress: event.message.endsWith("…"),
           });
         }
         break;
       }
       case "setup_drafted":
-        lines.push({ kind: "projects", seq, projects: event.projects });
+        lines.push({ kind: "projects", ...at, projects: event.projects });
         break;
       case "setup_completed":
         lines.push({
           kind: "tried",
-          seq,
+          ...at,
           phase: event.phase ?? "first",
           steps: event.steps,
           checks: event.checks,
@@ -149,7 +150,7 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
         if (agent) {
           agent.actions.push(action);
         } else {
-          agent = { kind: "agent", seq, actions: [action] };
+          agent = { kind: "agent", ...at, actions: [action] };
           lines.push(agent);
         }
         break;
@@ -157,7 +158,7 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
       case "question_asked": {
         const line = {
           kind: "question" as const,
-          seq,
+          ...at,
           question: {
             id: event.questionId,
             question: event.question,
@@ -179,7 +180,7 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
       case "done":
         lines.push({
           kind: "done",
-          seq,
+          ...at,
           status: event.status,
           version: event.version ?? null,
           error: event.error ?? null,
