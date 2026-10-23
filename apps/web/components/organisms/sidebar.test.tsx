@@ -1,10 +1,28 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Sidebar } from "./sidebar";
+import { Sidebar, type SidebarProps } from "./sidebar";
+
+const projects: SidebarProps["projects"] = [
+  { id: "p1", name: "dodesk", health: "ok" },
+  { id: "p2", name: "api-gateway", health: "attention" },
+  { id: "p3", name: "portfolio", health: "none" },
+];
+
+function renderSidebar(props: Partial<SidebarProps> = {}) {
+  render(
+    <Sidebar
+      pathname="/welcome"
+      projects={[]}
+      projectsFailed={false}
+      account={null}
+      {...props}
+    />,
+  );
+}
 
 describe("Sidebar", () => {
   it("shows New task as not ready yet and no projects", () => {
-    render(<Sidebar pathname="/welcome" account={null} />);
+    renderSidebar();
 
     const newTask = screen.getByRole("button", { name: "New task" });
     expect(newTask).toBeDisabled();
@@ -17,11 +35,60 @@ describe("Sidebar", () => {
   });
 
   it("marks the link for the current page", () => {
-    render(<Sidebar pathname="/inbox" account={null} />);
+    renderSidebar({ pathname: "/inbox" });
 
     expect(screen.getByRole("link", { name: "Inbox" })).toHaveAttribute(
       "aria-current",
       "page",
     );
+  });
+
+  it("lists your projects with their setup state", () => {
+    renderSidebar({ projects });
+
+    expect(screen.getByRole("link", { name: "dodesk, ready" })).toHaveAttribute(
+      "href",
+      "/projects/p1",
+    );
+    expect(
+      screen.getByRole("link", { name: "api-gateway, needs attention" }),
+    ).toHaveAttribute("href", "/projects/p2");
+    expect(
+      screen.getByRole("link", { name: "portfolio, not set up" }),
+    ).toHaveAttribute("href", "/projects/p3");
+    expect(screen.queryByText("No projects yet.")).toBeNull();
+  });
+
+  it("marks the project you're on, including its inner pages", () => {
+    renderSidebar({ projects, pathname: "/projects/p2/environment" });
+
+    expect(
+      screen.getByRole("link", { name: "api-gateway, needs attention" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.getByRole("link", { name: "dodesk, ready" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("offers to add a repository, and shows it as the current page while adding", () => {
+    renderSidebar({ projects });
+    expect(
+      screen.getByRole("link", { name: "Add a repository" }),
+    ).toHaveAttribute("href", "/projects/new");
+    expect(screen.queryByRole("link", { name: "Add repository" })).toBeNull();
+
+    renderSidebar({ projects, pathname: "/projects/new" });
+    expect(
+      screen.getByRole("link", { name: "Add repository" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("holds the place while projects load, and says so when they fail", () => {
+    renderSidebar({ projects: undefined });
+    expect(screen.queryByText("No projects yet.")).toBeNull();
+    expect(screen.queryByRole("link", { name: /dodesk/ })).toBeNull();
+
+    renderSidebar({ projects: undefined, projectsFailed: true });
+    expect(screen.getByText("Couldn't load projects.")).toBeInTheDocument();
   });
 });

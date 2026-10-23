@@ -17,6 +17,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
   usePathname: () => "/welcome",
 }));
+vi.mock("@/features/projects/projects", async (original) => ({
+  ...(await original<typeof import("@/features/projects/projects")>()),
+  useProjects: () => ({ data: [], isError: false }),
+}));
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "system", setTheme: vi.fn() }),
 }));

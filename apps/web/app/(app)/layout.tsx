@@ -7,6 +7,7 @@ import { AccountMenu } from "@/components/organisms/account-menu";
 import { Sidebar } from "@/components/organisms/sidebar";
 import { AppShell } from "@/components/templates/app-shell";
 import { useAccount } from "@/features/account/use-account";
+import { toSidebarProject, useProjects } from "@/features/projects/projects";
 import { SIGN_IN } from "@/lib/routes";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { account, pending, signingOut, signOut } = useAccount();
+  const projects = useProjects();
 
   // The middleware only sees that a cookie exists; an expired session lands here.
   useEffect(() => {
@@ -26,6 +28,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       sidebar={
         <Sidebar
           pathname={pathname}
+          projects={projects.data?.map(toSidebarProject)}
+          projectsFailed={projects.isError}
           account={
             <AccountMenu
               user={account}

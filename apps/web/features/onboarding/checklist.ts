@@ -1,4 +1,5 @@
 import type { ProjectResponse } from "@codegenie/shared";
+import { ADD_REPOSITORY, projectPath } from "@/lib/routes";
 
 export type ChecklistStepId = "install" | "add-repo" | "set-up" | "first-task";
 
@@ -28,15 +29,15 @@ export function buildChecklist({
     {
       id: "add-repo",
       done: projects.length > 0,
-      href: "/projects/new",
+      href: ADD_REPOSITORY,
       external: false,
     },
     {
       id: "set-up",
       done: projects.some((project) => project.environment),
       href: needsSetUp
-        ? `/projects/${needsSetUp.id}/environment`
-        : "/projects/new",
+        ? `${projectPath(needsSetUp.id)}/environment`
+        : ADD_REPOSITORY,
       external: false,
     },
     { id: "first-task", done: hasTasks, href: "/new", external: false },
