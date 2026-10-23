@@ -17,4 +17,13 @@ describe("Logo", () => {
       expect(white).toHaveClass("hidden", "dark:block");
     },
   );
+
+  it("requests the mark at the size it is shown, for sharp retina images", () => {
+    render(<Logo variant="mark" size={40} />);
+    const [black] = screen
+      .getByRole("img", { name: "CodeGenie" })
+      .querySelectorAll("img");
+
+    expect(black!.getAttribute("srcset")).toContain("w=96");
+  });
 });

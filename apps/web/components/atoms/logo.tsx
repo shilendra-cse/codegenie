@@ -12,29 +12,33 @@ const MARK = {
 
 export type LogoProps = {
   variant?: "full" | "mark";
+  /** The mark's width in px; the image is requested at this size, so it stays sharp. */
+  size?: 24 | 40;
   className?: string;
 };
 
-export function Logo({ variant = "full", className }: LogoProps) {
+export function Logo({ variant = "full", size = 24, className }: LogoProps) {
   if (variant === "mark") {
+    const height = (size * 3) / 4;
     return (
       <span
         role="img"
         aria-label="CodeGenie"
-        className={cn("inline-flex h-[18px] w-6 shrink-0", className)}
+        className={cn("inline-flex shrink-0", className)}
+        style={{ width: size, height }}
       >
         <Image
           src={MARK.light}
           alt=""
-          width={24}
-          height={18}
+          width={size}
+          height={height}
           className="size-full object-contain dark:hidden"
         />
         <Image
           src={MARK.dark}
           alt=""
-          width={24}
-          height={18}
+          width={size}
+          height={height}
           className="hidden size-full object-contain dark:block"
         />
       </span>
