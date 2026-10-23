@@ -33,6 +33,9 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | `TASK_NOT_FOUND` | 404 | Not one of the user's tasks, or doesn't exist |
 | `RUN_NOT_FOUND` | 404 | Not a run on one of the user's tasks, or doesn't exist |
 | `RUN_ENDED` | 409 | The run has already ended, so it can't be cancelled |
+| `ONBOARDING_NOT_FOUND` | 404 | The project has never been set up, so there's no setup to answer or stop |
+| `ONBOARDING_ENDED` | 409 | The setup has already ended, so it can't be stopped |
+| `QUESTION_NOT_OPEN` | 409 | The setup isn't waiting on that question (answered, timed out, stopped, or a different one) |
 | `QUEUE_UNAVAILABLE` | 503 | Work couldn't be queued (Redis unreachable); a task's run is marked failed (`queue_unavailable`) |
 
 ## 4. Resources
@@ -45,7 +48,11 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | POST | `/projects` | `{ installationId, repoId }` → 201 created, or 200 with the existing project |
 | GET | `/projects/:id` | One project |
 | DELETE | `/projects/:id` | Removes it with its tasks, runs and environments; GitHub untouched |
-| POST | `/projects/:id/onboarding` | Queues environment setup (202); while one is queued or running, another isn't added |
+| POST | `/projects/:id/onboarding` | Records a setup and queues it: 202 `{ onboarding }`; while one is queued, running or waiting, that one is returned |
+| GET | `/projects/:id/onboarding` | The latest setup with its open question, or `null` |
+| POST | `/projects/:id/onboarding/answer` | `{ questionId, answer: { option } \| { other } }` → 202; checked against the open question, then handed to the worker |
+| POST | `/projects/:id/onboarding/cancel` | 202 `{ outcome: "cancelled" }` for a queued setup, `"stopping"` for a running or waiting one |
+| GET | `/projects/:id/environments` | The saved environment versions, newest (active) first |
 | POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued |
 | GET | `/tasks?projectId=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` |
 | GET | `/tasks/:id` | A task with its messages and runs |
@@ -68,7 +75,9 @@ A **run**: `id`, `taskId`, `trigger`, `status`, `stage`, `model`, `summary`, `ch
 
 **Cancelling** a queued run marks it `cancelled` directly; a running one is told to stop over Redis (`run-cancel`) and ends `cancelled` once the worker stops it.
 
-The environment's endpoints come next ([development-plan.md](./development-plan.md), Phase 4).
+A **setup** (onboarding): `id`, `status` (`queued`, `running`, `waiting` for an answer, `succeeded`, `failed`, `cancelled`), `question` (the open one while `waiting`: `id`, `question`, `why`, `options` with the recommended one first, `allowOther`), `environmentVersion` (what it saved), `error` (`code`, `message`; e.g. `NO_ANSWER` after 30 minutes without one), tokens, `costUsd`, `queuedAt`, `startedAt`, `finishedAt`, `durationMs` ([environment.md](./environment.md) §3.5). **Answering** requires the setup to be `waiting` on that question (409 `QUESTION_NOT_OPEN` otherwise), an existing option or, where allowed, 1–2000 characters of your own (400 otherwise); the answer goes to the worker over Redis (`onboarding-answer`). **Stopping** works like cancelling a run, over `run-cancel` with the setup's id.
+
+An **environment version**: `version`, `active`, `source`, `savedAt`, `health`, `healthReasons`, `steps`, `checks`, `decisions` (the questions asked and how they were answered). Rollback to an older version comes with the project page.
 
 ## 5. Code layout
 

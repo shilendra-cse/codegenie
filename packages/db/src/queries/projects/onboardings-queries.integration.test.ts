@@ -10,6 +10,7 @@ import {
   findLatestOnboarding,
   findOnboarding,
   findOnboardingEventsAfter,
+  findOnboardingQuestion,
   findUserOnboarding,
   getLastOnboardingEventSeq,
   insertOnboardingEvent,
@@ -145,7 +146,7 @@ describe.skipIf(!database)("onboardings queries against Postgres", () => {
 
     expect(
       await findUserOnboarding(db, project.userId, project.id),
-    ).toMatchObject({ id: onboarding.id });
+    ).toMatchObject({ id: onboarding.id, environmentVersion: null });
     expect(await findUserOnboarding(db, randomUUID(), project.id)).toBeNull();
   });
 
@@ -190,5 +191,48 @@ describe.skipIf(!database)("onboardings queries against Postgres", () => {
     expect(await findOnboardingEventsAfter(db, onboarding.id, 0, 10)).toEqual(
       [],
     );
+  });
+
+  it("gives the latest setup the version it saved", async () => {
+    const { project, onboarding } = await started();
+    const environment = await new DbEnvironmentStore(db).save(
+      project.id,
+      {
+        version: 1,
+        steps: [],
+        checks: [],
+        meta: { source: "detected", createdAt: "", decisions: [] },
+      },
+      "detected",
+    );
+    await markOnboardingEnded(db, onboarding.id, {
+      status: "succeeded",
+      environmentId: environment.id,
+    });
+
+    expect(
+      await findUserOnboarding(db, project.userId, project.id),
+    ).toMatchObject({ id: onboarding.id, environmentVersion: 1 });
+  });
+
+  it("finds a stored question by its id", async () => {
+    const { onboarding } = await started();
+    const question = {
+      questionId: "q-1",
+      question: "Backend tests need PostgreSQL. What should I do?",
+      options: [{ label: "Skip them" }, { label: "Keep them" }],
+      allowOther: true,
+    };
+    await insertOnboardingEvent(db, {
+      onboardingId: onboarding.id,
+      seq: 1,
+      type: "question_asked",
+      payload: question,
+    });
+
+    expect(await findOnboardingQuestion(db, onboarding.id, "q-1")).toEqual(
+      question,
+    );
+    expect(await findOnboardingQuestion(db, onboarding.id, "q-2")).toBeNull();
   });
 });

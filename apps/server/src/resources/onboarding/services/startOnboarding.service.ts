@@ -1,7 +1,7 @@
 import { createOnboarding, type Db, markOnboardingEnded } from "@codegenie/db";
 import { HttpError } from "@/lib/http-error";
+import { getRunnableProject } from "../../projects/services/getRunnableProject.service";
 import type { WorkQueue } from "../../tasks/tasks.types";
-import { getRunnableProject } from "./getRunnableProject.service";
 
 /** Starts setup, or returns the one already in progress. */
 export async function startOnboarding(

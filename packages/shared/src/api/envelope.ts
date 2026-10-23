@@ -26,4 +26,7 @@ export type ApiErrorCode =
   | "TASK_NOT_FOUND"
   | "RUN_NOT_FOUND"
   | "RUN_ENDED"
+  | "ONBOARDING_NOT_FOUND"
+  | "ONBOARDING_ENDED"
+  | "QUESTION_NOT_OPEN"
   | "QUEUE_UNAVAILABLE";

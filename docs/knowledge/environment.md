@@ -223,7 +223,7 @@ Runs flag the config as **needs attention** (without stopping) when:
 - a setup step failed, or
 - a folder with a `package.json` appears that the config doesn't cover (`uncoveredProjects`: the multi-project rules run on the checkout; workspace packages don't count, since the root installs them).
 
-The fix is to rerun onboarding, which starts from the current config and only works on what's broken, producing a new version.
+The fix is to rerun onboarding, which produces a new version. Today a rerun starts from scratch (the repository is detected again, and earlier answers aren't reused); starting from the current config and only working on what's broken is planned.
 
 ## 5. Storage
 

@@ -3,8 +3,6 @@ import {
   type Db,
   DbEnvironmentStore,
   ensureUser,
-  findLatestOnboarding,
-  getInstallationById,
   markInstallationUninstalled,
   recordInstallation,
   setInstallationSuspended,
@@ -55,20 +53,10 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
         }
       : { status: 404, body: { message: "Not Found" } },
   );
-  const queued: { name: string; data: unknown; options: unknown }[] = [];
-  let queueDown = false;
   const projects = createProjectControllers({
     db,
     githubToken: () => Promise.resolve(githubToken),
     fetch: github.fetch,
-    queue: {
-      add(name, data, options) {
-        if (queueDown)
-          return Promise.reject(new Error("Connection is closed."));
-        queued.push({ name, data, options });
-        return Promise.resolve({});
-      },
-    },
   });
   afterAll(() => database?.drop());
 
@@ -311,72 +299,55 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
     });
   });
 
-  describe("starting environment setup", () => {
-    it("records the setup, then queues it, once per project at a time", async () => {
-      const project = await insertProject(db);
-      const start = () =>
-        projects.startSetup(
-          request(project.userId, { id: project.id }),
-          response,
-        );
-
-      expect(await start()).toMatchObject({
-        status: 202,
-        data: { projectId: project.id },
-      });
-      const setup = await findLatestOnboarding(db, project.id);
-      expect(setup).toMatchObject({
-        status: "queued",
-        createdByUserId: project.userId,
-      });
-      expect(queued.at(-1)).toEqual({
-        name: "onboard-project",
-        data: { onboardingId: setup?.id },
-        options: { jobId: setup?.id },
-      });
-
-      const before = queued.length;
-      await start();
-      expect(queued).toHaveLength(before);
-      expect((await findLatestOnboarding(db, project.id))?.id).toBe(setup?.id);
+  describe("listing environment versions", () => {
+    const config = (command: string) => ({
+      version: 1 as const,
+      steps: [{ name: "install", cwd: ".", command }],
+      checks: [],
+      meta: {
+        source: "ai" as const,
+        createdAt: "",
+        decisions: [{ question: "Use npm?", answer: "Yes", auto: false }],
+      },
     });
 
-    it("refuses when the App is suspended, for someone else's project, and when the queue is down", async () => {
-      const suspended = await insertProject(db);
-      const installation = await getInstallationById(
-        db,
-        suspended.installationId,
-      );
-      await setInstallationSuspended(db, installation!.installationId, true);
+    it("lists the saved versions, newest and active first", async () => {
       const project = await insertProject(db);
-      const setup = (userId: string, id: string) =>
-        projects.startSetup(request(userId, { id }), response);
+      const store = new DbEnvironmentStore(db);
+      const environments = (userId: string) =>
+        projects.getEnvironments(request(userId, { id: project.id }), response);
 
-      await expect(setup(suspended.userId, suspended.id)).rejects.toMatchObject(
-        {
-          status: 409,
-          code: "GITHUB_INSTALLATION_SUSPENDED",
+      expect(await environments(project.userId)).toMatchObject({
+        status: 200,
+        data: { environments: [] },
+      });
+
+      await store.save(project.id, config("npm ci"), "ai");
+      await store.save(project.id, config("npm install"), "ai");
+
+      const result = await environments(project.userId);
+      expect(result).toMatchObject({
+        status: 200,
+        data: {
+          environments: [
+            {
+              version: 2,
+              active: true,
+              source: "ai",
+              health: "ok",
+              healthReasons: [],
+              steps: [{ name: "install", cwd: ".", command: "npm install" }],
+              checks: [],
+              decisions: [{ question: "Use npm?", answer: "Yes", auto: false }],
+            },
+            { version: 1, active: false },
+          ],
         },
-      );
-      await expect(setup(randomUUID(), project.id)).rejects.toMatchObject({
+      });
+      await expect(environments(randomUUID())).rejects.toMatchObject({
         status: 404,
         code: "PROJECT_NOT_FOUND",
       });
-      queueDown = true;
-      await expect(setup(project.userId, project.id)).rejects.toMatchObject({
-        status: 503,
-        code: "QUEUE_UNAVAILABLE",
-      });
-      queueDown = false;
-      // The setup that couldn't be queued doesn't block the next one.
-      expect(await findLatestOnboarding(db, project.id)).toMatchObject({
-        status: "failed",
-        errorCode: "queue_unavailable",
-      });
-      await setup(project.userId, project.id);
-      expect((await findLatestOnboarding(db, project.id))?.status).toBe(
-        "queued",
-      );
     });
   });
 });

@@ -12,6 +12,7 @@ tags:
   - name: Example
   - name: GitHub
   - name: Projects
+  - name: Onboarding
   - name: Tasks
   - name: Runs
 
@@ -376,13 +377,13 @@ paths:
           type: string
           format: uuid
     post:
-      tags: [Projects]
+      tags: [Onboarding]
       summary: Set up the project's environment
-      description: Queues environment setup. While one is queued or running for the project, another isn't added.
-      operationId: startProjectOnboarding
+      description: Records a setup and queues it. While one is queued, running or waiting for an answer, that one is returned instead.
+      operationId: startOnboarding
       responses:
         "202":
-          description: Queued
+          description: The new setup, or the one in progress
           content:
             application/json:
               schema:
@@ -392,11 +393,10 @@ paths:
                     properties:
                       data:
                         type: object
-                        required: [projectId]
+                        required: [onboarding]
                         properties:
-                          projectId:
-                            type: string
-                            format: uuid
+                          onboarding:
+                            $ref: "#/components/schemas/Onboarding"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -409,6 +409,162 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "503":
           $ref: "#/components/responses/QueueUnavailable"
+    get:
+      tags: [Onboarding]
+      summary: The project's latest setup
+      description: With the open question while it waits for an answer; `null` before the first setup.
+      operationId: getLatestOnboarding
+      responses:
+        "200":
+          description: The latest setup, or null
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [onboarding]
+                        properties:
+                          onboarding:
+                            allOf:
+                              - $ref: "#/components/schemas/Onboarding"
+                            nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+
+  /api/projects/{projectId}/onboarding/answer:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Onboarding]
+      summary: Answer the setup's open question
+      description: Checked against the open question, then handed to the worker, which records it and carries on.
+      operationId: answerOnboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnswerOnboarding"
+      responses:
+        "202":
+          description: Handed to the worker
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [questionId]
+                        properties:
+                          questionId:
+                            type: string
+        "400":
+          description: Not one of the options, or free text where the question doesn't allow it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/OnboardingNotFound"
+        "409":
+          description: That question isn't waiting for an answer any more (`QUESTION_NOT_OPEN`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/projects/{projectId}/onboarding/cancel:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Onboarding]
+      summary: Stop setup
+      description: A queued setup is cancelled at once; a running or waiting one is told to stop and ends cancelled shortly after.
+      operationId: cancelOnboarding
+      responses:
+        "202":
+          description: Cancelled, or stopping
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [outcome]
+                        properties:
+                          outcome:
+                            type: string
+                            enum: [cancelled, stopping]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/OnboardingNotFound"
+        "409":
+          description: The setup has already ended (`ONBOARDING_ENDED`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/projects/{projectId}/environments:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: The project's environment versions
+      description: Saved versions, newest (the active one) first.
+      operationId: listEnvironments
+      responses:
+        "200":
+          description: The versions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [environments]
+                        properties:
+                          environments:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Environment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
 
   /api/projects/{projectId}/tasks:
     parameters:
@@ -771,6 +927,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
+    OnboardingNotFound:
+      description: The project was never set up (`ONBOARDING_NOT_FOUND`), or it isn't one of the user's projects (`PROJECT_NOT_FOUND`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
     QueueUnavailable:
       description: Work couldn't be queued (`QUEUE_UNAVAILABLE`); try again
       content:
@@ -878,7 +1040,7 @@ components:
           enum: [user, organization]
     GitHubRepo:
       type: object
-      required: [id, fullName, owner, name, defaultBranch, private, htmlUrl, updatedAt, projectId]
+      required: [id, fullName, owner, name, defaultBranch, private, htmlUrl, updatedAt, language, projectId]
       properties:
         id:
           type: integer
@@ -902,11 +1064,170 @@ components:
           type: string
           format: date-time
           nullable: true
+        language:
+          type: string
+          nullable: true
+          description: GitHub's main language; null for forks and repositories it hasn't analysed
+          example: TypeScript
         projectId:
           type: string
           format: uuid
           nullable: true
           description: The user's project for this repository, if it's one already
+    Onboarding:
+      type: object
+      required: [id, status, question, environmentVersion, error, inputTokens, outputTokens, costUsd, queuedAt, startedAt, finishedAt, durationMs]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running, waiting, succeeded, failed, cancelled]
+          description: "`waiting`: a question is open"
+        question:
+          allOf:
+            - $ref: "#/components/schemas/OnboardingQuestion"
+          nullable: true
+        environmentVersion:
+          type: integer
+          nullable: true
+          description: The version it saved
+        error:
+          type: object
+          nullable: true
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: NO_ANSWER
+            message:
+              type: string
+              nullable: true
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        costUsd:
+          type: number
+        queuedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        durationMs:
+          type: integer
+          nullable: true
+    OnboardingQuestion:
+      type: object
+      required: [id, question, options, allowOther]
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+          example: Backend tests need PostgreSQL. What should I do?
+        why:
+          type: string
+        options:
+          type: array
+          description: 2–4; the first is recommended
+          items:
+            type: object
+            required: [label]
+            properties:
+              label:
+                type: string
+              detail:
+                type: string
+        allowOther:
+          type: boolean
+          description: Whether an answer in your own words is accepted
+    AnswerOnboarding:
+      type: object
+      required: [questionId, answer]
+      properties:
+        questionId:
+          type: string
+        answer:
+          oneOf:
+            - type: object
+              required: [option]
+              properties:
+                option:
+                  type: integer
+                  minimum: 0
+            - type: object
+              required: [other]
+              properties:
+                other:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+    Environment:
+      type: object
+      required: [version, active, source, savedAt, health, healthReasons, steps, checks, decisions]
+      properties:
+        version:
+          type: integer
+        active:
+          type: boolean
+          description: The version new tasks use
+        source:
+          type: string
+          enum: [detected, ai, user, mixed]
+        savedAt:
+          type: string
+          format: date-time
+        health:
+          type: string
+          enum: [ok, needs_attention]
+        healthReasons:
+          type: array
+          items:
+            type: string
+        steps:
+          type: array
+          items:
+            type: object
+            required: [name, cwd, command]
+            properties:
+              name:
+                type: string
+              cwd:
+                type: string
+              command:
+                type: string
+        checks:
+          type: array
+          items:
+            type: object
+            required: [name, cwd, command]
+            properties:
+              name:
+                type: string
+              cwd:
+                type: string
+              command:
+                type: string
+        decisions:
+          type: array
+          items:
+            type: object
+            required: [question, answer, auto]
+            properties:
+              question:
+                type: string
+              answer:
+                type: string
+              auto:
+                type: boolean
     Project:
       type: object
       required: [id, repo, defaultBranch, environment, installation, createdAt]

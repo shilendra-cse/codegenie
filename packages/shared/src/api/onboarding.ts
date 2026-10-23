@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { RunEvent, RunEventDone } from "./events.js";
 
 /** What the browser sends: one of the options, or free text. */
@@ -51,3 +52,54 @@ export type OnboardingAnswerMessage = {
   questionId: string;
   answer: OnboardingAnswer;
 };
+
+export const answerOnboardingSchema = z.object({
+  questionId: z.string().min(1),
+  answer: z.union([
+    z.object({ option: z.number().int().min(0) }).strict(),
+    z
+      .object({
+        other: z
+          .string()
+          .trim()
+          .min(1, "Write an answer.")
+          .max(2000, "Keep the answer under 2000 characters."),
+      })
+      .strict(),
+  ]),
+});
+
+export type AnswerOnboardingInput = z.infer<typeof answerOnboardingSchema>;
+
+export type OnboardingState =
+  | "queued"
+  | "running"
+  | "waiting"
+  | OnboardingEndStatus;
+
+export type OnboardingQuestion = {
+  id: string;
+  question: string;
+  why?: string;
+  options: { label: string; detail?: string }[];
+  allowOther: boolean;
+};
+
+export type OnboardingResponse = {
+  id: string;
+  status: OnboardingState;
+  /** The question it's waiting on, while `waiting`. */
+  question: OnboardingQuestion | null;
+  /** The environment version it saved. */
+  environmentVersion: number | null;
+  error: { code: string; message: string | null } | null;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  queuedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  durationMs: number | null;
+};
+
+export type OnboardingCancelOutcome = "cancelled" | "stopping";

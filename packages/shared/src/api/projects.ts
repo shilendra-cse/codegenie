@@ -1,4 +1,11 @@
 import { z } from "zod";
+import type {
+  EnvironmentDecision,
+  EnvironmentHealth,
+  EnvironmentSource,
+  SetupStep,
+} from "../types/environment.js";
+import type { Check } from "../types/setup.js";
 
 export const projectParamsSchema = z.object({
   id: z.uuid("The project id must be a UUID."),
@@ -30,3 +37,18 @@ export type ProjectResponse = {
 };
 
 export type ProjectListResponse = { projects: ProjectResponse[] };
+
+export type EnvironmentResponse = {
+  version: number;
+  /** The version new tasks use. */
+  active: boolean;
+  source: EnvironmentSource;
+  savedAt: string;
+  health: EnvironmentHealth;
+  healthReasons: string[];
+  steps: SetupStep[];
+  checks: Check[];
+  decisions: EnvironmentDecision[];
+};
+
+export type EnvironmentListResponse = { environments: EnvironmentResponse[] };
