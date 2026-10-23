@@ -33,6 +33,8 @@ export type RunOnboardingOptions = {
   /** Used only when the drafted setup has problems. */
   model: ResolvedModel;
   channel: UserChannel;
+  /** Saves a working setup without asking "Save this environment?" (the website saves straight away). */
+  autoApprove?: boolean;
   agentLimits?: Partial<AgentLimits>;
   emit?: Emit;
   signal?: AbortSignal;
@@ -191,6 +193,7 @@ export async function runOnboarding(
     channel.info(formatEnvironment({ config, final, notes, decisions }));
     if (signal?.aborted) return result("cancelled", { config, final });
 
+    if (options.autoApprove) return result("approved", { config, final });
     const answer = await channel.ask({
       question: "Save this environment?",
       options: [{ label: "Save" }, { label: "Discard" }],

@@ -1,6 +1,8 @@
 import {
   markOnboardingEnded,
+  markOnboardingResumed,
   markOnboardingStarted,
+  markOnboardingWaiting,
   type Db,
   type OnboardingOutcome,
 } from "@codegenie/db";
@@ -38,10 +40,15 @@ export function onboardingOutcome(
   };
 }
 
+export type OnboardingRecord = ReturnType<typeof createOnboardingRecord>;
+
 export function createOnboardingRecord(db: Db, onboardingId: string) {
   return {
     /** False when the setup isn't queued any more (e.g. it was cancelled first). */
     start: () => markOnboardingStarted(db, onboardingId),
+    waiting: (questionId: string) =>
+      markOnboardingWaiting(db, onboardingId, questionId),
+    resumed: () => markOnboardingResumed(db, onboardingId),
     finish: (outcome: EndedOnboarding) =>
       markOnboardingEnded(db, onboardingId, outcome),
     fail: (failure: OnboardingFailure) =>

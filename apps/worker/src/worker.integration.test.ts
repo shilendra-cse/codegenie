@@ -23,6 +23,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { startConsumer } from "./consumer.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
 import { handleRunTask } from "./handlers/run-task.js";
+import { createAnswerRouter } from "./onboardings/answer-router.js";
 import { fakeGithubApp } from "./testing/fake-github-app.js";
 import { testRedisOrSkip } from "./testing/test-redis.js";
 
@@ -91,6 +92,8 @@ describe.skipIf(!database || !redis || !probe)(
         github: fakeGithubApp("").github,
         publisher: connect(),
         log: () => {},
+        answers: createAnswerRouter(),
+        answerTimeoutMs: 60_000,
         createSandbox: async () => {
           const sandbox = await DockerSandbox.create();
           sandboxIds.push(sandbox.id);
@@ -100,6 +103,7 @@ describe.skipIf(!database || !redis || !probe)(
       const consumer = await startConsumer({
         connection: connect(),
         subscriber: connect(),
+        answers: deps.answers,
         concurrency: 2,
         log: () => {},
         prefix,

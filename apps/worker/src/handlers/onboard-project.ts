@@ -6,7 +6,6 @@ import {
 } from "@codegenie/db";
 import type { GithubApp } from "@codegenie/github";
 import {
-  autoChannel,
   runOnboarding,
   type OnboardingResult,
   type RunOnboardingOptions,
@@ -25,10 +24,19 @@ import {
 import { GithubAccessError, repoReadToken } from "../github/repo-token.js";
 import type { Log } from "../lib/log.js";
 import type { SandboxFactory } from "../lib/sandbox-factory.js";
+import type { AnswerRouter } from "../onboardings/answer-router.js";
+import { createEventChannel } from "../onboardings/event-channel.js";
 import {
   createOnboardingRecord,
   onboardingOutcome,
+  type EndedOnboarding,
 } from "../onboardings/onboarding-record.js";
+
+const NO_ANSWER = (minutes: number): EndedOnboarding => ({
+  status: "failed",
+  errorCode: "NO_ANSWER",
+  errorMessage: `Setup stopped after waiting ${minutes} minutes for an answer.`,
+});
 
 export type OnboardProjectDeps = {
   db: Db;
@@ -36,6 +44,9 @@ export type OnboardProjectDeps = {
   log: Log;
   createSandbox: SandboxFactory;
   github: Pick<GithubApp, "repoToken">;
+  answers: AnswerRouter;
+  /** How long a question waits for its answer before setup stops. */
+  answerTimeoutMs: number;
 } & Pick<RunOnboardingOptions, "model" | "agentLimits">;
 
 /** Null when the setup was no longer queued (e.g. cancelled before it started). */
@@ -63,8 +74,6 @@ export async function handleOnboardProject(
     onboardingEventTarget(db, onboardingId),
   );
   const now = () => new Date().toISOString();
-  const info = (message: string) =>
-    sink.emit({ type: "info", ts: now(), message });
   const done = (
     status: OnboardingEndStatus,
     extra: { version?: number; error?: string } = {},
@@ -89,6 +98,24 @@ export async function handleOnboardProject(
     throw error;
   }
 
+  // Setup stops when Stop arrives or a question goes unanswered; which one decides how it ends.
+  const stop = new AbortController();
+  const stopped = () => stop.abort();
+  if (signal?.aborted) stopped();
+  signal?.addEventListener("abort", stopped, { once: true });
+  let unanswered = false;
+  const channel = createEventChannel({
+    sink,
+    record,
+    signal: stop.signal,
+    timeoutMs: deps.answerTimeoutMs,
+    onTimeout: () => {
+      unanswered = true;
+      stop.abort();
+    },
+  });
+  const stopReceiving = deps.answers.register(onboardingId, channel.receive);
+
   const result = await runOnboarding({
     runId: `onboarding-${onboardingId}`,
     source: {
@@ -101,9 +128,13 @@ export async function handleOnboardProject(
     agentLimits: deps.agentLimits,
     createSandbox: () =>
       deps.createSandbox({ kind: "onboarding", projectId: project.id }),
-    channel: autoChannel(info),
+    channel,
+    autoApprove: true,
     emit: (event) => sink.emit(event),
-    signal,
+    signal: stop.signal,
+  }).finally(() => {
+    stopReceiving();
+    signal?.removeEventListener("abort", stopped);
   });
 
   const saved =
@@ -114,7 +145,9 @@ export async function handleOnboardProject(
           result.config.meta.source,
         )
       : null;
-  const outcome = onboardingOutcome(result, saved?.id ?? null);
+  const outcome = unanswered
+    ? NO_ANSWER(Math.round(deps.answerTimeoutMs / 60_000))
+    : onboardingOutcome(result, saved?.id ?? null);
   done(outcome.status, {
     ...(saved ? { version: saved.version } : {}),
     ...(outcome.errorMessage ? { error: outcome.errorMessage } : {}),

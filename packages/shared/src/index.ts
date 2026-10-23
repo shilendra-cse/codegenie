@@ -33,6 +33,7 @@ export type {
 export { checkKey } from "./types/environment.js";
 
 export {
+  ANSWER_CHANNEL,
   CANCEL_CHANNEL,
   DEFAULT_AGENT_MODEL,
   WORK_QUEUE,

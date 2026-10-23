@@ -20,6 +20,7 @@ describe("parseConfig", () => {
       concurrency: 3,
       sandbox: { provider: "docker" },
       reaperIntervalMs: 5 * 60_000,
+      answerTimeoutMs: 30 * 60_000,
       github: { appId: "123", privateKey: key.GITHUB_APP_PRIVATE_KEY },
     });
   });

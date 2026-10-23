@@ -11,7 +11,11 @@ export type QueuedWork = {
 
 export type QueuedWorkKind = keyof QueuedWork;
 
+/** Stops a run or a setup; the message is its id. */
 export const CANCEL_CHANNEL = "run-cancel";
+
+/** Brings an answer from the API to the worker holding the setup. */
+export const ANSWER_CHANNEL = "onboarding-answer";
 
 export function runChannel(runId: string): string {
   return `run:${runId}`;

@@ -1,12 +1,15 @@
 import {
+  ANSWER_CHANNEL,
   CANCEL_CHANNEL,
   WORK_QUEUE,
+  type OnboardingAnswerMessage,
   type QueuedWork,
   type QueuedWorkKind,
 } from "@codegenie/shared";
 import { Worker, type Job } from "bullmq";
 import type { Redis } from "ioredis";
 import type { Log } from "./lib/log.js";
+import type { AnswerRouter } from "./onboardings/answer-router.js";
 
 export type Handlers = {
   [K in QueuedWorkKind]: (
@@ -25,6 +28,8 @@ export type ConsumerOptions = {
   /** A connection of its own: a subscribed connection can't run other commands. */
   subscriber: Redis;
   handlers: Handlers;
+  /** Where answers to a setup's questions go. */
+  answers: AnswerRouter;
   concurrency: number;
   log: Log;
   prefix?: string;
@@ -39,17 +44,27 @@ export async function startConsumer(
   options: ConsumerOptions,
 ): Promise<Consumer> {
   const { handlers, log } = options;
-  const runs = new Map<string, AbortController>();
+  // Runs and setups in progress, by their id, so Stop can reach either.
+  const inProgress = new Map<string, AbortController>();
 
-  const cancel = (channel: string, runId: string) => {
-    if (channel !== CANCEL_CHANNEL) return;
-    const run = runs.get(runId);
-    if (!run) return;
-    log("info", "Cancelling run", { runId });
-    run.abort();
+  const onMessage = (channel: string, message: string) => {
+    if (channel === CANCEL_CHANNEL) {
+      const work = inProgress.get(message);
+      if (!work) return;
+      log("info", "Stopping work", { id: message });
+      work.abort();
+    } else if (channel === ANSWER_CHANNEL) {
+      try {
+        options.answers.deliver(JSON.parse(message) as OnboardingAnswerMessage);
+      } catch (error) {
+        log("warn", "Ignored an answer that couldn't be read", {
+          error: String(error),
+        });
+      }
+    }
   };
-  options.subscriber.on("message", cancel);
-  await options.subscriber.subscribe(CANCEL_CHANNEL);
+  options.subscriber.on("message", onMessage);
+  await options.subscriber.subscribe(CANCEL_CHANNEL, ANSWER_CHANNEL);
 
   const handle = async (job: Job) => {
     const item = { name: job.name, data: job.data } as QueuedItem;
@@ -58,15 +73,20 @@ export async function startConsumer(
     log("info", "Work started", { kind: job.name, id: job.id, ...item.data });
     switch (item.name) {
       case "run-task":
-        runs.set(item.data.runId, controller);
+        inProgress.set(item.data.runId, controller);
         try {
           await handlers["run-task"](item.data, controller.signal);
         } finally {
-          runs.delete(item.data.runId);
+          inProgress.delete(item.data.runId);
         }
         break;
       case "onboard-project":
-        await handlers["onboard-project"](item.data, controller.signal);
+        inProgress.set(item.data.onboardingId, controller);
+        try {
+          await handlers["onboard-project"](item.data, controller.signal);
+        } finally {
+          inProgress.delete(item.data.onboardingId);
+        }
         break;
       case "reap":
         await handlers.reap(item.data, controller.signal);
@@ -105,8 +125,8 @@ export async function startConsumer(
   return {
     async close() {
       await worker.close();
-      options.subscriber.off("message", cancel);
-      await options.subscriber.unsubscribe(CANCEL_CHANNEL);
+      options.subscriber.off("message", onMessage);
+      await options.subscriber.unsubscribe(CANCEL_CHANNEL, ANSWER_CHANNEL);
     },
   };
 }

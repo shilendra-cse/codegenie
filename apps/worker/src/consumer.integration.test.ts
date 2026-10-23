@@ -1,7 +1,13 @@
-import { CANCEL_CHANNEL, WORK_QUEUE } from "@codegenie/shared";
+import {
+  ANSWER_CHANNEL,
+  CANCEL_CHANNEL,
+  WORK_QUEUE,
+  type OnboardingAnswer,
+} from "@codegenie/shared";
 import { Queue, QueueEvents, type Job } from "bullmq";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { startConsumer, type Consumer, type Handlers } from "./consumer.js";
+import { createAnswerRouter } from "./onboardings/answer-router.js";
 import { testRedisOrSkip } from "./testing/test-redis.js";
 
 const redis = await testRedisOrSkip("consumer");
@@ -38,11 +44,14 @@ describe.skipIf(!redis)("consumer against Redis", () => {
     await redis?.close();
   });
 
+  const answers = createAnswerRouter();
+
   async function start(handlers: Partial<Handlers>) {
     const consumer = await startConsumer({
       connection: connect(),
       subscriber: connect(),
       handlers: { ...idle, ...handlers },
+      answers,
       concurrency: 2,
       log: (level, message) => logs.push({ level, message }),
       prefix,
@@ -62,10 +71,16 @@ describe.skipIf(!redis)("consumer against Redis", () => {
     });
 
     await finished(await queue.add("run-task", { runId: "run-1" }));
-    await finished(await queue.add("onboard-project", { projectId: "p-1" }));
+    await finished(
+      await queue.add("onboard-project", { onboardingId: "setup-1" }),
+    );
     await finished(await queue.add("reap", {}));
 
-    expect(received).toEqual([{ runId: "run-1" }, { projectId: "p-1" }, {}]);
+    expect(received).toEqual([
+      { runId: "run-1" },
+      { onboardingId: "setup-1" },
+      {},
+    ]);
     expect(logs.map((l) => l.message)).toEqual([
       "Work started",
       "Work finished",
@@ -126,6 +141,53 @@ describe.skipIf(!redis)("consumer against Redis", () => {
     expect(signals.get("run-b")?.aborted).toBe(false);
     releaseB.resolve();
     await finished(b);
+  });
+
+  it("stops a setup named in a cancel message", async () => {
+    const started = deferred();
+    let stopped: AbortSignal | undefined;
+    await start({
+      "onboard-project": async (_data, signal) => {
+        stopped = signal;
+        started.resolve();
+        await new Promise((r) => signal.addEventListener("abort", r));
+      },
+    });
+
+    const job = await queue.add("onboard-project", { onboardingId: "setup-2" });
+    await started.promise;
+    await connect().publish(CANCEL_CHANNEL, "setup-2");
+    await finished(job);
+
+    expect(stopped?.aborted).toBe(true);
+  });
+
+  it("hands an answer to the setup waiting for it", async () => {
+    const received = deferred();
+    const got: [string, OnboardingAnswer][] = [];
+    const stopReceiving = answers.register("setup-3", (questionId, answer) => {
+      got.push([questionId, answer]);
+      received.resolve();
+    });
+    await start({});
+
+    await connect().publish(ANSWER_CHANNEL, "not json");
+    await connect().publish(
+      ANSWER_CHANNEL,
+      JSON.stringify({
+        onboardingId: "setup-3",
+        questionId: "q-1",
+        answer: { option: 1 },
+      }),
+    );
+    await received.promise;
+    stopReceiving();
+
+    expect(got).toEqual([["q-1", { option: 1 }]]);
+    expect(logs).toContainEqual({
+      level: "warn",
+      message: "Ignored an answer that couldn't be read",
+    });
   });
 
   it("waits for work in progress when closing", async () => {

@@ -7,6 +7,7 @@ import type {
 } from "@codegenie/shared";
 import type { LoopResult } from "../loop/agent-result.js";
 import type { Emit } from "../loop/events.js";
+import { createDeadline } from "../loop/deadline.js";
 import type { AgentLimits } from "../loop/limits.js";
 import { runLoop } from "../loop/run-loop.js";
 import type { ResolvedModel } from "../model/resolve-model.js";
@@ -60,14 +61,29 @@ export async function runSetupAgent(
   options: RunSetupAgentOptions,
 ): Promise<SetupAgentResult> {
   const ctx = createToolContext(options.sandbox);
+  const limits = { ...SETUP_AGENT_LIMITS, ...options.limits };
+  // Time spent waiting for the user's answer isn't the agent's working time.
+  const deadline = createDeadline(limits.maxWallTimeMs);
+  const channel: UserChannel = {
+    info: (message) => options.channel.info(message),
+    async ask(question) {
+      deadline.pause();
+      try {
+        return await options.channel.ask(question);
+      } finally {
+        deadline.resume();
+      }
+    },
+  };
   const setupCtx: SetupToolContext = {
     tryEnvironment: options.tryEnvironment,
-    channel: options.channel,
+    channel,
     questionsAsked: 0,
     decisions: [],
   };
 
   const { finishInput, ...result } = await runLoop({
+    deadline,
     runId: options.runId,
     model: options.model,
     system: async () => buildSetupSystemPrompt(await describeRepository(ctx)),
@@ -88,10 +104,10 @@ export async function runSetupAgent(
       wrapUp:
         "Stop now and call finish_setup with the setup you last tried, with notes on what is still unresolved.",
     },
-    limits: { ...SETUP_AGENT_LIMITS, ...options.limits },
+    limits,
     emit: options.emit,
     signal: options.signal,
-  });
+  }).finally(() => deadline.dispose());
 
   const parsed =
     finishInput === undefined ? null : finishSetupInput.safeParse(finishInput);

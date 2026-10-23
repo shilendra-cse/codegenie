@@ -12,10 +12,11 @@ import {
 import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
 import type { SandboxLabels } from "@codegenie/sandbox";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { OnboardingEvent } from "@codegenie/shared";
+import type { OnboardingAnswer, OnboardingEvent } from "@codegenie/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
 import { fakeGithubApp } from "../testing/fake-github-app.js";
+import { createAnswerRouter } from "../onboardings/answer-router.js";
 import {
   handleOnboardProject,
   type OnboardProjectDeps,
@@ -29,6 +30,18 @@ const lintBroken: Handler = (command) =>
   command.includes("npm run lint")
     ? { exitCode: 127, stdout: "sh: 1: eslint: not found" }
     : {};
+
+const askAboutLint: ScriptedStep = {
+  toolCalls: [
+    {
+      toolName: "ask_user",
+      input: {
+        question: "eslint isn't installed. What should I do?",
+        options: [{ label: "Don't lint" }, { label: "Install eslint" }],
+      },
+    },
+  ],
+};
 
 const finishWithoutLint: ScriptedStep = {
   toolCalls: [
@@ -80,16 +93,32 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       event.type,
     ]);
 
-  function depsFor(handler: Handler = () => ({}), script: ScriptedStep[] = []) {
+  function depsFor(
+    handler: Handler = () => ({}),
+    script: ScriptedStep[] = [],
+    {
+      answer,
+      answerTimeoutMs = 60_000,
+    }: { answer?: OnboardingAnswer; answerTimeoutMs?: number } = {},
+  ) {
+    const answers = createAnswerRouter();
     const labels: SandboxLabels[] = [];
     const logs: { message: string; data?: Record<string, unknown> }[] = [];
     const published: { channel: string; message: OnboardingEvent }[] = [];
     const publisher: Publisher = {
       async publish(channel, message) {
-        published.push({
-          channel,
-          message: JSON.parse(message) as OnboardingEvent,
-        });
+        const event = JSON.parse(message) as OnboardingEvent;
+        published.push({ channel, message: event });
+        // Answers the way the browser would, once the question is out.
+        if (event.type === "question_asked" && answer) {
+          setTimeout(() =>
+            answers.deliver({
+              onboardingId: event.onboardingId,
+              questionId: event.questionId,
+              answer,
+            }),
+          );
+        }
         return 1;
       },
     };
@@ -100,6 +129,8 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       model: scriptedModel(script).resolved,
       createSandbox: createSandbox(handler, labels),
       github: fakeGithubApp().github,
+      answers,
+      answerTimeoutMs,
     };
     return {
       deps,
@@ -272,5 +303,94 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       `Setup ${onboardingId} doesn't exist.`,
     );
     expect(published).toEqual([]);
+  });
+
+  it("asks you, waits for your answer, and carries on with it", async () => {
+    const { project, onboardingId } = await queuedSetup();
+    const { deps, messages } = depsFor(
+      lintBroken,
+      [askAboutLint, finishWithoutLint],
+      { answer: { option: 0 } },
+    );
+
+    await handleOnboardProject(deps, { onboardingId });
+
+    const asked = messages().find((m) => m.type === "question_asked");
+    expect(asked).toMatchObject({
+      question: "eslint isn't installed. What should I do?",
+      options: [{ label: "Don't lint" }, { label: "Install eslint" }],
+      allowOther: true,
+    });
+    expect(
+      messages().find((m) => m.type === "question_answered"),
+    ).toMatchObject({
+      questionId: asked?.type === "question_asked" ? asked.questionId : "",
+      answer: { option: 0 },
+      label: "Don't lint",
+    });
+    expect(await findOnboarding(db, onboardingId)).toMatchObject({
+      status: "succeeded",
+      openQuestionId: null,
+    });
+    expect(
+      (await environments.load(project.id))?.config.meta.decisions,
+    ).toContainEqual({
+      question: "eslint isn't installed. What should I do?",
+      answer: "Don't lint",
+      auto: false,
+    });
+  });
+
+  it("stops when a question goes unanswered", async () => {
+    const { project, onboardingId } = await queuedSetup();
+    const { deps, messages } = depsFor(lintBroken, [askAboutLint], {
+      answerTimeoutMs: 50,
+    });
+
+    await expect(handleOnboardProject(deps, { onboardingId })).rejects.toThrow(
+      "waiting",
+    );
+
+    expect(await findOnboarding(db, onboardingId)).toMatchObject({
+      status: "failed",
+      errorCode: "NO_ANSWER",
+      openQuestionId: null,
+    });
+    expect(messages().at(-1)).toMatchObject({ type: "done", status: "failed" });
+    expect(await environments.load(project.id)).toBeNull();
+  });
+
+  it("stops when you press Stop while it waits for you", async () => {
+    const { onboardingId } = await queuedSetup();
+    const { deps, published } = depsFor(lintBroken, [askAboutLint]);
+    const stop = new AbortController();
+    const original = deps.publisher.publish;
+    deps.publisher.publish = async (channel, message) => {
+      const result = await original(channel, message);
+      if (message.includes('"question_asked"')) setTimeout(() => stop.abort());
+      return result;
+    };
+
+    await handleOnboardProject(deps, { onboardingId }, stop.signal);
+
+    expect(await findOnboarding(db, onboardingId)).toMatchObject({
+      status: "cancelled",
+      openQuestionId: null,
+    });
+    expect(published.at(-1)?.message).toMatchObject({
+      type: "done",
+      status: "cancelled",
+    });
+  });
+
+  it("stops when you press Stop while it works", async () => {
+    const { onboardingId } = await queuedSetup();
+    const { deps } = depsFor();
+    const stop = new AbortController();
+    stop.abort();
+
+    await handleOnboardProject(deps, { onboardingId }, stop.signal);
+
+    expect((await findOnboarding(db, onboardingId))?.status).toBe("cancelled");
   });
 });

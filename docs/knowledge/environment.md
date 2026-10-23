@@ -132,7 +132,7 @@ Every step and check is run and classified:
 | `ask_user(question)` | asks the user through the channel; returns the chosen option or free text |
 | `finish_setup(config, notes)` | structured final answer; ends the agent |
 
-- Limits: 40 steps, 20 minutes (one DoDesk install already takes ~1.5 minutes), $0.20, at most 5 questions. Its cost is reported with the onboarding result.
+- Limits: 40 steps, 20 minutes (one DoDesk install already takes ~1.5 minutes), $0.20, at most 5 questions. The 20 minutes are the agent's working time: its clock pauses while a question waits for the user (`createDeadline` in `packages/agent`), so a slow answer doesn't eat into it. Its cost is reported with the onboarding result.
 - The agent package does not depend on the runner: `validate` and `channel` are passed in.
 
 ### 3.4 Questions
@@ -160,7 +160,7 @@ interface UserChannel {
 |---|---|---|
 | `TerminalChannel` | CLI | numbered options in the terminal |
 | `AutoChannel` | evals, `--yes` | always the recommended option; recorded as `auto: true` |
-| `EventChannel` | website (later) | `question_asked` event → question cards → answer through the API |
+| `EventChannel` | website (`apps/worker/src/onboardings/`) | stores `question_asked`, waits for the answer over Redis (`onboarding-answer`), stores `question_answered`; stops setup after 30 minutes without one (§3.5) |
 
 Example conversation (DoDesk):
 
@@ -186,7 +186,8 @@ The website starts setup, shows it live and asks its questions in the browser.
 - **Questions (`EventChannel`):** the worker records `question_asked` and waits; the answer comes through `POST /projects/:id/onboarding/answer` and reaches the worker over Redis; the worker records `question_answered` and carries on.
 - **Waiting:** the sandbox stays open while a question is unanswered. After **30 minutes** setup stops (`failed`, `NO_ANSWER`: "Setup stopped after waiting 30 minutes for an answer.") and the sandbox goes; it can be started again.
 - **Stop:** a queued setup is cancelled directly; a running or waiting one is told to stop and ends `cancelled`.
-- **Saving:** a setup that succeeds is saved straight away as the project's next active version, as the worker did before; re-running setup makes a newer one.
+- **Saving:** a setup that succeeds is saved straight away as the project's next active version (`runOnboarding({ autoApprove: true })` skips "Save this environment?"; the CLI still asks); re-running setup makes a newer one.
+- **The wait** is `ONBOARDING_ANSWER_TIMEOUT_MINUTES` in the worker (default 30). If the worker itself dies while waiting, the reaper ends the setup (`worker_lost`).
 - **API:** `POST /onboarding` (start), `GET /onboarding` (latest), `GET /onboarding/events` (stream), `POST /onboarding/answer`, `POST /onboarding/cancel`, `GET /environments` (versions), all under `/projects/:id`. Rollback comes with the project page.
 
 ## 4. Task runs
