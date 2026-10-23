@@ -6,7 +6,10 @@ describe("Sidebar", () => {
   it("shows New task as not ready yet and no projects", () => {
     render(<Sidebar pathname="/welcome" account={null} />);
 
-    expect(screen.getByRole("button", { name: "New task" })).toBeDisabled();
+    const newTask = screen.getByRole("button", { name: "New task" });
+    expect(newTask).toBeDisabled();
+    expect(newTask).toHaveClass("bg-card", "disabled:text-faint");
+    expect(newTask).not.toHaveClass("bg-primary");
     expect(screen.getByText("No projects yet.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Inbox" })).not.toHaveAttribute(
       "aria-current",
