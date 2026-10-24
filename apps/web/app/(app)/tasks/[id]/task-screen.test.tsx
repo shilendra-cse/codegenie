@@ -161,6 +161,68 @@ describe("TaskScreen", () => {
     expect(card).toHaveTextContent("step 3 · $0.02");
   });
 
+  it("opens a command from the run card in the Terminal", async () => {
+    api.get.mockResolvedValue({ data: { task: task() } });
+    renderScreen();
+    await screen.findByRole("heading", { name: "Add a /health endpoint" });
+
+    FakeEventSource.last!.send(
+      { type: "stage_changed", seq: 1, stage: "agent" },
+      {
+        type: "tool_start",
+        seq: 2,
+        toolCallId: "c1",
+        toolName: "bash",
+        input: { command: "pnpm test" },
+      },
+      {
+        type: "tool_end",
+        seq: 3,
+        toolCallId: "c1",
+        toolName: "bash",
+        output: "Exit code: 1\n1 failed",
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Ran pnpm test/ }));
+
+    expect(screen.getByRole("tab", { name: "Terminal" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByRole("figure", { name: "Command: pnpm test" }),
+    ).toHaveTextContent("1 failed");
+  });
+
+  it("shows the saved diff once the run has ended", async () => {
+    api.get.mockImplementation(async (url: string) =>
+      url === "/runs/r1/diff"
+        ? {
+            data: {
+              diff: {
+                patch:
+                  "diff --git a/src/a.ts b/src/a.ts\n@@ -0,0 +1 @@\n+export const a = 1;\n",
+                files: [{ path: "src/a.ts", added: 1, removed: 0 }],
+                truncated: false,
+              },
+            },
+          }
+        : {
+            data: {
+              task: task({
+                label: "no_changes",
+                runs: [runRecord({ status: "succeeded", summary: "Done." })],
+              }),
+            },
+          },
+    );
+    renderScreen();
+
+    expect(
+      await screen.findByRole("figure", { name: "Changes to src/a.ts" }),
+    ).toHaveTextContent("export const a = 1;");
+  });
+
   it("takes the task's short title from the run", async () => {
     api.get.mockResolvedValue({ data: { task: task() } });
     renderScreen();

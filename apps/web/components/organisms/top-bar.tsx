@@ -12,7 +12,7 @@ export type TopBarProps = {
 
 export function TopBar({ title, parent, children }: TopBarProps) {
   return (
-    <header className="relative z-10 flex min-h-[52px] flex-wrap items-center gap-2.5 border-b border-border bg-background px-6 py-2">
+    <header className="sticky top-0 z-10 flex min-h-[52px] flex-wrap items-center gap-2.5 border-b border-border bg-background px-6 py-2">
       {parent && (
         <>
           <Link

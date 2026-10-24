@@ -1,5 +1,7 @@
-import type { RunResponse } from "@codegenie/shared";
+import type { RunDiff, RunResponse } from "@codegenie/shared";
 import type { RunCardProps } from "@/components/organisms/run-card";
+import type { PanelChanges } from "@/components/organisms/run-panel";
+import { splitPatch } from "@/features/runs/diff";
 import type { RunLive } from "@/features/runs/use-run-events";
 import type { RunView, StageId, StageView } from "@/features/runs/run-view";
 import { formatDuration } from "@/lib/format";
@@ -59,7 +61,9 @@ function summary(
       if (state === "pending")
         return "install and run the checks, for a baseline";
       if (state === "running") return "Installing and running the checks";
-      return view.setupOk === false ? "Setup failed" : checksBefore(view);
+      return view.setupOk === false
+        ? `needs attention · ${checksBefore(view)}`
+        : checksBefore(view);
     case "working":
       if (state === "pending") return "the agent makes the change";
       return steps !== null ? plural(steps, "step") : null;
@@ -171,4 +175,38 @@ export function runTotals(run: RunResponse, live: RunLive, now: number) {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** The Changes tab: the files counted from the agent's edits while it runs, the saved diff after. */
+export function toPanelChanges({
+  active,
+  view,
+  diff,
+  file,
+}: {
+  active: boolean;
+  view: RunView;
+  diff: {
+    data: RunDiff | null | undefined;
+    isError: boolean;
+    refetch: () => unknown;
+  };
+  file: string | null;
+}): PanelChanges {
+  if (active) return { status: "live", files: view.files };
+  if (diff.isError)
+    return { status: "error", onRetry: () => void diff.refetch() };
+  if (diff.data === undefined) return { status: "loading" };
+  if (diff.data === null) {
+    return { status: "ended", files: [], lines: null, truncated: false };
+  }
+  const files = diff.data.files;
+  const path =
+    file && files.some((f) => f.path === file) ? file : files[0]?.path;
+  return {
+    status: "ended",
+    files,
+    lines: path ? (splitPatch(diff.data.patch).get(path) ?? []) : null,
+    truncated: diff.data.truncated,
+  };
 }

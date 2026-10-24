@@ -121,11 +121,13 @@ function Explored({
   );
 }
 
-function Row({ row }: { row: Exclude<ActivityView, { kind: "explored" }> }) {
+type RowView = Exclude<ActivityView, { kind: "explored" }>;
+
+function rowContent(row: RowView) {
   switch (row.kind) {
     case "edit":
       return (
-        <li className="flex min-w-0 items-center gap-2">
+        <>
           <Mark row={row} icon={row.whole ? FilePlus : FilePen} />
           <span className="min-w-0 truncate">
             {row.failed ? "Couldn't edit" : row.whole ? "Wrote" : "Edited"}{" "}
@@ -139,11 +141,11 @@ function Row({ row }: { row: Exclude<ActivityView, { kind: "explored" }> }) {
               )}
             </span>
           )}
-        </li>
+        </>
       );
     case "command":
       return (
-        <li className="flex min-w-0 items-center gap-2">
+        <>
           <Mark row={row} icon={SquareTerminal} />
           <span className="min-w-0 truncate">
             {row.running ? "Running" : "Ran"}{" "}
@@ -160,11 +162,11 @@ function Row({ row }: { row: Exclude<ActivityView, { kind: "explored" }> }) {
               {row.exitCode === 0 ? "ok" : `exit ${row.exitCode}`}
             </span>
           )}
-        </li>
+        </>
       );
     case "checks":
       return (
-        <li className="flex items-center gap-2">
+        <>
           <Mark row={row} icon={ListChecks} />
           <span>
             {row.running ? "Running the checks" : "Ran the checks"}
@@ -178,11 +180,11 @@ function Row({ row }: { row: Exclude<ActivityView, { kind: "explored" }> }) {
               </span>
             )}
           </span>
-        </li>
+        </>
       );
     case "tool":
       return (
-        <li className="flex min-w-0 items-center gap-2">
+        <>
           <Mark row={row} icon={Wrench} />
           <span className="min-w-0 truncate">
             {row.tool}{" "}
@@ -190,9 +192,39 @@ function Row({ row }: { row: Exclude<ActivityView, { kind: "explored" }> }) {
               <span className="font-mono text-[12.5px]">{row.target}</span>
             )}
           </span>
-        </li>
+        </>
       );
   }
+}
+
+function Row({
+  row,
+  onSelect,
+}: {
+  row: RowView;
+  onSelect?: (row: ActivityView) => void;
+}) {
+  const layout = "flex min-w-0 items-center gap-2";
+  // Edits, commands and check runs open in the side panel.
+  const opens = onSelect && row.kind !== "tool";
+  return (
+    <li>
+      {opens ? (
+        <button
+          type="button"
+          onClick={() => onSelect(row)}
+          className={cn(
+            layout,
+            "-mx-1.5 w-[calc(100%+12px)] rounded-sm px-1.5 py-0.5 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary",
+          )}
+        >
+          {rowContent(row)}
+        </button>
+      ) : (
+        <div className={cn(layout, "py-0.5")}>{rowContent(row)}</div>
+      )}
+    </li>
+  );
 }
 
 export type RunActivityProps = {
@@ -200,18 +232,24 @@ export type RunActivityProps = {
   /** What the agent is saying now, streamed. */
   reasoning: string;
   live: boolean;
+  onSelect?: (row: ActivityView) => void;
 };
 
-export function RunActivity({ activity, reasoning, live }: RunActivityProps) {
+export function RunActivity({
+  activity,
+  reasoning,
+  live,
+  onSelect,
+}: RunActivityProps) {
   if (activity.length === 0 && !reasoning) return null;
   return (
     <div className="flex flex-col gap-2 text-[13.5px]">
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col gap-1">
         {activity.map((row) =>
           row.kind === "explored" ? (
             <Explored key={row.id} row={row} />
           ) : (
-            <Row key={row.id} row={row} />
+            <Row key={row.id} row={row} onSelect={onSelect} />
           ),
         )}
       </ul>

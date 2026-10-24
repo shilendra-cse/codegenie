@@ -118,6 +118,23 @@ describe("toRunCard", () => {
     });
   });
 
+  it("says when setup needs attention, without calling it a failure", () => {
+    const result = card([
+      { type: "stage_changed", stage: "setup" },
+      {
+        type: "setup_completed",
+        success: false,
+        steps: [],
+        checks: [{ name: "test", cwd: ".", status: "failing" }],
+      },
+      { type: "stage_changed", stage: "agent" },
+    ]);
+    expect(stage(result, "setup")).toMatchObject({
+      state: "done",
+      summary: "needs attention · before: 0 of 1 check passing",
+    });
+  });
+
   it("shows the reasoning and the beam only while the run goes on", () => {
     expect(card([])).toMatchObject({
       live: true,

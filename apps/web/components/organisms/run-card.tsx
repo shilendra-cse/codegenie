@@ -32,6 +32,8 @@ export type RunCardProps = {
     failed: boolean;
     pullRequest: { number: number; url: string } | null;
   } | null;
+  /** Opens an activity row (an edit, a command, a check run) in the side panel. */
+  onSelectActivity?: (row: ActivityView) => void;
 };
 
 export function RunCard(props: RunCardProps) {
@@ -67,6 +69,7 @@ export function RunCard(props: RunCardProps) {
                 activity={props.activity}
                 reasoning={props.reasoning}
                 live={stage.state === "running"}
+                onSelect={props.onSelectActivity}
               />
             )}
           </RunStage>
