@@ -1,7 +1,7 @@
-import type { TaskDetail } from "@codegenie/shared";
+import type { RunResponse, TaskDetail } from "@codegenie/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import { TaskScreen } from "./task-screen";
 
@@ -15,6 +15,52 @@ vi.mock("@/features/account/use-account", () => ({
     account: { name: "Ada Lovelace", email: "ada@example.com", image: null },
   }),
 }));
+
+class FakeEventSource {
+  static last: FakeEventSource | undefined;
+  onmessage: ((message: MessageEvent<string>) => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(readonly url: string) {
+    FakeEventSource.last = this;
+  }
+  close() {}
+  send(...events: Record<string, unknown>[]) {
+    act(() => {
+      for (const event of events) {
+        this.onmessage?.({
+          data: JSON.stringify({
+            runId: "r1",
+            ts: "2026-10-24T10:00:00.000Z",
+            ...event,
+          }),
+        } as MessageEvent<string>);
+      }
+    });
+  }
+}
+
+const runRecord = (overrides: Partial<RunResponse> = {}): RunResponse => ({
+  id: "r1",
+  taskId: "t1",
+  trigger: "initial",
+  status: "running",
+  stage: "agent",
+  model: "m",
+  summary: null,
+  checksPassed: null,
+  commitSha: null,
+  error: null,
+  steps: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  costUsd: 0,
+  queuedAt: "2026-10-24T10:00:00.000Z",
+  startedAt: "2026-10-24T10:00:00.000Z",
+  finishedAt: null,
+  durationMs: null,
+  changes: null,
+  ...overrides,
+});
 
 const task = (overrides: Partial<TaskDetail> = {}): TaskDetail => ({
   id: "t1",
@@ -40,7 +86,7 @@ const task = (overrides: Partial<TaskDetail> = {}): TaskDetail => ({
       createdAt: "2026-10-24T10:00:00.000Z",
     },
   ],
-  runs: [],
+  runs: [runRecord()],
   ...overrides,
 });
 
@@ -58,9 +104,12 @@ function renderScreen() {
 describe("TaskScreen", () => {
   beforeEach(() => {
     api.get.mockReset();
+    FakeEventSource.last = undefined;
+    vi.stubGlobal("EventSource", FakeEventSource);
   });
+  afterEach(() => vi.unstubAllGlobals());
 
-  it("shows the task, your message and what the run is doing", async () => {
+  it("shows the task, your message and the run as it happens", async () => {
     api.get.mockResolvedValue({ data: { task: task() } });
     renderScreen();
 
@@ -74,9 +123,106 @@ describe("TaskScreen", () => {
     expect(
       screen.getByText("Add a /health endpoint that returns the version."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getByText("Working on the change…")).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledWith("/tasks/t1");
+    expect(FakeEventSource.last?.url).toBe("/api/runs/r1/events");
+
+    FakeEventSource.last!.send(
+      { type: "stage_changed", seq: 1, stage: "prepare" },
+      { type: "stage_changed", seq: 2, stage: "setup" },
+      {
+        type: "setup_completed",
+        seq: 3,
+        success: true,
+        steps: [],
+        checks: [{ name: "test", cwd: ".", status: "passing" }],
+      },
+      { type: "stage_changed", seq: 4, stage: "agent" },
+      {
+        type: "tool_start",
+        seq: 5,
+        toolCallId: "t1",
+        toolName: "read_file",
+        input: { path: "src/app.ts" },
+      },
+      { type: "text_delta", delta: "Adding the route next" },
+      { type: "agent_step", steps: 3, costUsd: 0.02 },
+    );
+
+    const card = screen.getByRole("article", { name: "Run 1" });
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toHaveTextContent("Sandbox ready, cloned main");
+    expect(
+      within(card).getByRole("region", { name: "Set up" }),
+    ).toHaveTextContent("before: 1 of 1 check passing");
+    const working = within(card).getByRole("region", { name: "Working" });
+    expect(working).toHaveTextContent("3 steps");
+    expect(working).toHaveTextContent("Explored the code · read 1 file");
+    expect(working).toHaveTextContent("Adding the route next");
+    expect(card).toHaveTextContent("step 3 · $0.02");
+  });
+
+  it("takes the task's short title from the run", async () => {
+    api.get.mockResolvedValue({ data: { task: task() } });
+    renderScreen();
+    await screen.findByRole("heading", { name: "Add a /health endpoint" });
+
+    FakeEventSource.last!.send({
+      type: "task_titled",
+      seq: 1,
+      title: "Add a health check",
+    });
+    expect(
+      screen.getByRole("heading", { name: "Add a health check" }),
+    ).toBeInTheDocument();
+  });
+
+  it("waits for a sandbox while the run is queued", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "queued",
+          runs: [runRecord({ status: "queued", stage: null, startedAt: null })],
+        }),
+      },
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByRole("region", { name: "Prepare" }),
+    ).toHaveTextContent("Waiting for a sandbox");
+    expect(screen.getByRole("region", { name: "Working" })).toHaveTextContent(
+      "the agent makes the change",
+    );
+  });
+
+  it("ends with the summary and the pull request", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "pr_open",
+          pullRequest: {
+            number: 7,
+            url: "https://github.com/x/y/pull/7",
+            draft: false,
+          },
+          runs: [
+            runRecord({
+              status: "succeeded",
+              summary: "Added GET /health.",
+              durationMs: 92_000,
+              costUsd: 0.04,
+            }),
+          ],
+        }),
+      },
+    });
+    renderScreen();
+
+    expect(await screen.findByText("Added GET /health.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open PR #7 on GitHub" }),
+    ).toHaveAttribute("href", "https://github.com/x/y/pull/7");
+    expect(screen.getByText(/1m 32s · \$0\.04/)).toBeInTheDocument();
   });
 
   it("says when the task doesn't exist", async () => {

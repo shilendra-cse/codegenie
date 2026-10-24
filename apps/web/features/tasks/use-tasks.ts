@@ -31,13 +31,11 @@ export function useHasTasks() {
   });
 }
 
-// Refreshed while its run is queued or working, until the live run view follows its events.
+// Refreshed by its run's events (useRunEvents), not by polling.
 export function useTask(id: string | undefined) {
   return useQuery({
     queryKey: taskKey(id ?? ""),
     queryFn: id ? () => fetchTask(id) : skipToken,
-    refetchInterval: (query) =>
-      isTaskActive(query.state.data) ? REFRESH_MS : false,
   });
 }
 

@@ -75,24 +75,33 @@ describe("task hooks", () => {
     await waitFor(() => expect(result.current.data).toBe(false));
   });
 
-  it("refreshes a task while it runs, and stops once it has ended", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    api.get
-      .mockResolvedValueOnce({ data: { task: detail() } })
-      .mockResolvedValueOnce({ data: { task: detail({ label: "working" }) } })
-      .mockResolvedValue({ data: { task: detail({ label: "pr_open" }) } });
+  it("reads a task", async () => {
+    api.get.mockResolvedValue({ data: { task: detail() } });
     const { wrapper: Wrapper } = wrapper();
     const { result } = renderHook(() => useTask("t1"), { wrapper: Wrapper });
 
-    await waitFor(() => expect(result.current.data?.label).toBe("queued"));
+    await waitFor(() => expect(result.current.data).toEqual(detail()));
     expect(api.get).toHaveBeenCalledWith("/tasks/t1");
+  });
+
+  it("refreshes the task list while a task runs, and stops once none does", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    api.get
+      .mockResolvedValueOnce({ data: { tasks: [item()], nextCursor: null } })
+      .mockResolvedValue({
+        data: { tasks: [item({ label: "pr_open" })], nextCursor: null },
+      });
+    const { wrapper: Wrapper } = wrapper();
+    const { result } = renderHook(() => useTasks(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.data?.[0]?.label).toBe("queued"));
     await act(() => vi.advanceTimersByTimeAsync(3_000));
-    await waitFor(() => expect(result.current.data?.label).toBe("working"));
-    await act(() => vi.advanceTimersByTimeAsync(3_000));
-    await waitFor(() => expect(result.current.data?.label).toBe("pr_open"));
+    await waitFor(() =>
+      expect(result.current.data?.[0]?.label).toBe("pr_open"),
+    );
 
     await act(() => vi.advanceTimersByTimeAsync(9_000));
-    expect(api.get).toHaveBeenCalledTimes(3);
+    expect(api.get).toHaveBeenCalledTimes(2);
   });
 
   it("asks for nothing before the task is known", () => {

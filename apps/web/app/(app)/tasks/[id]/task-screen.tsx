@@ -1,22 +1,29 @@
 "use client";
 
+import type { TaskDetail } from "@codegenie/shared";
+import { GitBranch } from "lucide-react";
+import { useMemo } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
+import { Icon } from "@/components/atoms/icon";
 import { Skeleton } from "@/components/atoms/skeleton";
 import { UserMessage } from "@/components/molecules/user-message";
 import { TaskStatusBadge } from "@/components/molecules/task-status-badge";
-import { RunStatusCard } from "@/components/organisms/run-status-card";
+import { RunCard } from "@/components/organisms/run-card";
 import { TopBar } from "@/components/organisms/top-bar";
 import { useAccount } from "@/features/account/use-account";
+import { buildRunView } from "@/features/runs/run-view";
+import { useRunEvents } from "@/features/runs/use-run-events";
 import { useTask } from "@/features/tasks/use-tasks";
 import { ApiError } from "@/lib/api/client";
 import { timeAgo } from "@/lib/format";
 import { projectPath } from "@/lib/routes";
+import { useNow } from "@/lib/use-now";
+import { runTotals, toRunCard } from "./run-card-view";
 
 export type TaskScreenProps = { taskId: string };
 
 export function TaskScreen({ taskId }: TaskScreenProps) {
-  const { account } = useAccount();
   const task = useTask(taskId);
 
   if (task.error) {
@@ -53,24 +60,40 @@ export function TaskScreen({ taskId }: TaskScreenProps) {
     );
   }
 
-  const { data } = task;
-  const message = data.messages.find((m) => m.role === "user");
+  return <TaskView task={task.data} />;
+}
+
+function TaskView({ task }: { task: TaskDetail }) {
+  const { account } = useAccount();
   // Newest first.
-  const latest = data.runs[0];
+  const run = task.runs[0];
+  const active = run?.status === "queued" || run?.status === "running";
+  const { events, live } = useRunEvents(
+    run && { id: run.id, taskId: task.id, ended: !active },
+  );
+  const view = useMemo(() => buildRunView(events), [events]);
+  const now = useNow(active);
+  const message = task.messages.find((m) => m.role === "user");
+
   return (
     <>
       <TopBar
-        title={data.title}
+        title={view.title ?? task.title}
         parent={{
-          label: data.project.name,
-          href: projectPath(data.project.id),
+          label: task.project.name,
+          href: projectPath(task.project.id),
         }}
       >
-        <span className="ml-auto">
-          <TaskStatusBadge
-            label={data.label}
-            prNumber={data.pullRequest?.number ?? null}
-          />
+        <TaskStatusBadge
+          label={task.label}
+          prNumber={task.pullRequest?.number ?? null}
+        />
+        <span className="ml-auto inline-flex items-center gap-3 text-[13px] text-faint">
+          <span className="inline-flex items-center gap-1.5 font-mono text-xs">
+            <Icon icon={GitBranch} size={14} />
+            {task.baseBranch}
+          </span>
+          {run && runTotals(run, live, now)}
         </span>
       </TopBar>
       <div className="mx-auto flex w-full max-w-[780px] flex-col gap-6 px-6 pt-8 pb-20">
@@ -82,15 +105,19 @@ export function TaskScreen({ taskId }: TaskScreenProps) {
             content={message.content}
           />
         )}
-        <RunStatusCard
-          number={data.runs.length || 1}
-          label={data.label}
-          stage={data.latestRun?.stage ?? null}
-          summary={latest?.summary ?? null}
-          error={data.latestRun?.error?.message ?? null}
-          pullRequest={data.pullRequest}
-          durationMs={data.durationMs}
-        />
+        {run && (
+          <RunCard
+            {...toRunCard({
+              run,
+              number: task.runs.length,
+              view,
+              live,
+              baseBranch: task.baseBranch,
+              pullRequest: task.pullRequest,
+              now,
+            })}
+          />
+        )}
       </div>
     </>
   );
