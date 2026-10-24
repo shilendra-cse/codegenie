@@ -83,3 +83,39 @@ export async function listInstallationRepos(
     language: repo.language ?? null,
   }));
 }
+
+export type RepoBranches = { names: string[]; truncated: boolean };
+
+/** The repository's branch names, as GitHub lists them, up to `limit`; null when the user can't see it. */
+export async function listRepoBranches(
+  userToken: string,
+  owner: string,
+  repo: string,
+  options: { fetch?: typeof fetch; limit?: number } = {},
+): Promise<RepoBranches | null> {
+  const limit = options.limit ?? 1000;
+  const octokit = userClient(userToken, options.fetch);
+  const names: string[] = [];
+  let truncated = false;
+  try {
+    await octokit.paginate(
+      octokit.rest.repos.listBranches,
+      { owner, repo, per_page: 100 },
+      (response, done) => {
+        for (const branch of response.data) {
+          if (names.length === limit) {
+            truncated = true;
+            break;
+          }
+          names.push(branch.name);
+        }
+        if (truncated) done();
+        return [];
+      },
+    );
+  } catch (error) {
+    if (error instanceof RequestError && error.status === 404) return null;
+    throw error;
+  }
+  return { names, truncated };
+}

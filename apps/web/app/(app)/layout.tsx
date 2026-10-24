@@ -11,6 +11,7 @@ import { useAccount } from "@/features/account/use-account";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
 import { toSidebarProject, useProjects } from "@/features/projects/projects";
 import { useOnboarding } from "@/features/setup/use-onboarding";
+import { useTasks } from "@/features/tasks/use-tasks";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { theme, setTheme } = useTheme();
   const { account, pending, signingOut, signOut } = useAccount();
   const projects = useProjects();
+  const tasks = useTasks();
   const checklist = useWelcomeChecklist();
   // The card is hidden on the welcome page itself, where the checklist is.
   const steps =
@@ -56,6 +58,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               project.id === setupProjectId && setupStatus === "waiting",
           }))}
           projectsFailed={projects.isError}
+          tasks={tasks.data}
           gettingStarted={
             next && (
               <GettingStartedCard

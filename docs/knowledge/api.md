@@ -54,6 +54,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | POST | `/projects/:id/onboarding/answer` | `{ questionId, answer: { option } \| { other } }` → 202; checked against the open question, then handed to the worker |
 | POST | `/projects/:id/onboarding/cancel` | 202 `{ outcome: "cancelled" }` for a queued setup, `"stopping"` for a running or waiting one |
 | GET | `/projects/:id/environments` | The saved environment versions, newest (active) first |
+| GET | `/projects/:id/branches` | `{ branches, defaultBranch, truncated }`: the repository's branch names from GitHub (with the user's token), the default first, at most 1,000 |
 | POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued |
 | GET | `/tasks?projectId=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` |
 | GET | `/tasks/:id` | A task with its messages and runs |

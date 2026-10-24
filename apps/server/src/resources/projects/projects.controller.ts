@@ -9,6 +9,7 @@ import { getUserProject } from "./services/getUserProject.service";
 import { listUserProjects } from "./services/listUserProjects.service";
 import { removeProject } from "./services/removeProject.service";
 import { listEnvironments } from "./services/listEnvironments.service";
+import { listProjectBranches } from "./services/listProjectBranches.service";
 
 export type ProjectControllerDeps = CreateProjectDeps;
 
@@ -46,11 +47,17 @@ export function createProjectControllers(deps: ProjectControllerDeps) {
     return ok(200, "OK", { environments });
   };
 
+  const getBranches: AuthenticatedController = async (req) => {
+    const { id } = projectParamsSchema.parse(req.params);
+    return ok(200, "OK", await listProjectBranches(deps, req.user.id, id));
+  };
+
   return {
     listProjects,
     getProject,
     addProject,
     deleteProject,
     getEnvironments,
+    getBranches,
   };
 }

@@ -21,17 +21,57 @@ function renderSidebar(props: Partial<SidebarProps> = {}) {
 }
 
 describe("Sidebar", () => {
-  it("shows New task as not ready yet and no projects", () => {
+  it("links to New task, and shows no projects yet", () => {
     renderSidebar();
 
-    const newTask = screen.getByRole("button", { name: "New task" });
-    expect(newTask).toBeDisabled();
-    expect(newTask).toHaveClass("bg-card", "disabled:text-faint");
+    const newTask = screen.getByRole("link", { name: "New task" });
+    expect(newTask).toHaveAttribute("href", "/new");
+    expect(newTask).not.toHaveAttribute("aria-current");
     expect(newTask).not.toHaveClass("bg-primary");
     expect(screen.getByText("No projects yet.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Inbox" })).not.toHaveAttribute(
       "aria-current",
     );
+  });
+
+  it("marks New task while you're on it", () => {
+    renderSidebar({ pathname: "/new" });
+    expect(screen.getByRole("link", { name: "New task" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("lists your recent tasks with their status, up to 10", () => {
+    renderSidebar({
+      pathname: "/tasks/t1",
+      tasks: [
+        { id: "t1", title: "Add a /health endpoint", label: "working" },
+        { id: "t2", title: "Paginate the orders API", label: "pr_open" },
+        ...Array.from({ length: 10 }, (_, i) => ({
+          id: `old-${i}`,
+          title: `Old task ${i}`,
+          label: "failed" as const,
+        })),
+      ],
+    });
+
+    expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
+    const running = screen.getByRole("link", {
+      name: "Add a /health endpoint, working",
+    });
+    expect(running).toHaveAttribute("href", "/tasks/t1");
+    expect(running).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.getByRole("link", { name: "Paginate the orders API, PR open" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Old task 7")).toBeInTheDocument();
+    expect(screen.queryByText("Old task 8")).toBeNull();
+  });
+
+  it("leaves out Recent without tasks", () => {
+    renderSidebar({ tasks: [] });
+    expect(screen.queryByRole("heading", { name: "Recent" })).toBeNull();
   });
 
   it("marks the link for the current page", () => {

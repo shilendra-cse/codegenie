@@ -1,6 +1,6 @@
 import { useInstallations } from "@/features/github/installations";
 import { useProjects } from "@/features/projects/projects";
-import { useHasTasks } from "@/features/tasks/tasks";
+import { useHasTasks } from "@/features/tasks/use-tasks";
 import { buildChecklist, type ChecklistStep } from "./checklist";
 
 export type WelcomeChecklist =

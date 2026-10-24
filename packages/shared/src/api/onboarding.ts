@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { RunEvent, RunEventDone } from "./events.js";
+import type { RunEvent, RunEventDone } from "./events";
 
 /** What the browser sends: one of the options, or free text. */
 export type OnboardingAnswer = { option: number } | { other: string };

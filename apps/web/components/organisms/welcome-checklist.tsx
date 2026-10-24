@@ -26,6 +26,8 @@ export type WelcomeChecklistProps =
       steps: WelcomeStep[];
       /** A step that happens in place shows this instead of its button. */
       panels?: Partial<Record<StepId, ReactNode>>;
+      /** Replaces a finished step's own "done" line, e.g. the first task's title and link. */
+      doneBodies?: Partial<Record<StepId, ReactNode>>;
     };
 
 type Copy = {
@@ -33,7 +35,6 @@ type Copy = {
   body: string;
   label: string;
   hint?: string;
-  comingSoon?: true;
   done?: (projectName: string) => ReactNode;
 };
 
@@ -64,14 +65,11 @@ const COPY: Record<StepId, Copy> = {
     title: "Describe your first task",
     body: "Say what should change. You get a pull request to review.",
     label: "New task",
-    comingSoon: true,
   },
 };
 
 function actionFor(step: WelcomeStep, copy: Copy): ChecklistStepAction {
-  return copy.comingSoon
-    ? { label: copy.label, comingSoon: true }
-    : { label: copy.label, href: step.href, external: step.external };
+  return { label: copy.label, href: step.href, external: step.external };
 }
 
 const DELAYS = [
@@ -127,7 +125,10 @@ export function WelcomeChecklist(props: WelcomeChecklistProps) {
             title={copy.title}
             body={copy.body}
             hint={copy.hint}
-            doneBody={step.projectName && copy.done?.(step.projectName)}
+            doneBody={
+              props.doneBodies?.[step.id] ??
+              (step.projectName && copy.done?.(step.projectName))
+            }
             action={actionFor(step, copy)}
             panel={props.panels?.[step.id]}
           />

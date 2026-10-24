@@ -1,15 +1,21 @@
 "use client";
 
+import Link from "next/link";
+import { Button } from "@/components/atoms/button";
 import { InstallNotice } from "@/components/molecules/install-notice";
 import { RepositoryPicker } from "@/components/organisms/repository-picker";
 import { SetupProgressCard } from "@/components/organisms/setup-progress-card";
+import { TaskComposer } from "@/components/organisms/task-composer";
 import { WelcomeChecklist } from "@/components/organisms/welcome-checklist";
 import { useAccount } from "@/features/account/use-account";
 import { useRepositoryPicker } from "@/features/github/use-repository-picker";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
+import { useProjects } from "@/features/projects/projects";
 import { useStartOnboarding } from "@/features/setup/use-onboarding";
 import { useSetupProgress } from "@/features/setup/use-setup-progress";
-import { APP_HOME, projectPath } from "@/lib/routes";
+import { useNewTask } from "@/features/tasks/use-new-task";
+import { useTasks } from "@/features/tasks/use-tasks";
+import { APP_HOME, environmentPath, taskPath } from "@/lib/routes";
 import { useNow } from "@/lib/use-now";
 import { useInstallOutcome } from "../use-install-outcome";
 
@@ -31,6 +37,20 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
   const startSetup = useStartOnboarding(setupProjectId ?? "");
   const now = useNow(setup.active);
   const startedAt = setup.onboarding?.startedAt;
+  const firstTaskStep =
+    checklist.status === "ready"
+      ? checklist.steps.find((s) => s.id === "first-task")
+      : undefined;
+  const projects = useProjects();
+  const composer = useNewTask({
+    projects: projects.data ?? [],
+    preferredProjectId: firstTaskStep?.projectId,
+  });
+  // Newest first: once step 4 is done, this is the task it started.
+  const firstTask = useTasks().data?.[0];
+  const firstTaskRunning =
+    firstTaskStep?.state === "done" &&
+    (firstTask?.label === "queued" || firstTask?.label === "working");
   const outcome = useInstallOutcome(github, APP_HOME);
   const firstName = account?.name.trim().split(/\s+/)[0];
   const checklistView =
@@ -45,7 +65,7 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
                 <SetupProgressCard
                   projectName={settingUp?.projectName ?? "your project"}
                   status={setup.onboarding?.status ?? null}
-                  href={`${projectPath(setupProjectId)}/environment`}
+                  href={environmentPath(setupProjectId)}
                   latest={setup.timeline.latest}
                   elapsedMs={startedAt ? now - Date.parse(startedAt) : null}
                   question={setup.timeline.openQuestion?.question ?? null}
@@ -56,6 +76,29 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
                 />
               ),
             }),
+            "first-task": (
+              <div className="flex flex-col gap-2.5">
+                <TaskComposer {...composer} />
+                <p className="text-[13px] text-faint">
+                  Specific works best: &quot;Add pagination to GET /orders, with
+                  tests&quot; beats &quot;improve orders&quot;.
+                </p>
+              </div>
+            ),
+          },
+          doneBodies: firstTask && {
+            "first-task": (
+              <>
+                &ldquo;{firstTask.title}&rdquo;{" "}
+                {firstTaskRunning ? "is running. " : "was your first task. "}
+                <Link
+                  href={taskPath(firstTask.id)}
+                  className="font-medium text-foreground underline underline-offset-2"
+                >
+                  {firstTaskRunning ? "Watch it work" : "Open it"}
+                </Link>
+              </>
+            ),
           },
         }
       : checklist.status === "error"
@@ -66,11 +109,22 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
     <div className="mx-auto flex w-full max-w-[640px] flex-col gap-7 px-6 py-[72px]">
       <div className="rise flex flex-col gap-2">
         <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
-          {firstName ? `Welcome, ${firstName}` : "Welcome"}
+          {firstTaskRunning
+            ? "Your first task is running."
+            : firstName
+              ? `Welcome, ${firstName}`
+              : "Welcome"}
         </h1>
         <p className="text-[15px] text-muted-foreground">
-          A few steps and CodeGenie is ready to work on your code.
+          {firstTaskRunning
+            ? "You'll get a pull request to review."
+            : "A few steps and CodeGenie is ready to work on your code."}
         </p>
+        {firstTaskRunning && firstTask && (
+          <Button asChild variant="primary" glow className="mt-2 self-start">
+            <Link href={taskPath(firstTask.id)}>Watch it work</Link>
+          </Button>
+        )}
       </div>
       <InstallNotice outcome={outcome} />
       <WelcomeChecklist {...checklistView} />

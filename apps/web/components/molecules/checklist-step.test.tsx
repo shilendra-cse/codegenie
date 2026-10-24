@@ -86,11 +86,4 @@ describe("ChecklistStep", () => {
       screen.queryByText("Pick one of the repositories you gave access to."),
     ).toBeNull();
   });
-
-  it("shows an action that isn't built yet as coming soon", () => {
-    renderStep({ action: { label: "Start setup", comingSoon: true } });
-
-    expect(screen.getByRole("button", { name: "Start setup" })).toBeDisabled();
-    expect(screen.getByText("Coming soon")).toBeInTheDocument();
-  });
 });

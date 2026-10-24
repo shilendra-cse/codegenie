@@ -4,8 +4,8 @@ import type {
   EnvironmentHealth,
   EnvironmentSource,
   SetupStep,
-} from "../types/environment.js";
-import type { Check } from "../types/setup.js";
+} from "../types/environment";
+import type { Check } from "../types/setup";
 
 export const projectParamsSchema = z.object({
   id: z.uuid("The project id must be a UUID."),
@@ -37,6 +37,14 @@ export type ProjectResponse = {
 };
 
 export type ProjectListResponse = { projects: ProjectResponse[] };
+
+export type BranchListResponse = {
+  /** Branch names, the default branch first. */
+  branches: string[];
+  defaultBranch: string;
+  /** More branches exist than were listed. */
+  truncated: boolean;
+};
 
 export type EnvironmentResponse = {
   version: number;

@@ -18,7 +18,11 @@ vi.mock("@/features/onboarding/use-welcome-checklist", () => ({
     steps: STEPS.map((id, index) => ({
       id,
       state:
-        index < STEPS.indexOf(checklist.at as (typeof STEPS)[number])
+        // "finished": every step done.
+        index <
+        (checklist.at === "finished"
+          ? STEPS.length
+          : STEPS.indexOf(checklist.at as (typeof STEPS)[number]))
           ? "done"
           : id === checklist.at
             ? "current"
@@ -29,7 +33,7 @@ vi.mock("@/features/onboarding/use-welcome-checklist", () => ({
           : "/projects/new",
       external: id === "install",
       projectName: id === "add-repo" || id === "set-up" ? "dodesk" : undefined,
-      projectId: id === "set-up" ? "p1" : undefined,
+      projectId: id === "set-up" || id === "first-task" ? "p1" : undefined,
     })),
     retry: vi.fn(),
   }),
@@ -59,6 +63,42 @@ vi.mock("@/features/setup/use-onboarding", () => ({
     error: null,
   }),
 }));
+vi.mock("@/features/projects/projects", () => ({
+  useProjects: () => ({ data: [] }),
+}));
+const tasks = vi.hoisted(() => ({
+  list: [] as { id: string; title: string; label: string }[],
+  start: vi.fn(),
+}));
+vi.mock("@/features/tasks/use-tasks", () => ({
+  useTasks: () => ({ data: tasks.list }),
+}));
+vi.mock("@/features/tasks/use-new-task", () => ({
+  useNewTask: () => ({
+    text: "Add a /health endpoint",
+    onTextChange: vi.fn(),
+    projects: [
+      { id: "p1", name: "dodesk", branch: "main", health: "ok", blocked: null },
+    ],
+    projectId: "p1",
+    onProjectChange: vi.fn(),
+    branch: {
+      value: "main",
+      defaultBranch: "main",
+      branches: undefined,
+      truncated: false,
+      loading: false,
+      error: null,
+      onOpen: vi.fn(),
+      onRetry: vi.fn(),
+      onChange: vi.fn(),
+    },
+    canStart: true,
+    starting: false,
+    error: null,
+    onStart: tasks.start,
+  }),
+}));
 vi.mock("@/features/github/use-repository-picker", () => ({
   useRepositoryPicker: ({ enabled }: { enabled?: boolean }) => {
     picker.enabled = enabled;
@@ -86,6 +126,8 @@ describe("WelcomeScreen", () => {
     setup.latest = [];
     setup.question = null;
     setup.start.mockReset();
+    tasks.list = [];
+    tasks.start.mockReset();
   });
 
   it("greets you and shows the checklist", () => {
@@ -202,5 +244,52 @@ describe("WelcomeScreen", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("waiting 30 minutes");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(setup.start).toHaveBeenCalledOnce();
+  });
+
+  it("starts the first task right inside step 4", () => {
+    checklist.at = "first-task";
+    render(<WelcomeScreen />);
+
+    const step = screen.getByRole("listitem", { current: "step" });
+    expect(step).toHaveTextContent("Describe your first task");
+    expect(
+      within(step).getByRole("textbox", { name: "Task description" }),
+    ).toHaveValue("Add a /health endpoint");
+    fireEvent.click(within(step).getByRole("button", { name: "Start" }));
+    expect(tasks.start).toHaveBeenCalledOnce();
+  });
+
+  it("says the first task is running, with a way to watch it", () => {
+    checklist.at = "finished";
+    tasks.list = [
+      { id: "t1", title: "Add a /health endpoint", label: "working" },
+    ];
+    render(<WelcomeScreen />);
+
+    expect(
+      screen.getByRole("heading", { name: "Your first task is running." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/“Add a \/health endpoint” is running\./),
+    ).toBeInTheDocument();
+    for (const link of screen.getAllByRole("link", { name: "Watch it work" })) {
+      expect(link).toHaveAttribute("href", "/tasks/t1");
+    }
+  });
+
+  it("goes back to the greeting once the first task has finished", () => {
+    checklist.at = "finished";
+    tasks.list = [
+      { id: "t1", title: "Add a /health endpoint", label: "pr_open" },
+    ];
+    render(<WelcomeScreen />);
+
+    expect(
+      screen.getByRole("heading", { name: "Welcome, Ada" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open it" })).toHaveAttribute(
+      "href",
+      "/tasks/t1",
+    );
   });
 });

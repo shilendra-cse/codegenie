@@ -616,6 +616,50 @@ paths:
         "404":
           $ref: "#/components/responses/ProjectNotFound"
 
+  /api/projects/{projectId}/branches:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: The repository's branches
+      description: Branch names from GitHub, read with the user's GitHub token, the project's default branch first. At most 1,000; `truncated` says when there are more.
+      operationId: listBranches
+      responses:
+        "200":
+          description: The branches
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [branches, defaultBranch, truncated]
+                        properties:
+                          branches:
+                            type: array
+                            items:
+                              type: string
+                          defaultBranch:
+                            type: string
+                          truncated:
+                            type: boolean
+        "401":
+          $ref: "#/components/responses/GitHubSignInRequired"
+        "404":
+          description: Not one of the user's projects (`PROJECT_NOT_FOUND`), or GitHub no longer shows the user the repository (`GITHUB_REPOSITORY_NOT_FOUND`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /api/projects/{projectId}/tasks:
     parameters:
       - name: projectId
