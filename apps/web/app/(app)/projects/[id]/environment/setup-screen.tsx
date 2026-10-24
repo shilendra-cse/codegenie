@@ -15,16 +15,13 @@ import { TopBar } from "@/components/organisms/top-bar";
 import { useAccount } from "@/features/account/use-account";
 import { useProjects } from "@/features/projects/projects";
 import { onboardingKey } from "@/features/setup/api";
-import { buildTimeline } from "@/features/setup/timeline";
 import {
-  isSetupActive,
   useAnswerOnboarding,
   useCancelOnboarding,
   useEnvironments,
-  useOnboarding,
   useStartOnboarding,
 } from "@/features/setup/use-onboarding";
-import { useOnboardingEvents } from "@/features/setup/use-onboarding-events";
+import { useSetupProgress } from "@/features/setup/use-setup-progress";
 import { ApiError } from "@/lib/api/client";
 import { formatDuration } from "@/lib/format";
 import { projectPath } from "@/lib/routes";
@@ -41,15 +38,8 @@ export function SetupScreen({ projectId }: SetupScreenProps) {
   const { account } = useAccount();
   const project = useProjects().data?.find((p) => p.id === projectId);
   const projectName = project?.repo.name ?? "this project";
-  const latest = useOnboarding(projectId);
-  const onboarding = latest.data;
-  const active = isSetupActive(onboarding);
-  const events = useOnboardingEvents(
-    projectId,
-    onboarding ? { id: onboarding.id, ended: !active } : undefined,
-  );
+  const { latest, onboarding, active, timeline } = useSetupProgress(projectId);
   const now = useNow(active);
-  const timeline = buildTimeline(events);
   const blocks = toSetupBlocks(timeline.lines, { active, now });
   const saved = onboarding?.status === "succeeded";
   const environments = useEnvironments(saved ? projectId : undefined);

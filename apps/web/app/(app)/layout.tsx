@@ -10,6 +10,7 @@ import { AppShell } from "@/components/templates/app-shell";
 import { useAccount } from "@/features/account/use-account";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
 import { toSidebarProject, useProjects } from "@/features/projects/projects";
+import { useOnboarding } from "@/features/setup/use-onboarding";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -25,6 +26,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       ? checklist.steps
       : [];
   const next = steps.find((step) => step.state === "current");
+  const setupProjectId =
+    checklist.status === "ready"
+      ? checklist.steps.find((s) => s.id === "set-up" && s.state === "current")
+          ?.projectId
+      : undefined;
+  const setupStatus = useOnboarding(setupProjectId).data?.status;
+  const settingUp =
+    setupStatus === "waiting"
+      ? ("waiting" as const)
+      : setupStatus === "running" || setupStatus === "queued"
+        ? ("running" as const)
+        : undefined;
 
   // The middleware only sees that a cookie exists; an expired session lands here.
   useEffect(() => {
@@ -37,7 +50,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       sidebar={
         <Sidebar
           pathname={pathname}
-          projects={projects.data?.map(toSidebarProject)}
+          projects={projects.data?.map((project) => ({
+            ...toSidebarProject(project),
+            needsYou:
+              project.id === setupProjectId && setupStatus === "waiting",
+          }))}
           projectsFailed={projects.isError}
           gettingStarted={
             next && (
@@ -45,6 +62,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 done={steps.filter((step) => step.state === "done").length}
                 next={next.id}
                 projectName={next.projectName}
+                status={next.id === "set-up" ? settingUp : undefined}
               />
             )
           }

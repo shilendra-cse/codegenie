@@ -96,7 +96,11 @@ describe("buildChecklist", () => {
     });
 
     expect(steps[1]).toMatchObject({ state: "done", projectName: "dodesk" });
-    expect(steps[2]).toMatchObject({ state: "current", projectName: "dodesk" });
+    expect(steps[2]).toMatchObject({
+      state: "current",
+      projectName: "dodesk",
+      projectId: "dodesk",
+    });
     expect(steps[0].projectName).toBeUndefined();
   });
 });

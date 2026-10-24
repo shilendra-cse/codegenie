@@ -48,8 +48,8 @@ describe("toSetupBlocks", () => {
       card?.kind === "lines" &&
         card.lines.map((l) => [l.kind, l.state, l.durationMs]),
     ).toEqual([
-      ["projects", "done", 1_000],
-      ["tried", "warn", 29_000],
+      ["projects", "done", 10_000],
+      ["tried", "warn", 1_000],
       ["agent", "done", 10_000],
     ]);
     expect(asked).toMatchObject({ number: 1, state: "open", answer: null });

@@ -91,4 +91,15 @@ describe("Sidebar", () => {
     renderSidebar({ projects: undefined, projectsFailed: true });
     expect(screen.getByText("Couldn't load projects.")).toBeInTheDocument();
   });
+
+  it("marks the project whose setup is waiting for you", () => {
+    renderSidebar({
+      projects: [{ id: "p1", name: "dodesk", health: "none", needsYou: true }],
+    });
+
+    const link = screen.getByRole("link", {
+      name: "dodesk, needs your answer",
+    });
+    expect(link).toHaveTextContent("Needs you");
+  });
 });

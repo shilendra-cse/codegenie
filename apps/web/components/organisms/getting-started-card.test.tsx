@@ -19,4 +19,28 @@ describe("GettingStartedCard", () => {
       "Next: Add a repository",
     );
   });
+
+  it("says when the next step's setup is running or needs you", () => {
+    const { rerender } = render(
+      <GettingStartedCard
+        done={2}
+        next="set-up"
+        projectName="dodesk"
+        status="running"
+      />,
+    );
+    expect(screen.getByRole("link")).toHaveTextContent(
+      "Next: Set up dodesk · in progress",
+    );
+
+    rerender(
+      <GettingStartedCard
+        done={2}
+        next="set-up"
+        projectName="dodesk"
+        status="waiting"
+      />,
+    );
+    expect(screen.getByRole("link")).toHaveTextContent("· needs your answer");
+  });
 });

@@ -93,6 +93,11 @@ export function describeLine(line: TimelineLine): string {
   }
 }
 
+const progressLine = (
+  at: { seq: number; ts: string },
+  text: string,
+): TimelineLine => ({ kind: "info", ...at, text, progress: true });
+
 /** Turns a setup's events, in order, into what the page shows. */
 export function buildTimeline(events: OnboardingEvent[]): Timeline {
   const lines: TimelineLine[] = [];
@@ -141,6 +146,12 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
         });
         break;
       case "tool_start": {
+        // Its result arrives as a "tried" line; until then, say what's happening.
+        if (event.toolName === "try_environment") {
+          agent = null;
+          lines.push(progressLine(at, "Trying the new setup"));
+          break;
+        }
         if (SHOWN_ELSEWHERE.has(event.toolName)) break;
         const action = {
           id: event.toolCallId,
@@ -175,6 +186,7 @@ export function buildTimeline(events: OnboardingEvent[]): Timeline {
       case "question_answered": {
         const asked = questions.get(event.questionId);
         if (asked) asked.answer = event.label;
+        lines.push(progressLine(at, "Carrying on with your answer"));
         break;
       }
       case "done":

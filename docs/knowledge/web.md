@@ -255,6 +255,8 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **Getting started card:** "Next: Set up <project> · in progress", or "· needs your answer".
 
+**Sidebar:** the project being set up shows "Needs you" while its setup waits for an answer (only that project, to avoid asking for every project's setup); its dot turns green once saved.
+
 **Underneath:** `features/setup/` (kept apart from `features/onboarding/`, the Welcome checklist): `api.ts`; `useOnboarding`, `useEnvironments`, and start / answer / stop mutations that update the cached setup; `useOnboardingEvents` (an `EventSource` on `/api/projects/:id/onboarding/events`, in order without repeats, closed on `done` or once ended, refreshing the setup, projects and environments); `buildTimeline(events)` (pure: the lines, the open question, the latest 3, whether it's done). Setup reports `setup_drafted` and phased `setup_completed` events for the timeline ([api.md](./api.md) §6).
 
 **Not here:** the project page's Environment tab (versions, rollback, editing), re-running setup from "needs attention".

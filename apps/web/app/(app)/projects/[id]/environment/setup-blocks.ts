@@ -85,14 +85,21 @@ export function toSetupBlocks(
     if (line.kind === "info" && line.progress && !current) return;
 
     const started = Date.parse(line.ts);
-    const durationMs = next
-      ? Date.parse(next.ts) - started
-      : current
-        ? now - started
-        : null;
-    const runningNow =
-      current &&
-      (line.kind === "agent" || (line.kind === "info" && line.progress));
+    const previous = lines[index - 1];
+    // Setup reports a result when the work is done, so a result took the time since the line before it;
+    // the agent's work and what's happening now are timed from their own start.
+    const timedFromStart =
+      line.kind === "agent" || (line.kind === "info" && line.progress);
+    const runningNow = current && timedFromStart;
+    const durationMs = !timedFromStart
+      ? previous
+        ? started - Date.parse(previous.ts)
+        : null
+      : next
+        ? Date.parse(next.ts) - started
+        : current
+          ? now - started
+          : null;
     if (!card) {
       card = {
         kind: "lines",

@@ -13,7 +13,13 @@ import { Skeleton } from "@/components/atoms/skeleton";
 import { NavItem } from "@/components/molecules/nav-item";
 import { ADD_REPOSITORY, APP_HOME, INBOX, projectPath } from "@/lib/routes";
 
-export type SidebarProject = { id: string; name: string; health: Health };
+export type SidebarProject = {
+  id: string;
+  name: string;
+  health: Health;
+  /** Its setup is waiting for the user's answer. */
+  needsYou?: boolean;
+};
 
 export type SidebarProps = {
   pathname: string;
@@ -49,7 +55,18 @@ function ProjectList({
           <NavItem
             key={project.id}
             href={href}
-            label={`${project.name}, ${HEALTH_LABELS[project.health].toLowerCase()}`}
+            label={`${project.name}, ${
+              project.needsYou
+                ? "needs your answer"
+                : HEALTH_LABELS[project.health].toLowerCase()
+            }`}
+            trailing={
+              project.needsYou && (
+                <span className="text-xs font-medium text-primary-text">
+                  Needs you
+                </span>
+              )
+            }
             leading={<HealthDot health={project.health} />}
             active={pathname === href || pathname.startsWith(`${href}/`)}
           >

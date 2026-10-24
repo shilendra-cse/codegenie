@@ -108,6 +108,7 @@ describe("buildTimeline", () => {
       "tried",
       "problems",
       "agent",
+      "info",
       "tried",
       "info",
       "tried",
@@ -129,7 +130,12 @@ describe("buildTimeline", () => {
         { id: "t2", tool: "bash", target: "pnpm --filter backend test" },
       ],
     });
-    expect(timeline.lines[8]).toMatchObject({ kind: "tried", phase: "final" });
+    expect(timeline.lines[6]).toMatchObject({
+      kind: "info",
+      text: "Trying the new setup",
+      progress: true,
+    });
+    expect(timeline.lines[9]).toMatchObject({ kind: "tried", phase: "final" });
     expect(timeline.lines.at(-1)).toEqual({
       kind: "done",
       seq: 15,
@@ -190,11 +196,19 @@ describe("buildTimeline", () => {
       }).map((e) => ({ ...e, seq: 3 })),
     ]);
     expect(answered.openQuestion).toBeNull();
-    expect(answered.lines.at(-1)).toMatchObject({
+    expect(answered.lines.at(-2)).toMatchObject({
       kind: "question",
       answer: "Skip them",
     });
-    expect(answered.latest.at(-1)).toBe("Answered: Skip them");
+    expect(answered.lines.at(-1)).toMatchObject({
+      kind: "info",
+      text: "Carrying on with your answer",
+      progress: true,
+    });
+    expect(answered.latest.slice(-2)).toEqual([
+      "Answered: Skip them",
+      "Carrying on with your answer",
+    ]);
   });
 
   it("says why setup ended without saving", () => {
