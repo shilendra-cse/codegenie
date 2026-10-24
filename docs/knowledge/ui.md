@@ -1,6 +1,6 @@
 # Web UI
 
-> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/21Gfpi2Kmd71mahuxtNSfu) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
+> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
 
 The screens, what they show in every state, and what each needs from the API. The canvas is the visual source of truth; this file is the written one. Phase 4 builds what's drawn.
 

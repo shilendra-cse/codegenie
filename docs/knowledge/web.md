@@ -1,6 +1,6 @@
 # Web app
 
-> Status: **Accepted** (Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/21Gfpi2Kmd71mahuxtNSfu), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
+> Status: **Accepted** (Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
 
 How the web app is built: the stack, how it talks to the API, how the code is organized, and the order we build it in. **What** each screen shows is in ui.md; this file is **how**.
 
