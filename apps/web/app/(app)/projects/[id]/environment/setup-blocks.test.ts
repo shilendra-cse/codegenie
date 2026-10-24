@@ -87,6 +87,45 @@ describe("toSetupBlocks", () => {
     );
   });
 
+  it("shows the agent's try as running, then credits its time to the result", () => {
+    const trying: TimelineLine = {
+      ...at(5, 50),
+      kind: "info",
+      text: "Trying the new setup",
+      progress: true,
+    };
+    const [running] = toSetupBlocks([...lines.slice(0, 4), trying], {
+      active: true,
+      now: start + 58_000,
+    });
+    expect(running?.kind === "lines" && running.lines.at(-1)).toMatchObject({
+      kind: "text",
+      state: "running",
+      durationMs: 8_000,
+    });
+
+    const result: TimelineLine = {
+      ...at(6, 80),
+      kind: "tried",
+      phase: "agent",
+      steps: [{ name: "install", cwd: ".", command: "npm ci", status: "ok" }],
+      checks: [{ name: "test", cwd: ".", status: "passing" }],
+    };
+    const [settled] = toSetupBlocks([...lines.slice(0, 4), trying, result], {
+      active: true,
+      now: start + 81_000,
+    });
+    expect(
+      settled?.kind === "lines" &&
+        settled.lines.map((l) => [l.kind, l.durationMs]),
+    ).toEqual([
+      ["projects", 10_000],
+      ["tried", 1_000],
+      ["agent", 10_000],
+      ["tried", 30_000],
+    ]);
+  });
+
   it("marks a question answered, or unanswered once setup has ended", () => {
     const answered = [
       ...lines.slice(0, 4),
