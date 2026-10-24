@@ -151,7 +151,7 @@ sandbox (runner, deliver stage)                 worker (deliverToGithub)
 ```
 
 - **What's in the commit:** only the agent's changes since the baseline, on top of the cloned commit. The baseline commit and files that only setup or the checks wrote stay out; a file both setup and the agent changed goes in with its final content.
-- **Branch:** `codegenie/<first 8 of the task id>-<slug of the title>`, never the default branch. **Title:** the agent's `finish_task` title, else the task title; it's the commit subject and the PR title. **Body:** the agent's summary, a checks table, the changed files, and notes for an incomplete run.
+- **Branch:** `codegenie/<slug of the task title>-<first 4 of the task id>`, never the default branch. The title is the short one the model writes at the start of the task's first run ([agent.md](./agent.md) §10), else the prompt's first line; delivery waits for it. **Title:** the agent's `finish_task` title, else the task title; it's the commit subject and the PR title. **Body:** the agent's summary, a checks table, the changed files, and notes for an incomplete run.
 - **Draft PRs** aren't available in private repositories on GitHub Free; GitHub refuses them, and the PR is opened ready with a "Not ready to merge" note.
 - **Limits:** 1,000 files and 50 MB per delivery; submodule changes and non-UTF-8 file names can't be delivered. Any failure fails the run with `deliver_failed`; its diff is still saved.
 - **Recorded:** the task's `branch_name` once the branch exists, then `pr_number`, `pr_url` and `pr_open`; the run's `commit_sha`; events `branch_created`, `git_push`, `pr_opened`.

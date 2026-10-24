@@ -168,12 +168,12 @@ Every entry point reduces to **task → new run**.
 
 | Stage | Actions | Events |
 |---|---|---|
-| **Prepare** | load run/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId` | `sandbox_created` |
+| **Prepare** | load run/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId`. Alongside, on a task's first run, the model writes its short title ([agent.md](./agent.md) §10) | `sandbox_created`, `task_titled` |
 | **Checkout** | shallow clone of the base branch into `/workspace` (later runs will check out `task.branch_name`) | |
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
 | **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
 | **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `lint_completed`, `test_passed`/`test_failed` |
-| **Deliver** | no diff → finish with explanation, no PR. Else the runner lists the changes and the worker commits them through GitHub's API as the App on `codegenie/<taskId>-<slug>` and opens the PR (draft if checks failed or incomplete) with summary + checks + changed files ([github.md](./github.md) §8) | `branch_created`, `git_push`, `pr_opened` |
+| **Deliver** | no diff → finish with explanation, no PR. Else the runner lists the changes and the worker commits them through GitHub's API as the App on `codegenie/<title slug>-<taskId prefix>` and opens the PR (draft if checks failed or incomplete) with summary + checks + changed files ([github.md](./github.md) §8) | `branch_created`, `git_push`, `pr_opened` |
 | **Finally** | persist summary & usage; `status=succeeded/failed/cancelled`; **always** destroy sandbox | `done` / `error` |
 
 The clone token is passed to git through that command's environment rather than stored in `.git/config`; no write token enters the sandbox.

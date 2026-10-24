@@ -112,7 +112,7 @@ A unit of work on a project.
 | `id` | uuid PK | |
 | `project_id` | uuid FK → `projects.id` | cascade |
 | `created_by_user_id` | text FK → `user.id` | |
-| `title` | text | derived from prompt or ticket |
+| `title` | text | the prompt's first line, then the model's short title from the first run (`task_titled`) |
 | `source` | enum `task_source` (`prompt`, `jira`, `notion`) | |
 | `source_ref` | text null | e.g. Jira key `ABC-123` |
 | `source_url` | text null | |

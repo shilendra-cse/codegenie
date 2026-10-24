@@ -5,6 +5,7 @@ import {
   updateRunProgress,
   type Db,
 } from "@codegenie/db";
+import type { UsageSnapshot } from "@codegenie/agent";
 import type { Diff, RunResult } from "@codegenie/runner";
 import type { RunEvent } from "@codegenie/shared";
 import { createSerialQueue } from "../lib/serial-queue.js";
@@ -16,6 +17,8 @@ export type RunFailure = { code: string; message: string };
 export type RunRecord = {
   start(environmentId: string): Promise<void>;
   observe(event: RunEvent): void;
+  /** Model calls made outside the agent (e.g. the task's title), counted with the agent's. */
+  addUsage(usage: UsageSnapshot): void;
   flush(): Promise<void>;
   /** False when the run was already ended elsewhere (e.g. by the reaper). */
   finish(result: RunResult): Promise<boolean>;
@@ -44,6 +47,7 @@ export function runFailure(result: RunResult): RunFailure | null {
 
 export function createRunRecord(db: Db, runId: string): RunRecord {
   const updates = createSerialQueue();
+  const extra = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
 
   return {
     async start(environmentId) {
@@ -62,6 +66,12 @@ export function createRunRecord(db: Db, runId: string): RunRecord {
       }
     },
 
+    addUsage(usage) {
+      extra.inputTokens += usage.inputTokens;
+      extra.outputTokens += usage.outputTokens;
+      extra.costUsd += usage.costUsd;
+    },
+
     flush: () => updates.drain(),
 
     finish(result) {
@@ -73,10 +83,10 @@ export function createRunRecord(db: Db, runId: string): RunRecord {
         {
           status: result.status,
           summary: agent?.summary ?? null,
-          inputTokens: agent?.usage.inputTokens ?? 0,
-          outputTokens: agent?.usage.outputTokens ?? 0,
+          inputTokens: (agent?.usage.inputTokens ?? 0) + extra.inputTokens,
+          outputTokens: (agent?.usage.outputTokens ?? 0) + extra.outputTokens,
           steps: agent?.steps ?? 0,
-          costUsd: (agent?.usage.costUsd ?? 0).toFixed(4),
+          costUsd: ((agent?.usage.costUsd ?? 0) + extra.costUsd).toFixed(4),
           checksPassed: result.verify?.passed ?? null,
           commitSha: result.delivery?.sha ?? null,
           errorCode: failure?.code ?? null,

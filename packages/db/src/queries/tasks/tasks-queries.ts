@@ -30,6 +30,10 @@ export async function createTaskWithRun(db: Db, values: NewTaskWithRun) {
   });
 }
 
+export async function setTaskTitle(db: Db, taskId: string, title: string) {
+  await db.update(tasks).set({ title }).where(eq(tasks.id, taskId));
+}
+
 export async function setTaskBranch(
   db: Db,
   taskId: string,

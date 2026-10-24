@@ -1,7 +1,9 @@
+import { titleTask, type ResolvedModel } from "@codegenie/agent";
 import {
   DbEnvironmentStore,
   getLatestUserMessage,
   getRunWithProject,
+  setTaskTitle,
   type Db,
 } from "@codegenie/db";
 import {
@@ -34,6 +36,8 @@ export type RunTaskDeps = {
   log: Log;
   createSandbox: SandboxFactory;
   github: Pick<GithubApp, "repoToken" | "repoClient">;
+  /** Writes the task's short title on its first run; without it, the task keeps its first line. */
+  titleModel?: ResolvedModel;
 } & Pick<RunTaskOptions, "model" | "limits">;
 
 async function loadRun(db: Db, runId: string) {
@@ -41,6 +45,45 @@ async function loadRun(db: Db, runId: string) {
   if (!run) throw new Error(`Run ${runId} doesn't exist.`);
   const message = await getLatestUserMessage(db, runId);
   return { ...run, instruction: message?.content ?? run.task.title };
+}
+
+type LoadedRun = Awaited<ReturnType<typeof loadRun>>;
+
+async function nameTask(
+  deps: Pick<RunTaskDeps, "db" | "log"> & { titleModel: ResolvedModel },
+  run: LoadedRun,
+  {
+    emit,
+    record,
+    signal,
+  }: {
+    emit: (event: RunEvent) => void;
+    record: RunRecord;
+    signal?: AbortSignal;
+  },
+) {
+  const { title, usage } = await titleTask(deps.titleModel, run.instruction, {
+    signal,
+  });
+  record.addUsage(usage);
+  if (!title) return;
+  try {
+    await setTaskTitle(deps.db, run.task.id, title);
+  } catch (error) {
+    deps.log("warn", "The task's title wasn't saved", {
+      runId: run.id,
+      error: String(error),
+    });
+    return;
+  }
+  // Delivery reads it from here for the branch name.
+  run.task.title = title;
+  emit({
+    type: "task_titled",
+    runId: run.id,
+    ts: new Date().toISOString(),
+    title,
+  });
 }
 
 async function endRun(
@@ -132,6 +175,19 @@ export async function handleRunTask(
     record.observe(event);
   };
 
+  // Written while the sandbox is prepared; delivery waits for it, for the branch name.
+  const { titleModel } = deps;
+  const titling =
+    titleModel && run.trigger === "initial"
+      ? nameTask({ ...deps, titleModel }, run, { emit, record, signal })
+      : Promise.resolve();
+  const deliver = deliverToGithub(deps, {
+    runId,
+    task: run.task,
+    project,
+    emit,
+  });
+
   let result: RunResult;
   try {
     result = await runTask({
@@ -149,7 +205,10 @@ export async function handleRunTask(
       createSandbox: () => deps.createSandbox({ kind: "run", runId }),
       emit,
       signal,
-      deliver: deliverToGithub(deps, { runId, task: run.task, project, emit }),
+      deliver: async (changes, ran) => {
+        await titling;
+        return deliver(changes, ran);
+      },
     });
   } catch (error) {
     await record.fail({
@@ -159,6 +218,7 @@ export async function handleRunTask(
     throw error;
   }
 
+  await titling;
   await endRun(deps, { id: runId, emit, record, sink }, result);
   if (result.setup?.health === "needs_attention") {
     await environments.markHealth(

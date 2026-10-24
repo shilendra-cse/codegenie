@@ -48,11 +48,13 @@ async function main() {
   };
   const queue = new Queue(WORK_QUEUE, { connection: redis.scheduler });
 
+  const model = resolveModel(config.model);
   const deps = {
     db,
     publisher: redis.publisher,
     log,
-    model: resolveModel(config.model),
+    model,
+    titleModel: model,
     createSandbox: (labels: SandboxLabels) =>
       createSandbox({ ...config.sandbox, labels }),
     github: createGithubApp(config.github),
