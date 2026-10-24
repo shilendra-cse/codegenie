@@ -392,4 +392,4 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 5. The page matches the canvas in light and dark and at phone width.
 6. Tests cover `runOutcome` for every state and code, the merged edit rows, `useCancelRun`, the ended and folded run card, the result message, the composer and the page; the worker's PR description with and without `FRONTEND_URL`.
 
-**Batches:** 1. these requirements and the canvas; 2. Cancel (`useCancelRun`, the top bar button, stopping); 3. merged edit rows; 4. `runOutcome`; 5. the run card's ended and folded states and the result message (summary, checks table, PR card, notices); 6. the composer; 7. the task link in the PR description.
+**Batches:** 1. these requirements and the canvas; 2. Cancel (`useCancelRun`, the top bar button, stopping); 3. merged edit rows; 4. `runOutcome`; 5a. the checks table as its own component; 5b. the result message (summary, checks table, PR card, notices); 5c. the run card's ended and folded states, and scrolling to the result; 6. the composer; 7. the task link in the PR description.
