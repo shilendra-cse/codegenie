@@ -344,7 +344,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 ## 17. Get the PR (requirements)
 
-**Goal:** when a run ends, CodeGenie replies under its run card, the way a message follows another in a conversation, with the result: the summary, the checks before and after, and the pull request, or why there isn't one. You can cancel a run while it's queued or working. Every way a task can end has its own state. (Follow-ups are Phase 5; the composer says so.)
+**Goal:** when a run ends, CodeGenie replies under its run card, the way a message follows another in a conversation, with the result: the summary, the checks before and after, and the pull request, or why there isn't one. You can cancel a run while it's queued or working. Every way a task can end has its own state. (Follow-ups, and the composer with them, come in Phase 5.)
 
 **The task page `/tasks/:id`** (canvas: Task: PR opened, its `outcome` switch; Task: run in progress for Cancel):
 - **Cancel** in the top bar while the run is queued or working (`POST /runs/:id/cancel`). A queued run ends at once (`cancelled`); a working one answers `stopping`: the button reads "Stopping…" and is disabled until the run ends. "This run has already ended" (409) just refreshes the task; anything else shows "Couldn't cancel. Try again." under the top bar.
@@ -359,30 +359,29 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
   - or, instead, the notice: the limit it stopped at, the failure, or the cancellation.
 - **Every end state:**
 
-  | State | Badge (top bar) | In the result | Composer |
-  |---|---|---|---|
-  | PR ready | PR #N open | summary, checks, PR "Ready for review · verified commit `abc1234` by codegenie[bot] · into `main`" | follow-ups not yet available |
-  | Draft PR | Draft PR #N | as ready; PR "Draft: checks still failing" or "Draft: stopped before finishing" | follow-ups not yet available |
-  | Merged | PR #N merged | as ready; PR "Merged into `main`" | "This pull request was merged. Changes from here are a new task." |
-  | Closed | PR #N closed | as ready; PR "Closed without merging" | "This pull request was closed." |
-  | No changes | No changes | summary, "No branch or pull request was created." | "Nothing to review here." |
-  | Incomplete | Draft PR #N, or No changes | "Stopped at the step limit." (time, cost) above the summary; a draft PR when there were changes | as draft, or as no changes |
-  | Failed | Failed | where it failed and why, from the error code (below); "Nothing was pushed." | "Fix the problem and start the task again." |
-  | Cancelled | Cancelled | "You cancelled this run after 3m 02s." (or "before it started"); "The sandbox was removed and nothing was pushed." | "You cancelled this task." |
+  | State | Badge (top bar) | In the result |
+  |---|---|---|
+  | PR ready | PR #N open | summary, checks, PR "Ready for review · verified commit `abc1234` by codegenie[bot] · into `main`" |
+  | Draft PR | Draft PR #N | as ready; PR "Draft: checks still failing" or "Draft: stopped before finishing" |
+  | Merged | PR #N merged | as ready; PR "Merged into `main`" |
+  | Closed | PR #N closed | as ready; PR "Closed without merging" |
+  | No changes | No changes | summary, "No branch or pull request was created." |
+  | Incomplete | Draft PR #N, or No changes | "Stopped at the step limit." (time, cost) above the summary; a draft PR when there were changes |
+  | Failed | Failed | where it failed and why, from the error code (below); "Nothing was pushed." |
+  | Cancelled | Cancelled | "You cancelled this run after 3m 02s." (or "before it started"); "The sandbox was removed and nothing was pushed." |
 
   Merged and closed come from GitHub (the webhook sets the task's status); the page picks them up when you come back to it.
 - **Failure messages**, by `run.error.code`, each with the run's message under it: `prepare_failed` / `checkout_failed` "Couldn't prepare the sandbox"; `setup_failed` "Failed during setup" with **Re-run environment setup**; `no_environment` "This project isn't set up" with **Set it up**; `agent_failed` "Failed while working"; `verify_failed` "Failed while running the checks"; `deliver_failed` "Couldn't open the pull request" (the diff stays in Changes); `github_access` "Couldn't reach the repository on GitHub" with **Check the project** (the project page shows whether the App was suspended or removed); `worker_lost` / `lost_in_queue` / `worker_error` "CodeGenie stopped unexpectedly"; anything else "The run failed".
 - **Activity:** consecutive edits and writes to the same file are one row: the path, "+8 −5 · 2 edits", opening that file in Changes. Live and finished alike.
-- **Composer** under the conversation, always there, with no reply box: while the run is queued or working, "CodeGenie is working on this."; once it has ended, the line from the table and **Start a new task** (`/new?project=<id>`). For an open or draft PR the line is "Follow-ups aren't available yet. To change this pull request, start a new task or push to its branch."
 
 **Server:** none for the page. **Worker:** the PR description links to the task page (`FRONTEND_URL/tasks/:id`, from Phase 3's note), left out when `FRONTEND_URL` isn't set.
 
 **Underneath:**
 - `features/runs/`: `useCancelRun(runId)` (refreshes the task; keeps "stopping" until the run ends). `buildRunView` merges consecutive edits to one file.
-- `runOutcome({ task, run, title, checksDone })` (`features/runs/outcome.ts`): pure. The state from the table, the badge, the card's notice (limit, failure, cancelled) with its link, the PR line, the composer's line. Tested for each state and error code.
-- The run card's ended and folded states, the result message and the composer as components. `TaskScreen` remembers whether it saw the run live (`watched`) to pick folded or not.
+- `runOutcome({ task, run, title, checksDone })` (`features/runs/outcome.ts`): pure. The state from the table, the badge, the card's notice (limit, failure, cancelled) with its link, the PR line. Tested for each state and error code.
+- The run card's ended and folded states and the result message as components. `TaskScreen` remembers whether it saw the run live (`watched`) to pick folded or not.
 
-**Not here:** follow-ups and replies, Run again / retries (Phase 5); full command and install logs; who merged the PR; the Inbox (step 8).
+**Not here:** follow-ups, replies and the composer, Run again / retries (Phase 5); full command and install logs; who merged the PR; the Inbox (step 8).
 
 **Done when:**
 1. A run that opens a PR ends with a result message under the run card (summary, checks table, PR card), and the run card doesn't fold while you watch; Open on GitHub goes to the PR. Merging or closing it on GitHub shows on the page.
@@ -390,6 +389,6 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 3. Each end state in the table looks as described, including each failure message.
 4. Repeated edits to one file show as one row.
 5. The page matches the canvas in light and dark and at phone width.
-6. Tests cover `runOutcome` for every state and code, the merged edit rows, `useCancelRun`, the ended and folded run card, the result message, the composer and the page; the worker's PR description with and without `FRONTEND_URL`.
+6. Tests cover `runOutcome` for every state and code, the merged edit rows, `useCancelRun`, the ended and folded run card, the result message and the page; the worker's PR description with and without `FRONTEND_URL`.
 
-**Batches:** 1. these requirements and the canvas; 2. Cancel (`useCancelRun`, the top bar button, stopping); 3. merged edit rows; 4. `runOutcome`; 5a. the checks table as its own component; 5b. the result message (summary, checks table, PR card, notices); 5c. the run card's ended and folded states, and scrolling to the result; 6. the composer; 7. the task link in the PR description.
+**Batches:** 1. these requirements and the canvas; 2. Cancel (`useCancelRun`, the top bar button, stopping); 3. merged edit rows; 4. `runOutcome`; 5a. the checks table as its own component; 5b. the result message (summary, checks table, PR card, notices); 5c. the run card's ended and folded states, and scrolling to the result; 6. the task link in the PR description. (A composer saying follow-ups aren't available was dropped: it comes with follow-ups.)

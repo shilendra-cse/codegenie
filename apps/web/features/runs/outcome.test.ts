@@ -80,8 +80,6 @@ describe("runOutcome", () => {
         line: "Ready for review · verified commit 51b0d7e by codegenie[bot] · into main",
         tone: "ok",
       },
-      composer:
-        "Follow-ups aren't available yet. To change this pull request, start a new task or push to its branch.",
       unfoldSteps: false,
     });
   });
@@ -128,13 +126,10 @@ describe("runOutcome", () => {
     expect(outcome({ label: "merged" })).toMatchObject({
       state: "merged",
       pullRequest: { line: "Merged into main", tone: "merged" },
-      composer:
-        "This pull request was merged. Changes from here are a new task.",
     });
     expect(outcome({ label: "closed" })).toMatchObject({
       state: "closed",
       pullRequest: { line: "Closed without merging", tone: "err" },
-      composer: "This pull request was closed.",
     });
   });
 
@@ -146,7 +141,6 @@ describe("runOutcome", () => {
       showsChecks: false,
       noBranch: true,
       pullRequest: null,
-      composer: "Nothing to review here.",
     });
   });
 
@@ -161,7 +155,6 @@ describe("runOutcome", () => {
       state: "incomplete",
       notice: { title: "Stopped at the time limit." },
       noBranch: true,
-      composer: "Nothing to review here.",
     });
     expect(stoppedAt("cost_limit")?.notice?.title).toBe(
       "Stopped at the cost limit.",
@@ -189,7 +182,6 @@ describe("runOutcome", () => {
       showsChecks: false,
       noBranch: false,
       pullRequest: null,
-      composer: "Fix the problem and start the task again.",
       unfoldSteps: true,
     });
 
@@ -240,7 +232,6 @@ describe("runOutcome", () => {
         title: "You cancelled this run after 3m 02s.",
         note: "The sandbox was removed and nothing was pushed.",
       },
-      composer: "You cancelled this task.",
     });
     expect(
       outcome(cancelled, {

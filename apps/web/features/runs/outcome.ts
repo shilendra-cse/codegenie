@@ -39,7 +39,6 @@ export type RunOutcome = {
     line: string;
     tone: Exclude<OutcomeTone, "neutral">;
   } | null;
-  composer: string;
   /** A failed run starts with its stages shown. */
   unfoldSteps: boolean;
 };
@@ -49,10 +48,6 @@ const LIMITS: Record<string, string> = {
   time_limit: "Stopped at the time limit.",
   cost_limit: "Stopped at the cost limit.",
 };
-
-const FOLLOW_UPS =
-  "Follow-ups aren't available yet. To change this pull request, start a new task or push to its branch.";
-const NOTHING_TO_REVIEW = "Nothing to review here.";
 
 function failure(
   run: RunResponse,
@@ -116,23 +111,12 @@ function prLine(
 }
 
 const PR_STATES = {
-  pr_open: { state: "pr_ready", tone: "ok", composer: FOLLOW_UPS },
-  pr_draft: { state: "pr_draft", tone: "warn", composer: FOLLOW_UPS },
-  merged: {
-    state: "merged",
-    tone: "merged",
-    composer: "This pull request was merged. Changes from here are a new task.",
-  },
-  closed: {
-    state: "closed",
-    tone: "err",
-    composer: "This pull request was closed.",
-  },
+  pr_open: { state: "pr_ready", tone: "ok" },
+  pr_draft: { state: "pr_draft", tone: "warn" },
+  merged: { state: "merged", tone: "merged" },
+  closed: { state: "closed", tone: "err" },
 } as const satisfies Partial<
-  Record<
-    TaskDetail["label"],
-    { state: OutcomeState; tone: OutcomeTone; composer: string }
-  >
+  Record<TaskDetail["label"], { state: OutcomeState; tone: OutcomeTone }>
 >;
 
 const isPrLabel = (
@@ -154,7 +138,7 @@ function runStatus(run: RunResponse, hasPr: boolean): RunOutcome["status"] {
   }
 }
 
-/** How a finished run turned out: what its result message and the composer say. Null while it runs. */
+/** How a finished run turned out: what its card and result message say. Null while it runs. */
 export function runOutcome({
   task,
   run,
@@ -207,7 +191,6 @@ export function runOutcome({
             ? "The changes are in Changes."
             : "Nothing was pushed.",
       },
-      composer: "Fix the problem and start the task again.",
       unfoldSteps: true,
     };
   }
@@ -232,7 +215,6 @@ export function runOutcome({
           : "Nothing was pushed.",
         action: null,
       },
-      composer: "You cancelled this task.",
     };
   }
 
@@ -246,7 +228,6 @@ export function runOutcome({
       state: run.status === "incomplete" ? "incomplete" : "no_changes",
       notice: limitNotice,
       noBranch: true,
-      composer: NOTHING_TO_REVIEW,
     };
   }
   return {
@@ -261,6 +242,5 @@ export function runOutcome({
       line: prLine(pr.state, run, task.baseBranch),
       tone: pr.tone,
     },
-    composer: pr.composer,
   };
 }
