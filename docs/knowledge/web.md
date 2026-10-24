@@ -277,7 +277,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **The New task page `/new`** (canvas: New task (home)):
 - "What should CodeGenie do?", a large composer, and below it a row with the **project picker**, the **base branch**, the shortcut hint (⌘↵) and **Start**.
-- **Project picker:** your projects with their default branch. Projects that aren't ready are listed but can't be picked, each with the reason: "Not set up" or "Needs attention". **Add a repository** at the bottom goes to `/projects/new`. It starts on the project in `?project=`, else the last one you used, else the first ready one.
+- **Project picker:** your projects with their default branch. Projects that aren't ready are listed but can't be picked, each with the reason: "Not set up" or "Needs attention" (each with a link to fix it), or "GitHub App suspended" / "GitHub App removed". **Add a repository** at the bottom goes to `/projects/new`. It starts on the project in `?project=`, else the last one you used, else the first ready one.
 - **Base branch:** the project's default branch; **Change** turns it into a text field (a branch list comes later). An invalid name is shown under the field.
 - **Start:** enabled once there's text and a ready project; ⌘↵ (Ctrl↵) starts too. Busy while starting; then you go to `/tasks/:id`.
 - A one-line hint on writing good tasks.
@@ -291,7 +291,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **Elsewhere:** the setup page's **Describe your first task** opens `/new?project=<id>`; the sidebar's **New task** goes to `/new` (marked when current) and **Recent** lists your last 10 tasks with a status icon, each linking to its task.
 
-**Underneath:** `features/tasks/`: `api.ts`; `useTasks({ projectId? })` (first page only), `useTask(id)` (refetching every 3 s while the latest run is queued or running), `useStartTask(projectId)` (refreshes the task lists); error codes mapped to the messages above. Uses `POST /projects/:id/tasks`, `GET /tasks`, `GET /tasks/:id`; no server changes.
+**Underneath:** `features/tasks/`: `api.ts`; `useTasks({ projectId? })` (first page only), `useTask(id)` (refetching every 3 s while the latest run is queued or running), `useStartTask(projectId)` (refreshes the task lists); `taskReadiness(project)` (ready, or the reason and its fix) and `startTaskError` (the messages above). `lib/routes.ts` gains `NEW_TASK`, `environmentPath` and `taskPath`. Uses `POST /projects/:id/tasks`, `GET /tasks`, `GET /tasks/:id`; no server changes.
 
 **Not here:** the live run view, outcomes and the PR card (steps 6–7), the Inbox (step 8), choosing a branch from a list.
 

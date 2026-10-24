@@ -9,7 +9,7 @@ import { useRepositoryPicker } from "@/features/github/use-repository-picker";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
 import { useStartOnboarding } from "@/features/setup/use-onboarding";
 import { useSetupProgress } from "@/features/setup/use-setup-progress";
-import { APP_HOME, projectPath } from "@/lib/routes";
+import { APP_HOME, environmentPath } from "@/lib/routes";
 import { useNow } from "@/lib/use-now";
 import { useInstallOutcome } from "../use-install-outcome";
 
@@ -45,7 +45,7 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
                 <SetupProgressCard
                   projectName={settingUp?.projectName ?? "your project"}
                   status={setup.onboarding?.status ?? null}
-                  href={`${projectPath(setupProjectId)}/environment`}
+                  href={environmentPath(setupProjectId)}
                   latest={setup.timeline.latest}
                   elapsedMs={startedAt ? now - Date.parse(startedAt) : null}
                   question={setup.timeline.openQuestion?.question ?? null}
