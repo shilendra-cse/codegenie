@@ -42,7 +42,7 @@ interface Sandbox {
 | Environment | `CI=true` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` for every command, so test runners and corepack never wait for input. |
 | User | Non-root `agent` user; git identity `CodeGenie <bot@codegenie.dev>`. |
 | Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). Daytona: 2 CPUs, 4 GB, 10 GB disk, set on the snapshot. |
-| Network | Full internet access (needed for clone and package installs). |
+| Network | Docker: full internet access (needed for clone and package installs). Daytona: limited by our tier; see §7 "Network". |
 | Host access | No volume mounts, no Docker socket, no secrets in phase 1. Local folders are **copied** in, never mounted. |
 | Exec timeout | Default 2 min, max 10 min. Enforced **inside** the container with `timeout` (killing the host-side docker client would leave the process running). Host-side kill at timeout + 15 s as a backstop. |
 | Output cap | 1 MB per stream; over the cap, the first and last 512 KB are kept and `truncated: true`. |
@@ -120,6 +120,7 @@ Decisions, from a probe of the real API (SDK 0.225):
 | Output | Daytona doesn't cap output; the provider applies Docker's 1 MB head + tail cap. |
 | Safety nets | `autoStopInterval: 30` (stopped after 30 idle minutes), `autoDeleteInterval` = retention (`SANDBOX_RETENTION_HOURS`, default 4: deleted that long after stopping), `ttlMinutes` = 2 h + 30 min + retention (destroyed then, whatever its state). An orphaned sandbox stops and deletes itself even if the reaper never runs. The deletion after retention is from the SDK's documentation; it wasn't checked on the real service. |
 | Errors | Key rejected → `SandboxUnavailableError`; other create failures → `SandboxCreateError`; missing file → `SandboxFileError`; sandbox no longer exists → `SandboxGoneError` (later calls fail without contacting Daytona). |
+| Network | On our tier (1–2), a sandbox reaches only Daytona's [essential services](https://www.daytona.io/docs/en/network-limits): package and container registries, Git hosts, CDNs, system package managers. Anything else fails, e.g. Prisma's engine download from `binaries.prisma.sh` (`ECONNRESET`). The limit is set for the whole organization and a sandbox can't loosen it. Full internet needs Tier 3, which needs a $500 top-up: not worth it now. We won't route traffic around the limit through our own servers (our server isn't reachable either, and it would break Daytona's terms). A repo that needs other hosts gets a setup that says which check couldn't run and why. If this blocks too many repos, we add another sandbox provider rather than pay for the tier. |
 | Connection | `apiKey`, `apiUrl` and `target` are passed explicitly (`createSandbox({ provider: "daytona", connection })`): the SDK refuses a `DAYTONA_API_URL` it can only find in a `.env` file. |
 
 Measured on `octocat/Hello-World` (2026-10-20): onboarding 22 s and a run 23 s (5 agent steps, $0.0004 model cost), sandboxes deleted afterwards. A sandbox from Daytona's default snapshot starts in about 1.3 s.
@@ -129,7 +130,8 @@ Measured on `octocat/Hello-World` (2026-10-20): onboarding 22 s and a run 23 s (
 - [ ] Support other Node versions (fnm/nvm in the image, picked from `.nvmrc` / `engines`).
 - [ ] bun and other runtimes in the image.
 - [ ] Optional image variant with browsers for Playwright.
-- [ ] Network allowlist (GitHub, npm registry) for production.
+- [ ] Network allowlist (GitHub, npm registry) for production Docker sandboxes.
+- [ ] Another sandbox provider with full internet access, if Daytona's network limit blocks too many repos (§7).
 - [ ] Streaming `exec` output (`onOutput` callback) for long commands.
 - [ ] Background processes (dev servers) for live previews.
 - [ ] Cache the image build in CI.
