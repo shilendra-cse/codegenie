@@ -51,7 +51,8 @@ packages/agent/src/
 │   ├── run-agent.ts          runLoop with the task prompt, tools and finish_task
 │   ├── prompt/               system-prompt.ts (fixed rules) · repo-context.ts (repository + setup section)
 │   └── tools/                createTools() · edit-file/ · write-file/ · run-checks/ · finish-task/
-└── setup-agent/              section 9
+├── setup-agent/              section 9
+└── title/title-task.ts       a task's short title (section 10)
 ```
 Each tool folder holds `<tool>.ts`, `description.ts` and its tests.
 
@@ -181,7 +182,11 @@ packages/agent/src/setup-agent/
 - Limits: 40 steps, 20 minutes (installs alone can take minutes), $0.20.
 - The package doesn't depend on the runner: `tryEnvironment` and the channel are passed in.
 
-## 10. Known limitations / TODO
+## 10. Task titles
+
+`titleTask(model, prompt, { signal?, timeoutMs? })` asks the model once for a task's title: 3 to 6 words, sentence case, starting with a verb, naming the change rather than the request ("Add AWS skills to the profile"). The answer is tidied by `cleanTitle` (first line only; quotes, a `Title:` prefix and a trailing full stop removed; cut at a word within 60 characters). It never throws: a failed or unusable answer, or none within 10 s, gives `title: null`, and the caller keeps the title it has. It returns the call's `usage`, so its cost counts towards the run.
+
+## 11. Known limitations / TODO
 
 - [ ] Not yet run against a real model end to end (first real runs come with the CLI).
 - [ ] Cost limit is checked between steps, so a run can slightly exceed it.
