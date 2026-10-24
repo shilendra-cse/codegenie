@@ -97,7 +97,7 @@ function TaskView({ task }: { task: TaskDetail }) {
   return (
     // On wide screens the page fits the window: the top bar stays, and the conversation and the
     // panel scroll on their own. Narrower, the panel stacks below and the page scrolls as usual.
-    <div className="flex flex-1 flex-col min-[1200px]:h-screen min-[1200px]:overflow-hidden">
+    <div className="flex flex-1 flex-col min-[1200px]:h-screen min-[1200px]:max-h-screen min-[1200px]:overflow-hidden">
       <TopBar
         title={view.title ?? task.title}
         parent={{
@@ -154,7 +154,9 @@ function TaskView({ task }: { task: TaskDetail }) {
             commands={view.commands}
             selectedCommand={command}
             checks={view.checks}
-            checksDone={view.checksDone}
+            checksAfter={
+              view.checksDone ? "done" : active ? "pending" : "missing"
+            }
           />
         )}
       </div>

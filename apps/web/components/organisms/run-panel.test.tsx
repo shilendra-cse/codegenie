@@ -12,7 +12,7 @@ function renderPanel(overrides: Partial<RunPanelProps> = {}) {
     commands: [],
     selectedCommand: null,
     checks: [],
-    checksDone: false,
+    checksAfter: "pending",
     ...overrides,
   };
   render(<RunPanel {...props} />);
@@ -125,7 +125,7 @@ describe("RunPanel", () => {
   it("compares each check before and after the agent's work", () => {
     renderPanel({
       tab: "checks",
-      checksDone: true,
+      checksAfter: "done",
       checks: [
         {
           name: "lint",
@@ -149,6 +149,28 @@ describe("RunPanel", () => {
     expect(
       screen.getByText("test", { exact: false }).closest("div"),
     ).toHaveTextContent("fixed");
+  });
+
+  it("says when a finished run didn't record its checks after the agent's work", () => {
+    renderPanel({
+      tab: "checks",
+      checksAfter: "missing",
+      checks: [
+        {
+          name: "test",
+          cwd: ".",
+          before: "passing",
+          after: null,
+          comparison: null,
+        },
+      ],
+    });
+    expect(screen.queryByText("pending")).toBeNull();
+    expect(
+      screen.getByText(
+        "This run didn't record each check after the agent's work.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("has the after column pending until the checks run again", () => {

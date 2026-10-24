@@ -46,7 +46,13 @@ function summary(
     baseBranch,
     steps,
     queued,
-  }: { baseBranch: string; steps: number | null; queued: boolean },
+    checksPassed,
+  }: {
+    baseBranch: string;
+    steps: number | null;
+    queued: boolean;
+    checksPassed: boolean | null;
+  },
 ): string | null {
   const { state } = stage;
   switch (stage.id) {
@@ -70,7 +76,13 @@ function summary(
     case "checks":
       if (state === "pending") return "run again and compared with before";
       if (state === "running") return "Running the checks again";
-      return view.checksDone ? checksAfter(view) : null;
+      if (view.checksDone) return checksAfter(view);
+      // Runs from before checks_completed existed only kept whether they all passed.
+      return checksPassed === null
+        ? null
+        : checksPassed
+          ? "all passing"
+          : "some failing";
     case "pr":
       if (view.pullRequest) {
         return `${view.pullRequest.draft ? "Draft" : "Opened"} PR #${view.pullRequest.number}`;
@@ -150,7 +162,12 @@ export function toRunCard({
       name: NAMES[stage.id],
       // Before its first event a queued run is still waiting at Prepare.
       state: queued && stage.id === "prepare" ? "running" : stage.state,
-      summary: summary(stage, view, { baseBranch, steps, queued }),
+      summary: summary(stage, view, {
+        baseBranch,
+        steps,
+        queued,
+        checksPassed: run.checksPassed,
+      }),
       durationMs: stage.startedAt
         ? (stage.endedAt ? Date.parse(stage.endedAt) : now) -
           Date.parse(stage.startedAt)

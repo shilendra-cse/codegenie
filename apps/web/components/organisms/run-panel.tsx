@@ -51,7 +51,8 @@ export type RunPanelProps = {
   commands: (TerminalBlockProps & { id: string })[];
   selectedCommand: string | null;
   checks: PanelCheck[];
-  checksDone: boolean;
+  /** pending until the checks run again; missing for a run that ended without recording them. */
+  checksAfter: "pending" | "done" | "missing";
 };
 
 const TABS: { id: PanelTab; label: string }[] = [
@@ -220,7 +221,13 @@ function statusCell(status: CheckStatus | null, fallback: string) {
   );
 }
 
-function Checks({ checks, done }: { checks: PanelCheck[]; done: boolean }) {
+function Checks({
+  checks,
+  after,
+}: {
+  checks: PanelCheck[];
+  after: RunPanelProps["checksAfter"];
+}) {
   if (checks.length === 0) return empty("No checks yet.");
   return (
     <>
@@ -251,14 +258,15 @@ function Checks({ checks, done }: { checks: PanelCheck[]; done: boolean }) {
                 )}
               </span>
               {statusCell(check.before, "—")}
-              {statusCell(check.after, done ? "—" : "pending")}
+              {statusCell(check.after, after === "pending" ? "pending" : "—")}
             </div>
           );
         })}
       </div>
       <p className="text-xs text-faint">
-        &ldquo;Before&rdquo; ran right after setup. &ldquo;After&rdquo; runs
-        once the agent finishes.
+        {after === "missing"
+          ? "This run didn't record each check after the agent's work."
+          : "“Before” ran right after setup. “After” runs once the agent finishes."}
       </p>
     </>
   );
@@ -296,7 +304,7 @@ export function RunPanel(props: RunPanelProps) {
       </div>
       <div
         role="tabpanel"
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 *:shrink-0"
       >
         {props.tab === "changes" && (
           <Changes
@@ -312,7 +320,7 @@ export function RunPanel(props: RunPanelProps) {
           />
         )}
         {props.tab === "checks" && (
-          <Checks checks={props.checks} done={props.checksDone} />
+          <Checks checks={props.checks} after={props.checksAfter} />
         )}
       </div>
     </aside>

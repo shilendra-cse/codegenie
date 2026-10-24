@@ -118,6 +118,17 @@ describe("toRunCard", () => {
     });
   });
 
+  it("falls back to whether the checks passed for a run that didn't record each one", () => {
+    const result = card(
+      [
+        { type: "stage_changed", stage: "verify", ts: ts(0) },
+        { type: "done", status: "succeeded", ts: ts(1) },
+      ],
+      record({ status: "succeeded", checksPassed: true }),
+    );
+    expect(stage(result, "checks").summary).toBe("all passing");
+  });
+
   it("says when setup needs attention, without calling it a failure", () => {
     const result = card([
       { type: "stage_changed", stage: "setup" },
