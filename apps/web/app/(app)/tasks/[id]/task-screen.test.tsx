@@ -288,12 +288,62 @@ describe("TaskScreen", () => {
     });
     renderScreen();
 
-    expect(await screen.findByText("Added GET /health.")).toBeInTheDocument();
+    const result = await screen.findByRole("article", {
+      name: "Result of run 1",
+    });
+    expect(within(result).getByText("Added GET /health.")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open PR #7 on GitHub" }),
+      within(result).getByRole("link", { name: "Open PR #7 on GitHub" }),
     ).toHaveAttribute("href", "https://github.com/x/y/pull/7");
     expect(screen.getByText(/1m 32s · \$0\.04/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  it("says where a failed run went wrong, with a way to fix it", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "failed",
+          runs: [
+            runRecord({
+              status: "failed",
+              stage: "setup",
+              error: { code: "setup_failed", message: "pnpm install failed." },
+              durationMs: 60_000,
+            }),
+          ],
+        }),
+      },
+    });
+    renderScreen();
+
+    const result = await screen.findByRole("article", {
+      name: "Result of run 1",
+    });
+    expect(within(result).getByRole("alert")).toHaveTextContent(
+      "Failed during setuppnpm install failed.Nothing was pushed.",
+    );
+    expect(
+      within(result).getByRole("link", { name: "Re-run environment setup" }),
+    ).toHaveAttribute("href", "/projects/p1/environment");
+  });
+
+  it("says when you cancelled the run", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "cancelled",
+          runs: [runRecord({ status: "cancelled", durationMs: 182_000 })],
+        }),
+      },
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByRole("article", { name: "Result of run 1" }),
+    ).toHaveTextContent(
+      "You cancelled this run after 3m 02s.The sandbox was removed and nothing was pushed.",
+    );
   });
 
   it("cancels a queued run at once", async () => {

@@ -1,6 +1,3 @@
-import { ExternalLink } from "lucide-react";
-import { Button } from "@/components/atoms/button";
-import { Icon } from "@/components/atoms/icon";
 import { Logo } from "@/components/atoms/logo";
 import { RunStage, type RunStageState } from "@/components/molecules/run-stage";
 import {
@@ -26,12 +23,6 @@ export type RunCardProps = {
   stages: RunStageView[];
   activity: ActivityView[];
   reasoning: string;
-  /** How the run ended, until step 7's outcome card. */
-  outcome: {
-    text: string;
-    failed: boolean;
-    pullRequest: { number: number; url: string } | null;
-  } | null;
   /** Opens an activity row (an edit, a command, a check run) in the side panel. */
   onSelectActivity?: (row: ActivityView) => void;
 };
@@ -74,30 +65,6 @@ export function RunCard(props: RunCardProps) {
             )}
           </RunStage>
         ))}
-        {props.outcome && (
-          <footer className="flex flex-col gap-3 border-t border-border bg-surface px-4 py-3.5">
-            <p
-              className={cn(
-                "whitespace-pre-wrap",
-                props.outcome.failed ? "text-err" : "text-muted-foreground",
-              )}
-            >
-              {props.outcome.text}
-            </p>
-            {props.outcome.pullRequest && (
-              <Button asChild size="sm" className="self-start">
-                <a
-                  href={props.outcome.pullRequest.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open PR #{props.outcome.pullRequest.number} on GitHub
-                  <Icon icon={ExternalLink} size={14} />
-                </a>
-              </Button>
-            )}
-          </footer>
-        )}
       </article>
     </div>
   );

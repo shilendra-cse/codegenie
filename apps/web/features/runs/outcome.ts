@@ -37,7 +37,7 @@ export type RunOutcome = {
     url: string;
     title: string;
     line: string;
-    tone: OutcomeTone;
+    tone: Exclude<OutcomeTone, "neutral">;
   } | null;
   composer: string;
   /** A failed run starts with its stages shown. */

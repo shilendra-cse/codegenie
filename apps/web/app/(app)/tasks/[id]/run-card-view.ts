@@ -1,10 +1,12 @@
 import type { RunDiff, RunResponse } from "@codegenie/shared";
 import type { RunCardProps } from "@/components/organisms/run-card";
+import type { RunResultProps } from "@/components/organisms/run-result";
 import type { PanelChanges } from "@/components/organisms/run-panel";
 import { splitPatch } from "@/features/runs/diff";
+import type { RunOutcome } from "@/features/runs/outcome";
 import type { RunLive } from "@/features/runs/use-run-events";
 import type { RunView, StageId, StageView } from "@/features/runs/run-view";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, timeAgo } from "@/lib/format";
 
 const NAMES: Record<StageId, string> = {
   prepare: "Prepare",
@@ -94,36 +96,6 @@ function summary(
   }
 }
 
-function outcome(
-  run: RunResponse,
-  view: RunView,
-  pullRequest: { number: number; url: string } | null,
-): RunCardProps["outcome"] {
-  switch (run.status) {
-    case "queued":
-    case "running":
-      return null;
-    case "failed":
-      return {
-        text: run.error?.message ?? view.error ?? "The run failed.",
-        failed: true,
-        pullRequest: null,
-      };
-    case "cancelled":
-      return {
-        text: "The run was cancelled. Nothing was pushed.",
-        failed: false,
-        pullRequest: null,
-      };
-    default:
-      return {
-        text: run.summary ?? "Done.",
-        failed: false,
-        pullRequest,
-      };
-  }
-}
-
 /** The run card's content: the run's record plus what its events say. */
 export function toRunCard({
   run,
@@ -131,7 +103,6 @@ export function toRunCard({
   view,
   live,
   baseBranch,
-  pullRequest,
   now,
 }: {
   run: RunResponse;
@@ -139,7 +110,6 @@ export function toRunCard({
   view: RunView;
   live: RunLive;
   baseBranch: string;
-  pullRequest: { number: number; url: string } | null;
   now: number;
 }): RunCardProps {
   const active = run.status === "queued" || run.status === "running";
@@ -177,7 +147,38 @@ export function toRunCard({
     })),
     activity: view.activity,
     reasoning: active ? live.reasoning : "",
-    outcome: outcome(run, view, pullRequest),
+  };
+}
+
+/** CodeGenie's reply once the run has ended. */
+export function toRunResult({
+  outcome,
+  run,
+  number,
+  view,
+  now,
+}: {
+  outcome: RunOutcome;
+  run: RunResponse;
+  number: number;
+  view: RunView;
+  now: number;
+}): RunResultProps {
+  const recorded = view.checks.filter((c) => c.after !== null);
+  return {
+    number,
+    time: timeAgo(run.finishedAt ?? run.queuedAt, now),
+    notice: outcome.notice,
+    summary: outcome.summary,
+    noBranch: outcome.noBranch,
+    checks: outcome.showsChecks && recorded.length > 0 ? view.checks : null,
+    checksLine:
+      outcome.showsChecks && recorded.length === 0 && run.checksPassed !== null
+        ? run.checksPassed
+          ? "All checks passed."
+          : "Some checks failed."
+        : null,
+    pullRequest: outcome.pullRequest,
   };
 }
 

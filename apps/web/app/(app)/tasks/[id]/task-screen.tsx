@@ -11,10 +11,12 @@ import { UserMessage } from "@/components/molecules/user-message";
 import { TaskStatusBadge } from "@/components/molecules/task-status-badge";
 import type { ActivityView } from "@/components/organisms/run-activity";
 import { RunCard } from "@/components/organisms/run-card";
+import { RunResult } from "@/components/organisms/run-result";
 import { type PanelTab, RunPanel } from "@/components/organisms/run-panel";
 import { TopBar } from "@/components/organisms/top-bar";
 import { useAccount } from "@/features/account/use-account";
 import { useRunDiff } from "@/features/runs/diff";
+import { runOutcome } from "@/features/runs/outcome";
 import { buildRunView } from "@/features/runs/run-view";
 import { useCancelRun } from "@/features/runs/use-cancel-run";
 import { useRunEvents } from "@/features/runs/use-run-events";
@@ -23,7 +25,12 @@ import { ApiError } from "@/lib/api/client";
 import { timeAgo } from "@/lib/format";
 import { projectPath } from "@/lib/routes";
 import { useNow } from "@/lib/use-now";
-import { runTotals, toPanelChanges, toRunCard } from "./run-card-view";
+import {
+  runTotals,
+  toPanelChanges,
+  toRunCard,
+  toRunResult,
+} from "./run-card-view";
 
 export type TaskScreenProps = { taskId: string };
 
@@ -83,6 +90,9 @@ function TaskView({ task }: { task: TaskDetail }) {
   const [command, setCommand] = useState<string | null>(null);
   const cancel = useCancelRun(task.id);
   const message = task.messages.find((m) => m.role === "user");
+  const title = view.title ?? task.title;
+  const outcome =
+    run && runOutcome({ task, run, title, checksDone: view.checksDone });
 
   const openActivity = (row: ActivityView) => {
     if (row.kind === "edit") {
@@ -101,7 +111,7 @@ function TaskView({ task }: { task: TaskDetail }) {
     // panel scroll on their own. Narrower, the panel stacks below and the page scrolls as usual.
     <div className="flex flex-1 flex-col min-[1200px]:h-screen min-[1200px]:max-h-screen min-[1200px]:overflow-hidden">
       <TopBar
-        title={view.title ?? task.title}
+        title={title}
         parent={{
           label: task.project.name,
           href: projectPath(task.project.id),
@@ -156,10 +166,20 @@ function TaskView({ task }: { task: TaskDetail }) {
                   view,
                   live,
                   baseBranch: task.baseBranch,
-                  pullRequest: task.pullRequest,
                   now,
                 })}
                 onSelectActivity={openActivity}
+              />
+            )}
+            {run && outcome && (
+              <RunResult
+                {...toRunResult({
+                  outcome,
+                  run,
+                  number: task.runs.length,
+                  view,
+                  now,
+                })}
               />
             )}
           </div>
