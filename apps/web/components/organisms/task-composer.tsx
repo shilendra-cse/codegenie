@@ -5,7 +5,10 @@ import Link from "next/link";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
-import { BranchField } from "@/components/molecules/branch-field";
+import {
+  BranchPicker,
+  type BranchPickerProps,
+} from "@/components/molecules/branch-picker";
 import {
   type PickerProject,
   ProjectPicker,
@@ -17,9 +20,7 @@ export type TaskComposerProps = {
   projects: PickerProject[];
   projectId: string | null;
   onProjectChange: (id: string) => void;
-  branch: string;
-  onBranchChange: (branch: string) => void;
-  branchError: string | null;
+  branch: BranchPickerProps;
   canStart: boolean;
   starting: boolean;
   error: {
@@ -36,8 +37,6 @@ export function TaskComposer({
   projectId,
   onProjectChange,
   branch,
-  onBranchChange,
-  branchError,
   canStart,
   starting,
   error,
@@ -76,14 +75,7 @@ export function TaskComposer({
             selectedId={projectId}
             onSelect={onProjectChange}
           />
-          {projectId && (
-            <BranchField
-              key={projectId}
-              value={branch}
-              onChange={onBranchChange}
-              error={branchError}
-            />
-          )}
+          {projectId && <BranchPicker {...branch} />}
           <span className="flex-1" />
           <kbd className="font-mono text-xs text-faint">⌘ ↵</kbd>
           <Button

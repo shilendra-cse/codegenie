@@ -278,7 +278,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 **The New task page `/new`** (canvas: New task (home)):
 - "What should CodeGenie do?", a large composer, and below it a row with the **project picker**, the **base branch**, the shortcut hint (⌘↵) and **Start**.
 - **Project picker:** your projects with their default branch. Projects that aren't ready are listed but can't be picked, each with the reason: "Not set up" or "Needs attention" (each with a link to fix it), or "GitHub App suspended" / "GitHub App removed". **Add a repository** at the bottom goes to `/projects/new`. It starts on the project in `?project=`, else the last one you used, else the first ready one.
-- **Base branch:** the project's default branch; **Change** turns it into a text field (a branch list comes later). An invalid name is shown under the field.
+- **Base branch:** a dropdown showing the project's default branch. Opening it loads the repository's branches (`GET /projects/:id/branches`, once per project for 5 minutes): a search box, the list with the default first and marked, ✓ on the picked one, ↑↓ / ↵ / esc, "No branches match.", placeholders while loading, the reason with **Try again** when it can't load, and a note when only the first 1,000 are listed. Built on shadcn's Command (`cmdk`) in a Radix Popover.
 - **Start:** enabled once there's text and a ready project; ⌘↵ (Ctrl↵) starts too. Busy while starting; then you go to `/tasks/:id`.
 - A one-line hint on writing good tasks.
 - **Recent tasks:** your latest 5 (title, project, status badge), each linking to its task; **View all** to the Inbox comes with the Inbox. Hidden when you have none.
@@ -293,7 +293,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **Underneath:** `features/tasks/`: `api.ts`; `useTasks(projectId?)` (first page only, refetched every 3 s while any task is queued or working), `useTask(id)` (refetching every 3 s while the latest run is queued or running), `useStartTask(projectId)` (refreshes the task lists); `taskReadiness(project)` (ready, or the reason and its fix) and `startTaskError` (the messages above). `useNewTask` (the composer's state: text, project, branch, starting), shared by `/new` and Welcome step 4. `lib/routes.ts` gains `NEW_TASK`, `newTaskPath`, `environmentPath` and `taskPath`. Uses `POST /projects/:id/tasks`, `GET /tasks`, `GET /tasks/:id`; no server changes.
 
-**Not here:** the live run view, outcomes and the PR card (steps 6–7), the Inbox (step 8), choosing a branch from a list.
+**Not here:** the live run view, outcomes and the PR card (steps 6–7), the Inbox (step 8).
 
 **Done when:**
 1. After setup: Describe your first task → `/new` with the project picked → Start → `/tasks/:id` shows Queued, then Working.

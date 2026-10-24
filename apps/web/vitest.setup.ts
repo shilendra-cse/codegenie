@@ -10,3 +10,6 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 };
+
+// cmdk scrolls the highlighted item into view, which jsdom doesn't implement.
+Element.prototype.scrollIntoView ??= function () {};

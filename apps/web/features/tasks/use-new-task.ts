@@ -1,10 +1,8 @@
-import {
-  type CreatedTask,
-  createTaskSchema,
-  type ProjectResponse,
-} from "@codegenie/shared";
+import type { CreatedTask, ProjectResponse } from "@codegenie/shared";
 import { useState } from "react";
+import { useBranches } from "@/features/projects/branches";
 import { toSidebarProject } from "@/features/projects/projects";
+import { ApiError } from "@/lib/api/client";
 import { defaultProjectId, startTaskError, taskReadiness } from "./start-task";
 import { useStartTask } from "./use-tasks";
 
@@ -49,18 +47,16 @@ export function useNewTask({
   const [text, setText] = useState("");
   const [chosenId, setChosenId] = useState<string | null>(null);
   const [branch, setBranch] = useState<string | null>(null);
+  const [wantsBranches, setWantsBranches] = useState(false);
 
   const projectId =
     chosenId ?? defaultProjectId(projects, [preferredProjectId, lastProject()]);
   const project = projects.find((p) => p.id === projectId);
   const startTask = useStartTask(projectId ?? "");
 
-  const baseBranch = branch ?? project?.defaultBranch ?? "";
-  const branchCheck = createTaskSchema.shape.baseBranch.safeParse(baseBranch);
-  const branchError =
-    branch !== null && !branchCheck.success
-      ? (branchCheck.error.issues[0]?.message ?? "Not a valid branch name.")
-      : null;
+  const defaultBranch = project?.defaultBranch ?? "";
+  const baseBranch = branch ?? defaultBranch;
+  const branches = useBranches(projectId, wantsBranches);
 
   return {
     text,
@@ -72,10 +68,22 @@ export function useNewTask({
       setBranch(null);
       startTask.reset();
     },
-    branch: baseBranch,
-    onBranchChange: setBranch,
-    branchError,
-    canStart: Boolean(text.trim()) && Boolean(project) && !branchError,
+    branch: {
+      value: baseBranch,
+      defaultBranch,
+      branches: branches.data?.branches,
+      truncated: branches.data?.truncated ?? false,
+      loading: branches.isFetching && !branches.data,
+      error: branches.error
+        ? branches.error instanceof ApiError
+          ? branches.error.message
+          : "Couldn't load the branches."
+        : null,
+      onOpen: () => setWantsBranches(true),
+      onRetry: () => void branches.refetch(),
+      onChange: setBranch,
+    },
+    canStart: Boolean(text.trim()) && Boolean(project),
     starting: startTask.isPending,
     error:
       startTask.error && projectId

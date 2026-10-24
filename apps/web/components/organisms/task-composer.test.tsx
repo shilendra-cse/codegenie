@@ -11,9 +11,17 @@ function renderComposer(overrides: Partial<TaskComposerProps> = {}) {
     ],
     projectId: "p1",
     onProjectChange: vi.fn(),
-    branch: "main",
-    onBranchChange: vi.fn(),
-    branchError: null,
+    branch: {
+      value: "main",
+      defaultBranch: "main",
+      branches: undefined,
+      truncated: false,
+      loading: false,
+      error: null,
+      onOpen: vi.fn(),
+      onRetry: vi.fn(),
+      onChange: vi.fn(),
+    },
     canStart: true,
     starting: false,
     error: null,
@@ -79,6 +87,8 @@ describe("TaskComposer", () => {
 
   it("shows the branch only once a project is picked", () => {
     renderComposer({ projectId: null });
-    expect(screen.queryByLabelText("Base branch")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Base branch/ }),
+    ).not.toBeInTheDocument();
   });
 });

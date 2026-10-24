@@ -68,7 +68,15 @@ describe("NewTaskScreen", () => {
     projects = [project("p1", "dodesk"), project("p2", "buyerbook")];
     api.get.mockReset().mockImplementation(async (url: string) => ({
       data:
-        url === "/projects" ? { projects } : { tasks: [], nextCursor: null },
+        url === "/projects"
+          ? { projects }
+          : url.endsWith("/branches")
+            ? {
+                branches: ["main", "develop"],
+                defaultBranch: "main",
+                truncated: false,
+              }
+            : { tasks: [], nextCursor: null },
     }));
     api.post.mockReset().mockResolvedValue({ data: created });
   });
@@ -98,17 +106,20 @@ describe("NewTaskScreen", () => {
     ).toHaveTextContent("buyerbook");
   });
 
-  it("starts on another branch, once it's a valid name", async () => {
+  it("starts on a branch picked from the list", async () => {
     renderScreen();
-    fireEvent.click(await screen.findByRole("button", { name: "Change" }));
+    const trigger = await screen.findByRole("button", {
+      name: "Base branch: main",
+    });
+    expect(api.get).not.toHaveBeenCalledWith("/projects/p1/branches");
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("option", { name: /develop/ }));
+    expect(api.get).toHaveBeenCalledWith("/projects/p1/branches");
+    expect(
+      screen.getByRole("button", { name: "Base branch: develop" }),
+    ).toBeInTheDocument();
+
     describeTask();
-    const branch = screen.getByRole("textbox", { name: "Base branch" });
-
-    fireEvent.change(branch, { target: { value: "bad name" } });
-    expect(screen.getByText("Not a valid branch name.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
-
-    fireEvent.change(branch, { target: { value: "develop" } });
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
     await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith("/projects/p1/tasks", {
