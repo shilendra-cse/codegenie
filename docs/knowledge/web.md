@@ -371,7 +371,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
   | Cancelled | Cancelled | "You cancelled this run after 3m 02s." (or "before it started"); "The sandbox was removed and nothing was pushed." | "You cancelled this task." |
 
   Merged and closed come from GitHub (the webhook sets the task's status); the page picks them up when you come back to it.
-- **Failure messages**, by `run.error.code`, each with the run's message under it: `prepare_failed` / `checkout_failed` "Couldn't prepare the sandbox"; `setup_failed` "Failed during setup" with **Re-run environment setup**; `no_environment` "This project isn't set up" with **Set it up**; `agent_failed` "Failed while working"; `verify_failed` "Failed while running the checks"; `deliver_failed` "Couldn't open the pull request" (the diff stays in Changes); `github_access` "Couldn't reach the repository on GitHub" with a link to the App's settings; `worker_lost` / `lost_in_queue` / `worker_error` "CodeGenie stopped unexpectedly"; anything else "The run failed".
+- **Failure messages**, by `run.error.code`, each with the run's message under it: `prepare_failed` / `checkout_failed` "Couldn't prepare the sandbox"; `setup_failed` "Failed during setup" with **Re-run environment setup**; `no_environment` "This project isn't set up" with **Set it up**; `agent_failed` "Failed while working"; `verify_failed` "Failed while running the checks"; `deliver_failed` "Couldn't open the pull request" (the diff stays in Changes); `github_access` "Couldn't reach the repository on GitHub" with **Check the project** (the project page shows whether the App was suspended or removed); `worker_lost` / `lost_in_queue` / `worker_error` "CodeGenie stopped unexpectedly"; anything else "The run failed".
 - **Activity:** consecutive edits and writes to the same file are one row: the path, "+8 −5 · 2 edits", opening that file in Changes. Live and finished alike.
 - **Composer** under the conversation, always there, with no reply box: while the run is queued or working, "CodeGenie is working on this."; once it has ended, the line from the table and **Start a new task** (`/new?project=<id>`). For an open or draft PR the line is "Follow-ups aren't available yet. To change this pull request, start a new task or push to its branch."
 
@@ -379,7 +379,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **Underneath:**
 - `features/runs/`: `useCancelRun(runId)` (refreshes the task; keeps "stopping" until the run ends). `buildRunView` merges consecutive edits to one file.
-- `runOutcome(task, run, view)`: pure. The state from the table, the badge, the card's notice (limit, failure, cancelled) with its link, the PR line, the composer's line. Tested for each state and error code.
+- `runOutcome({ task, run, title, checksDone })` (`features/runs/outcome.ts`): pure. The state from the table, the badge, the card's notice (limit, failure, cancelled) with its link, the PR line, the composer's line. Tested for each state and error code.
 - The run card's ended and folded states, the result message and the composer as components. `TaskScreen` remembers whether it saw the run live (`watched`) to pick folded or not.
 
 **Not here:** follow-ups and replies, Run again / retries (Phase 5); full command and install logs; who merged the PR; the Inbox (step 8).
