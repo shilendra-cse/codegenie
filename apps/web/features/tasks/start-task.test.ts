@@ -1,7 +1,7 @@
 import type { ProjectResponse } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api/client";
-import { startTaskError, taskReadiness } from "./start-task";
+import { defaultProjectId, startTaskError, taskReadiness } from "./start-task";
 
 const project = (
   overrides: Partial<ProjectResponse> = {},
@@ -108,5 +108,21 @@ describe("startTaskError", () => {
     ],
   ])("explains %s", (error, explained) => {
     expect(startTaskError(error, "p1")).toEqual(explained);
+  });
+});
+
+describe("defaultProjectId", () => {
+  const ready = project({ id: "p1" });
+  const other = project({ id: "p2" });
+  const notSetUp = project({ id: "p3", environment: null });
+
+  it("takes the first preferred project that's ready", () => {
+    expect(defaultProjectId([ready, other], ["p2", "p1"])).toBe("p2");
+    expect(defaultProjectId([ready, other, notSetUp], ["p3", null])).toBe("p1");
+  });
+
+  it("falls back to the first ready project, or none", () => {
+    expect(defaultProjectId([notSetUp, other], [undefined])).toBe("p2");
+    expect(defaultProjectId([notSetUp], [])).toBeNull();
   });
 });

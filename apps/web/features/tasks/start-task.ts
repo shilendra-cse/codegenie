@@ -65,3 +65,15 @@ export function startTaskError(
       return { message: error.message, fix: null };
   }
 }
+
+/** The first of the preferred projects that can take a task, else the first that can. */
+export function defaultProjectId(
+  projects: ProjectResponse[],
+  preferred: (string | null | undefined)[],
+): string | null {
+  const ready = projects.filter((p) => taskReadiness(p).ready);
+  const match = preferred
+    .map((id) => ready.find((p) => p.id === id))
+    .find(Boolean);
+  return (match ?? ready[0])?.id ?? null;
+}

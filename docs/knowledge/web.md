@@ -281,7 +281,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 - **Base branch:** the project's default branch; **Change** turns it into a text field (a branch list comes later). An invalid name is shown under the field.
 - **Start:** enabled once there's text and a ready project; ⌘↵ (Ctrl↵) starts too. Busy while starting; then you go to `/tasks/:id`.
 - A one-line hint on writing good tasks.
-- **Recent tasks:** your latest 5 (title, project, status badge), each linking to its task; **View all** goes to the Inbox (coming soon until the Inbox exists). Hidden when you have none.
+- **Recent tasks:** your latest 5 (title, project, status badge), each linking to its task; **View all** to the Inbox comes with the Inbox. Hidden when you have none.
 - **States:** no projects (a note and **Add a repository**); no ready project (the picker shows why, with a link to finish setup); loading (skeletons); starting fails, shown above Start: not set up (409) with a link to its setup, needs attention (409) with a link to re-run setup, CodeGenie busy (503) "CodeGenie can't take new work right now. Try again in a moment.", anything else with **Try again**. The text you wrote is kept.
 - **Touches:** the backdrop and rise-in like the other pages; **Start** glows.
 
