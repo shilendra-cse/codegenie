@@ -103,6 +103,12 @@ export type RunEventGitPush = RunEventBase & {
   sha: string;
 };
 
+/** The task got its short title, written by the model at the start of its first run. */
+export type RunEventTaskTitled = RunEventBase & {
+  type: "task_titled";
+  title: string;
+};
+
 export type RunEventPrOpened = RunEventBase & {
   type: "pr_opened";
   prNumber: number;
@@ -144,6 +150,7 @@ export type RunEvent =
   | RunEventBuildCompleted
   | RunEventGitPush
   | RunEventPrOpened
+  | RunEventTaskTitled
   | RunEventPreviewReady
   | RunEventError
   | RunEventDone;

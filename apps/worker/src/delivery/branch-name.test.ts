@@ -8,7 +8,7 @@ describe("branchName", () => {
         id: "1234abcd-0000-0000-0000-000000000000",
         title: "Add a /health endpoint",
       }),
-    ).toBe("codegenie/1234abcd-add-a-health-endpoint");
+    ).toBe("codegenie/add-a-health-endpoint-1234");
   });
 
   it.each([

@@ -118,7 +118,11 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     let sandboxes = 0;
     const labels: SandboxLabels[] = [];
     const github = options.github ?? fakeGithubApp();
-    const depsFor = (script: ScriptedStep[], sandbox = fakeSandbox()) => {
+    const depsFor = (
+      script: ScriptedStep[],
+      sandbox = fakeSandbox(),
+      titleScript?: ScriptedStep[],
+    ) => {
       const { model, resolved } = scriptedModel(script);
       const value: RunTaskDeps = {
         db,
@@ -131,6 +135,9 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
           return sandbox;
         },
         github: github.github,
+        ...(titleScript && {
+          titleModel: scriptedModel(titleScript).resolved,
+        }),
       };
       return { deps: value, model };
     };
@@ -274,7 +281,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     );
 
     expect(result?.delivery).toEqual({
-      branchName: `codegenie/${run.taskId.slice(0, 8)}-add-a-health-endpoint`,
+      branchName: `codegenie/add-a-health-endpoint-${run.taskId.slice(0, 4)}`,
       sha: FAKE_COMMIT_SHA,
     });
     expect(githubRequests.at(-1)).toMatchObject({
@@ -316,6 +323,81 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       "pr_opened",
       "done",
     ]);
+  });
+
+  describe("the task's title", () => {
+    const titled: ScriptedStep[] = [
+      {
+        text: "Add a health check route",
+        usage: { inputTokens: 50, outputTokens: 6 },
+      },
+    ];
+
+    it("is written on the first run, and names the branch", async () => {
+      const { run, depsFor, published } = await setUp({
+        environment: environment(),
+        message: "can you add a health check route to the api please",
+      });
+
+      const result = await handleRunTask(
+        depsFor([finish], fakeSandbox({ changed: true }), titled).deps,
+        { runId: run.id },
+      );
+
+      expect(await taskRow(run.taskId)).toMatchObject({
+        title: "Add a health check route",
+        branchName: `codegenie/add-a-health-check-route-${run.taskId.slice(0, 4)}`,
+      });
+      expect(result?.delivery?.branchName).toBe(
+        `codegenie/add-a-health-check-route-${run.taskId.slice(0, 4)}`,
+      );
+      expect(
+        (await stored(run.id)).find((e) => e.type === "task_titled"),
+      ).toMatchObject({ payload: { title: "Add a health check route" } });
+      expect(published).toContainEqual(
+        expect.objectContaining({
+          type: "task_titled",
+          title: "Add a health check route",
+        }),
+      );
+      // The title's call counts towards the run, with the agent's.
+      const counted = await row(run.id);
+      expect(counted.inputTokens).toBe(100 + 50);
+      expect(counted.outputTokens).toBe(20 + 6);
+    });
+
+    it("stays the first line when no title comes back", async () => {
+      const { run, depsFor } = await setUp({ environment: environment() });
+      const before = (await taskRow(run.taskId)).title;
+
+      await handleRunTask(
+        depsFor([finish], fakeSandbox({ changed: true }), [
+          { error: new Error("rate limited") },
+          { error: new Error("rate limited") },
+        ]).deps,
+        { runId: run.id },
+      );
+
+      expect((await taskRow(run.taskId)).title).toBe(before);
+      expect((await stored(run.id)).map((e) => e.type)).not.toContain(
+        "task_titled",
+      );
+    });
+
+    it("isn't written again on a later run", async () => {
+      const { run, depsFor } = await setUp({ environment: environment() });
+      await db
+        .update(runs)
+        .set({ trigger: "follow_up" })
+        .where(eq(runs.id, run.id));
+      const before = (await taskRow(run.taskId)).title;
+
+      await handleRunTask(depsFor([finish], fakeSandbox(), titled).deps, {
+        runId: run.id,
+      });
+
+      expect((await taskRow(run.taskId)).title).toBe(before);
+    });
   });
 
   it("titles the commit and pull request with the agent's title", async () => {
