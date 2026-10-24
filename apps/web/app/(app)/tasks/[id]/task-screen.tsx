@@ -1,7 +1,7 @@
 "use client";
 
 import type { TaskDetail } from "@codegenie/shared";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Square } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
@@ -16,6 +16,7 @@ import { TopBar } from "@/components/organisms/top-bar";
 import { useAccount } from "@/features/account/use-account";
 import { useRunDiff } from "@/features/runs/diff";
 import { buildRunView } from "@/features/runs/run-view";
+import { useCancelRun } from "@/features/runs/use-cancel-run";
 import { useRunEvents } from "@/features/runs/use-run-events";
 import { useTask } from "@/features/tasks/use-tasks";
 import { ApiError } from "@/lib/api/client";
@@ -80,6 +81,7 @@ function TaskView({ task }: { task: TaskDetail }) {
   const [tab, setTab] = useState<PanelTab>("changes");
   const [file, setFile] = useState<string | null>(null);
   const [command, setCommand] = useState<string | null>(null);
+  const cancel = useCancelRun(task.id);
   const message = task.messages.find((m) => m.role === "user");
 
   const openActivity = (row: ActivityView) => {
@@ -116,7 +118,25 @@ function TaskView({ task }: { task: TaskDetail }) {
           </span>
           {run && runTotals(run, live, now)}
         </span>
+        {run && active && (
+          <Button
+            variant="danger"
+            size="sm"
+            busy={cancel.pending || cancel.stopping}
+            onClick={() => cancel.cancel(run.id)}
+          >
+            {!cancel.pending && !cancel.stopping && (
+              <Icon icon={Square} size={14} />
+            )}
+            {cancel.stopping ? "Stopping…" : "Cancel"}
+          </Button>
+        )}
       </TopBar>
+      {cancel.error && active && (
+        <Alert tone="error" className="mx-6 mt-4">
+          Couldn&apos;t cancel. Try again.
+        </Alert>
+      )}
       <div className="flex flex-1 flex-wrap min-[1200px]:min-h-0 min-[1200px]:flex-nowrap">
         <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 pt-8 pb-20 min-[1200px]:overflow-y-auto">
           <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6">

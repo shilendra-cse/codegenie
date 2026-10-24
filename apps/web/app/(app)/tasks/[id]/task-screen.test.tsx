@@ -1,11 +1,18 @@
 import type { RunResponse, TaskDetail } from "@codegenie/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import { TaskScreen } from "./task-screen";
 
-const api = vi.hoisted(() => ({ get: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/lib/api/client", async (original) => ({
   ...(await original<typeof import("@/lib/api/client")>()),
   api,
@@ -104,6 +111,7 @@ function renderScreen() {
 describe("TaskScreen", () => {
   beforeEach(() => {
     api.get.mockReset();
+    api.post.mockReset();
     FakeEventSource.last = undefined;
     vi.stubGlobal("EventSource", FakeEventSource);
   });
@@ -285,6 +293,61 @@ describe("TaskScreen", () => {
       screen.getByRole("link", { name: "Open PR #7 on GitHub" }),
     ).toHaveAttribute("href", "https://github.com/x/y/pull/7");
     expect(screen.getByText(/1m 32s · \$0\.04/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  it("cancels a queued run at once", async () => {
+    const queued = runRecord({
+      status: "queued",
+      stage: null,
+      startedAt: null,
+    });
+    api.get
+      .mockResolvedValueOnce({
+        data: { task: task({ label: "queued", runs: [queued] }) },
+      })
+      .mockResolvedValue({
+        data: {
+          task: task({
+            label: "cancelled",
+            runs: [{ ...queued, status: "cancelled" }],
+          }),
+        },
+      });
+    api.post.mockResolvedValue({ data: { outcome: "cancelled" } });
+    renderScreen();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull(),
+    );
+    expect(api.post).toHaveBeenCalledWith("/runs/r1/cancel");
+  });
+
+  it("says it's stopping a working run until the run ends", async () => {
+    api.get.mockResolvedValue({ data: { task: task() } });
+    api.post.mockResolvedValue({ data: { outcome: "stopping" } });
+    renderScreen();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Stopping…" }),
+    ).toBeDisabled();
+  });
+
+  it("says when it couldn't cancel, and lets you try again", async () => {
+    api.get.mockResolvedValue({ data: { task: task() } });
+    api.post.mockRejectedValue(new ApiError(500, "Down."));
+    renderScreen();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't cancel. Try again.",
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 
   it("says when the task doesn't exist", async () => {
