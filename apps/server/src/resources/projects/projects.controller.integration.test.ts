@@ -14,7 +14,7 @@ import {
 } from "@codegenie/db/testing";
 import { fakeGithub } from "@codegenie/github/testing";
 import type { Response } from "express";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { HttpError } from "@/lib/http-error";
 import type { AuthenticatedRequest } from "@/types/base.types";
@@ -28,30 +28,37 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
   let githubToken: string | null = "ghu_user";
   const visibleToUser = new Set<number>();
   const github = fakeGithub((call) =>
-    visibleToUser.has(
-      Number(
-        /^\/user\/installations\/(\d+)\/repositories$/.exec(call.path)?.[1],
-      ),
-    )
+    call.path === "/repos/acme/app/branches"
       ? {
           status: 200,
-          body: {
-            total_count: 1,
-            repositories: [
-              {
-                id: repoId,
-                full_name: "acme/web",
-                owner: { login: "acme" },
-                name: "web",
-                default_branch: "trunk",
-                private: true,
-                html_url: "https://github.com/acme/web",
-                updated_at: "2026-10-01T00:00:00Z",
-              },
-            ],
-          },
+          body: [{ name: "develop" }, { name: "main" }, { name: "release/1" }],
         }
-      : { status: 404, body: { message: "Not Found" } },
+      : visibleToUser.has(
+            Number(
+              /^\/user\/installations\/(\d+)\/repositories$/.exec(
+                call.path,
+              )?.[1],
+            ),
+          )
+        ? {
+            status: 200,
+            body: {
+              total_count: 1,
+              repositories: [
+                {
+                  id: repoId,
+                  full_name: "acme/web",
+                  owner: { login: "acme" },
+                  name: "web",
+                  default_branch: "trunk",
+                  private: true,
+                  html_url: "https://github.com/acme/web",
+                  updated_at: "2026-10-01T00:00:00Z",
+                },
+              ],
+            },
+          }
+        : { status: 404, body: { message: "Not Found" } },
   );
   const projects = createProjectControllers({
     db,
@@ -296,6 +303,52 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
           response,
         ),
       ).rejects.toMatchObject({ status: 404, code: "PROJECT_NOT_FOUND" });
+    });
+  });
+
+  describe("listing branches", () => {
+    beforeEach(() => {
+      githubToken = "ghu_user";
+    });
+
+    it("lists the repository's branches, the default first", async () => {
+      const project = await insertProject(db);
+
+      expect(
+        await projects.getBranches(
+          request(project.userId, { id: project.id }),
+          response,
+        ),
+      ).toMatchObject({
+        status: 200,
+        data: {
+          branches: ["main", "develop", "release/1"],
+          defaultBranch: "main",
+          truncated: false,
+        },
+      });
+      expect(github.calls.at(-1)).toMatchObject({
+        path: "/repos/acme/app/branches",
+        authorization: "token ghu_user",
+      });
+    });
+
+    it("refuses someone else's project, and a repository that's gone", async () => {
+      const project = await insertProject(db);
+      const gone = await insertProject(db, { repoName: "gone" });
+
+      await expect(
+        projects.getBranches(
+          request(randomUUID(), { id: project.id }),
+          response,
+        ),
+      ).rejects.toMatchObject({ status: 404, code: "PROJECT_NOT_FOUND" });
+      await expect(
+        projects.getBranches(request(gone.userId, { id: gone.id }), response),
+      ).rejects.toMatchObject({
+        status: 404,
+        code: "GITHUB_REPOSITORY_NOT_FOUND",
+      });
     });
   });
 

@@ -38,6 +38,14 @@ export type ProjectResponse = {
 
 export type ProjectListResponse = { projects: ProjectResponse[] };
 
+export type BranchListResponse = {
+  /** Branch names, the default branch first. */
+  branches: string[];
+  defaultBranch: string;
+  /** More branches exist than were listed. */
+  truncated: boolean;
+};
+
 export type EnvironmentResponse = {
   version: number;
   /** The version new tasks use. */

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   listInstallationRepos,
+  listRepoBranches,
   listUserInstallations,
 } from "./user-installations.js";
 
-function fakeGithub(key: string, pages: unknown[][]) {
+// `key` names the list in GitHub's wrapper object; null for endpoints that return a bare array.
+function fakeGithub(key: string | null, pages: unknown[][]) {
   const requests: {
     path: string;
     page: string | null;
@@ -25,10 +27,11 @@ function fakeGithub(key: string, pages: unknown[][]) {
           }
         : {};
     const response = new Response(
-      JSON.stringify({
-        total_count: pages.flat().length,
-        [key]: pages[page - 1],
-      }),
+      JSON.stringify(
+        key
+          ? { total_count: pages.flat().length, [key]: pages[page - 1] }
+          : pages[page - 1],
+      ),
       { status: 200, headers: { "content-type": "application/json", ...next } },
     );
     Object.defineProperty(response, "url", { value: url.href });
@@ -118,5 +121,54 @@ describe("listInstallationRepos", () => {
         }),
       );
     expect(await listInstallationRepos("ghu_user", 99, { fetch })).toBeNull();
+  });
+});
+
+describe("listRepoBranches", () => {
+  const branches = (...names: string[]) => names.map((name) => ({ name }));
+
+  it("lists the branch names across pages", async () => {
+    const github = fakeGithub(null, [
+      branches("develop", "main"),
+      branches("release/1"),
+    ]);
+
+    expect(await listRepoBranches("ghu_user", "acme", "web", github)).toEqual({
+      names: ["develop", "main", "release/1"],
+      truncated: false,
+    });
+    expect(github.requests).toMatchObject([
+      { path: "/repos/acme/web/branches", authorization: "token ghu_user" },
+      { path: "/repos/acme/web/branches", page: "2" },
+    ]);
+  });
+
+  it("stops at the limit and says the list is cut short", async () => {
+    const github = fakeGithub(null, [
+      branches("a", "b"),
+      branches("c", "d"),
+      branches("e"),
+    ]);
+
+    expect(
+      await listRepoBranches("ghu_user", "acme", "web", {
+        ...github,
+        limit: 3,
+      }),
+    ).toEqual({ names: ["a", "b", "c"], truncated: true });
+    expect(github.requests).toHaveLength(2);
+  });
+
+  it("returns null for a repository the user can't see", async () => {
+    const fetch: typeof globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ message: "Not Found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    expect(
+      await listRepoBranches("ghu_user", "acme", "gone", { fetch }),
+    ).toBeNull();
   });
 });

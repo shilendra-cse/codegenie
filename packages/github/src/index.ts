@@ -18,7 +18,9 @@ export { draftPullRequestsUnavailable } from "./pull-requests.js";
 export { verifyWebhookSignature } from "./webhook-signature.js";
 export {
   listInstallationRepos,
+  listRepoBranches,
   listUserInstallations,
   type InstallationRepo,
+  type RepoBranches,
   type UserInstallation,
 } from "./user-installations.js";
