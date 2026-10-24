@@ -26,6 +26,7 @@ export default defineConfig({
             "components/**/*.test.tsx",
             "app/**/*.test.tsx",
             "features/**/*.test.tsx",
+            "lib/**/*.test.tsx",
           ],
           environment: "jsdom",
           setupFiles: ["./vitest.setup.ts"],

@@ -154,11 +154,133 @@ describe("buildRunView", () => {
       added: 3,
       removed: 0,
     });
-    expect(view.activity[3]).toMatchObject({ kind: "edit", failed: true });
+    expect(view.activity[2]).toMatchObject({ kind: "edit", failed: true });
     expect(view.files).toEqual([
       { path: "src/health.ts", added: 3, removed: 0 },
       { path: "src/app.ts", added: 3, removed: 3 },
     ]);
+  });
+
+  it("folds consecutive edits to one file into one row", () => {
+    const view = buildRunView(
+      run(
+        start("e1", "write_file", { path: "src/a.ts", content: "a\nb\n" }),
+        end("e1", "write_file", "Wrote src/a.ts"),
+        start("e2", "edit_file", {
+          path: "src/a.ts",
+          oldString: "b",
+          newString: "c\nd",
+        }),
+        end("e2", "edit_file", "Edited src/a.ts (1 replacement)."),
+        start("e3", "edit_file", {
+          path: "src/a.ts",
+          oldString: "z",
+          newString: "y",
+        }),
+        end("e3", "edit_file", "Error: oldString not found in src/a.ts"),
+        start("e4", "edit_file", {
+          path: "src/b.ts",
+          oldString: "x",
+          newString: "y",
+        }),
+        end("e4", "edit_file", "Edited src/b.ts (1 replacement)."),
+        start("c1", "bash", { command: "pnpm test" }),
+        end("c1", "bash", "Exit code: 0\nok"),
+        start("e5", "edit_file", {
+          path: "src/b.ts",
+          oldString: "y",
+          newString: "w",
+        }),
+      ),
+    );
+
+    expect(view.activity).toMatchObject([
+      {
+        id: "e1",
+        kind: "edit",
+        path: "src/a.ts",
+        whole: true,
+        added: 4,
+        removed: 1,
+        edits: 2,
+        running: false,
+        failed: false,
+      },
+      { kind: "edit", path: "src/b.ts", edits: 1 },
+      { kind: "command" },
+      { kind: "edit", path: "src/b.ts", edits: 0, running: true },
+    ]);
+  });
+
+  it("marks a row failed only when all of its edits failed", () => {
+    const view = buildRunView(
+      run(
+        start("e1", "edit_file", {
+          path: "src/a.ts",
+          oldString: "x",
+          newString: "y",
+        }),
+        end("e1", "edit_file", "Error: oldString not found in src/a.ts"),
+        start("e2", "edit_file", {
+          path: "src/a.ts",
+          oldString: "q",
+          newString: "r",
+        }),
+      ),
+    );
+
+    expect(view.activity).toMatchObject([
+      { kind: "edit", running: true, failed: false, edits: 0 },
+    ]);
+
+    const ended = buildRunView(
+      run(
+        start("e1", "edit_file", {
+          path: "src/a.ts",
+          oldString: "x",
+          newString: "y",
+        }),
+        end("e1", "edit_file", "Error: oldString not found in src/a.ts"),
+        start("e2", "edit_file", {
+          path: "src/a.ts",
+          oldString: "q",
+          newString: "r",
+        }),
+        end("e2", "edit_file", "Error: oldString not found in src/a.ts"),
+      ),
+    );
+    expect(ended.activity).toMatchObject([
+      { kind: "edit", running: false, failed: true, edits: 0, added: 0 },
+    ]);
+    expect(ended.files).toEqual([]);
+  });
+
+  it("stops what was still running once the run is done", () => {
+    const view = buildRunView(
+      run(
+        start("e1", "edit_file", {
+          path: "src/a.ts",
+          oldString: "x",
+          newString: "y",
+        }),
+        end("e1", "edit_file", "Edited src/a.ts (1 replacement)."),
+        start("e2", "edit_file", {
+          path: "src/a.ts",
+          oldString: "y",
+          newString: "z",
+        }),
+        start("r1", "read_file", { path: "src/b.ts" }),
+        start("c1", "bash", { command: "pnpm test" }),
+        { type: "done", status: "cancelled" },
+      ),
+    );
+
+    expect(view.activity).toMatchObject([
+      { kind: "edit", running: false, failed: false, edits: 1, added: 1 },
+      { kind: "explored", running: false, items: [{ running: false }] },
+      { kind: "command", running: false, exitCode: null },
+    ]);
+    expect(view.commands).toMatchObject([{ id: "c1", running: false }]);
   });
 
   it("keeps each command with its exit code and output, marked when cut short", () => {

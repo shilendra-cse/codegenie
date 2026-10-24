@@ -17,4 +17,9 @@ describe("TaskStatusBadge", () => {
     render(<TaskStatusBadge label={label} prNumber={prNumber} />);
     expect(screen.getByText(text)).toBeInTheDocument();
   });
+
+  it("marks a closed pull request like GitHub does", () => {
+    render(<TaskStatusBadge label="closed" prNumber={41} />);
+    expect(screen.getByText("PR #41 closed")).toHaveClass("text-err");
+  });
 });

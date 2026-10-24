@@ -1,7 +1,8 @@
 import type { RunEvent, RunResponse } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
 import { buildRunView } from "@/features/runs/run-view";
-import { runTotals, toRunCard } from "./run-card-view";
+import { runOutcome } from "@/features/runs/outcome";
+import { runTotals, toRunCard, toRunResult } from "./run-card-view";
 
 const ts = (second: number) =>
   new Date(Date.UTC(2026, 9, 24, 10, 0, second)).toISOString();
@@ -47,7 +48,6 @@ function card(events: Event[], run = record()) {
     ),
     live,
     baseBranch: "main",
-    pullRequest: null,
     now,
   });
 }
@@ -147,32 +147,11 @@ describe("toRunCard", () => {
   });
 
   it("shows the reasoning and the beam only while the run goes on", () => {
-    expect(card([])).toMatchObject({
-      live: true,
-      reasoning: "Thinking",
-      outcome: null,
-    });
-    const ended = card(
-      [],
-      record({ status: "succeeded", summary: "Done it." }),
-    );
-    expect(ended).toMatchObject({
+    expect(card([])).toMatchObject({ live: true, reasoning: "Thinking" });
+    expect(card([], record({ status: "succeeded" }))).toMatchObject({
       live: false,
       reasoning: "",
-      outcome: { text: "Done it.", failed: false },
     });
-  });
-
-  it("says why a run failed", () => {
-    expect(
-      card(
-        [],
-        record({
-          status: "failed",
-          error: { code: "setup_failed", message: "Install failed." },
-        }),
-      ).outcome,
-    ).toEqual({ text: "Install failed.", failed: true, pullRequest: null });
   });
 
   it("waits at Prepare while queued, timed from when it was queued", () => {
@@ -194,5 +173,84 @@ describe("runTotals", () => {
     expect(
       runTotals(record({ durationMs: 92_000, costUsd: 0.04 }), live, now),
     ).toBe("1m 32s · $0.04");
+  });
+});
+
+describe("toRunResult", () => {
+  const ended = record({
+    status: "succeeded",
+    summary: "Added GET /health.",
+    checksPassed: true,
+    finishedAt: ts(0),
+  });
+  const result = (events: Event[], run: RunResponse = ended) => {
+    const view = buildRunView(
+      events.map((e) => ({ ts: ts(0), ...e, runId: "r1" }) as RunEvent),
+    );
+    const outcome = runOutcome({
+      task: {
+        label: "pr_open",
+        pullRequest: {
+          number: 7,
+          url: "https://github.com/x/y/pull/7",
+          draft: false,
+        },
+        project: { id: "p1", owner: "ada", name: "dodesk" },
+        baseBranch: "main",
+      },
+      run,
+      title: "Add a /health endpoint",
+      checksDone: view.checksDone,
+    })!;
+    return toRunResult({ outcome, run, number: 1, view, now });
+  };
+
+  it("shows each check before and after when the run recorded them", () => {
+    const shown = result([
+      {
+        type: "setup_completed",
+        success: true,
+        steps: [],
+        checks: [{ name: "test", cwd: ".", status: "failing" }],
+      },
+      {
+        type: "checks_completed",
+        passed: true,
+        checks: [
+          {
+            name: "test",
+            cwd: ".",
+            command: "pnpm test",
+            status: "passing",
+            comparison: "fixed",
+          },
+        ],
+      },
+    ]);
+    expect(shown).toMatchObject({
+      number: 1,
+      time: "1 minute ago",
+      summary: "Added GET /health.",
+      checks: [
+        {
+          name: "test",
+          before: "failing",
+          after: "passing",
+          comparison: "fixed",
+        },
+      ],
+      checksLine: null,
+      pullRequest: { number: 7, title: "Add a /health endpoint" },
+    });
+  });
+
+  it("says only whether all checks passed for runs that didn't record each one", () => {
+    expect(result([])).toMatchObject({
+      checks: null,
+      checksLine: "All checks passed.",
+    });
+    expect(result([], { ...ended, checksPassed: false })).toMatchObject({
+      checksLine: "Some checks failed.",
+    });
   });
 });

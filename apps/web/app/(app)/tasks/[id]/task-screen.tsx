@@ -1,8 +1,8 @@
 "use client";
 
 import type { TaskDetail } from "@codegenie/shared";
-import { GitBranch } from "lucide-react";
-import { useMemo, useState } from "react";
+import { GitBranch, Square } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
@@ -11,18 +11,27 @@ import { UserMessage } from "@/components/molecules/user-message";
 import { TaskStatusBadge } from "@/components/molecules/task-status-badge";
 import type { ActivityView } from "@/components/organisms/run-activity";
 import { RunCard } from "@/components/organisms/run-card";
+import { RunResult } from "@/components/organisms/run-result";
 import { type PanelTab, RunPanel } from "@/components/organisms/run-panel";
 import { TopBar } from "@/components/organisms/top-bar";
 import { useAccount } from "@/features/account/use-account";
 import { useRunDiff } from "@/features/runs/diff";
+import { runOutcome } from "@/features/runs/outcome";
 import { buildRunView } from "@/features/runs/run-view";
+import { useCancelRun } from "@/features/runs/use-cancel-run";
 import { useRunEvents } from "@/features/runs/use-run-events";
 import { useTask } from "@/features/tasks/use-tasks";
 import { ApiError } from "@/lib/api/client";
 import { timeAgo } from "@/lib/format";
 import { projectPath } from "@/lib/routes";
+import { useFollowEnd } from "@/lib/use-follow-end";
 import { useNow } from "@/lib/use-now";
-import { runTotals, toPanelChanges, toRunCard } from "./run-card-view";
+import {
+  runTotals,
+  toPanelChanges,
+  toRunCard,
+  toRunResult,
+} from "./run-card-view";
 
 export type TaskScreenProps = { taskId: string };
 
@@ -80,7 +89,17 @@ function TaskView({ task }: { task: TaskDetail }) {
   const [tab, setTab] = useState<PanelTab>("changes");
   const [file, setFile] = useState<string | null>(null);
   const [command, setCommand] = useState<string | null>(null);
+  const cancel = useCancelRun(task.id);
   const message = task.messages.find((m) => m.role === "user");
+  const title = view.title ?? task.title;
+  const outcome =
+    run && runOutcome({ task, run, title, checksDone: view.checksDone });
+  // A run you watched stays as it was; one you open afterwards starts folded, unless it failed.
+  const [watched] = useState(active);
+  const [stepsOpen, setStepsOpen] = useState<boolean | null>(null);
+  const folded = !!outcome && !(stepsOpen ?? (watched || outcome.unfoldSteps));
+  const conversation = useRef<HTMLDivElement>(null);
+  useFollowEnd(conversation, Boolean(outcome));
 
   const openActivity = (row: ActivityView) => {
     if (row.kind === "edit") {
@@ -99,7 +118,7 @@ function TaskView({ task }: { task: TaskDetail }) {
     // panel scroll on their own. Narrower, the panel stacks below and the page scrolls as usual.
     <div className="flex flex-1 flex-col min-[1200px]:h-screen min-[1200px]:max-h-screen min-[1200px]:overflow-hidden">
       <TopBar
-        title={view.title ?? task.title}
+        title={title}
         parent={{
           label: task.project.name,
           href: projectPath(task.project.id),
@@ -116,9 +135,30 @@ function TaskView({ task }: { task: TaskDetail }) {
           </span>
           {run && runTotals(run, live, now)}
         </span>
+        {run && active && (
+          <Button
+            variant="danger"
+            size="sm"
+            busy={cancel.pending || cancel.stopping}
+            onClick={() => cancel.cancel(run.id)}
+          >
+            {!cancel.pending && !cancel.stopping && (
+              <Icon icon={Square} size={14} />
+            )}
+            {cancel.stopping ? "Stopping…" : "Cancel"}
+          </Button>
+        )}
       </TopBar>
+      {cancel.error && active && (
+        <Alert tone="error" className="mx-6 mt-4">
+          Couldn&apos;t cancel. Try again.
+        </Alert>
+      )}
       <div className="flex flex-1 flex-wrap min-[1200px]:min-h-0 min-[1200px]:flex-nowrap">
-        <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 pt-8 pb-20 min-[1200px]:overflow-y-auto">
+        <div
+          ref={conversation}
+          className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 pt-8 pb-20 min-[1200px]:overflow-y-auto"
+        >
           <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6">
             {message && (
               <UserMessage
@@ -136,10 +176,23 @@ function TaskView({ task }: { task: TaskDetail }) {
                   view,
                   live,
                   baseBranch: task.baseBranch,
-                  pullRequest: task.pullRequest,
                   now,
                 })}
+                status={outcome?.status ?? null}
+                folded={folded}
+                onToggleSteps={() => setStepsOpen(folded)}
                 onSelectActivity={openActivity}
+              />
+            )}
+            {run && outcome && (
+              <RunResult
+                {...toRunResult({
+                  outcome,
+                  run,
+                  number: task.runs.length,
+                  view,
+                  now,
+                })}
               />
             )}
           </div>

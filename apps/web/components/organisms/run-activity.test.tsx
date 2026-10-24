@@ -26,6 +26,18 @@ const activity: ActivityView[] = [
     whole: true,
     added: 11,
     removed: 0,
+    edits: 1,
+  },
+  {
+    id: "e3",
+    kind: "edit",
+    running: false,
+    failed: false,
+    path: "src/routes/index.ts",
+    whole: false,
+    added: 8,
+    removed: 5,
+    edits: 2,
   },
   {
     id: "e2",
@@ -34,8 +46,9 @@ const activity: ActivityView[] = [
     failed: true,
     path: "src/gone.ts",
     whole: false,
-    added: 1,
-    removed: 1,
+    added: 0,
+    removed: 0,
+    edits: 0,
   },
   {
     id: "c1",
@@ -68,6 +81,12 @@ describe("RunActivity", () => {
     expect(
       screen.getByText("src/routes/health.ts").closest("li"),
     ).toHaveTextContent("Wrote src/routes/health.ts+11");
+    expect(
+      screen.getByText("src/routes/health.ts").closest("li"),
+    ).not.toHaveTextContent("edits");
+    expect(
+      screen.getByText("src/routes/index.ts").closest("li"),
+    ).toHaveTextContent("Edited src/routes/index.ts+8−5 · 2 edits");
     expect(screen.getByText("src/gone.ts").closest("li")).toHaveTextContent(
       "Couldn't edit src/gone.ts",
     );

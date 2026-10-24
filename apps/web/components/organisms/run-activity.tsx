@@ -41,6 +41,7 @@ export type ActivityView = {
       whole: boolean;
       added: number;
       removed: number;
+      edits: number;
     }
   | { kind: "command"; command: string; exitCode: number | null }
   | { kind: "checks"; passing: number; failing: number }
@@ -138,6 +139,9 @@ function rowContent(row: RowView) {
               {row.added > 0 && <span className="text-ok">+{row.added}</span>}
               {row.removed > 0 && (
                 <span className="ml-1 text-err">−{row.removed}</span>
+              )}
+              {row.edits > 1 && (
+                <span className="text-faint"> · {row.edits} edits</span>
               )}
             </span>
           )}

@@ -26,7 +26,7 @@ export function TaskStatusBadge({ label, prNumber }: TaskStatusBadgeProps) {
     case "merged":
       return <Badge tone="merged">{pr} merged</Badge>;
     case "closed":
-      return <Badge>{pr} closed</Badge>;
+      return <Badge tone="err">{pr} closed</Badge>;
     case "no_changes":
       return <Badge>No changes</Badge>;
     case "failed":

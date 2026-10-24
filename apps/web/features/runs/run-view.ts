@@ -41,10 +41,12 @@ export type Activity = { id: string; running: boolean; failed: boolean } & (
   | {
       kind: "edit";
       path: string;
-      /** write_file replaces the whole file; edit_file a part of it. */
+      /** write_file replaces the whole file; edit_file a part of it. The row's first call decides. */
       whole: boolean;
       added: number;
       removed: number;
+      /** Consecutive edits to the same file share one row; this counts the ones that worked. */
+      edits: number;
     }
   | { kind: "command"; command: string; exitCode: number | null }
   | { kind: "checks"; passing: number; failing: number }
@@ -125,6 +127,26 @@ function commandResult(output: unknown) {
     : { exitCode: null, text: output };
 }
 
+type EditCall = {
+  added: number;
+  removed: number;
+  running: boolean;
+  failed: boolean;
+};
+
+function summarizeEdits(
+  row: Extract<Activity, { kind: "edit" }>,
+  calls: EditCall[],
+  ended: boolean,
+) {
+  const worked = calls.filter((c) => !c.running && !c.failed);
+  row.running = !ended && calls.some((c) => c.running);
+  row.failed = calls.every((c) => c.failed);
+  row.edits = worked.length;
+  row.added = worked.reduce((sum, c) => sum + c.added, 0);
+  row.removed = worked.reduce((sum, c) => sum + c.removed, 0);
+}
+
 /** Works out everything the run's page shows from its events, in order. Pure. */
 export function buildRunView(events: RunEvent[]): RunView {
   const stages = new Map<StageId, StageView>(
@@ -138,8 +160,9 @@ export function buildRunView(events: RunEvent[]): RunView {
   const byCall = new Map<string, Activity>();
   const items = new Map<string, ToolItem>();
   const commands = new Map<string, CommandView>();
-  const edits: { id: string; path: string; added: number; removed: number }[] =
-    [];
+  const edits: { path: string; added: number; removed: number }[] = [];
+  const editCalls = new Map<string, EditCall>();
+  const rowCalls = new Map<string, EditCall[]>();
   const checks = new Map<string, CheckView>();
   const view: Omit<
     RunView,
@@ -233,16 +256,32 @@ export function buildRunView(events: RunEvent[]): RunView {
         let row: Activity;
         if (event.toolName === "edit_file" || event.toolName === "write_file") {
           const whole = event.toolName === "write_file";
-          row = {
-            ...base,
-            kind: "edit",
-            path: field(event.input, "path") ?? "",
-            whole,
+          const path = field(event.input, "path") ?? "";
+          const call: EditCall = {
             added: countLines(
               field(event.input, whole ? "content" : "newString"),
             ),
             removed: whole ? 0 : countLines(field(event.input, "oldString")),
+            running: true,
+            failed: false,
           };
+          editCalls.set(event.toolCallId, call);
+          const last = activity.at(-1);
+          if (last?.kind === "edit" && last.path === path) {
+            rowCalls.get(last.id)!.push(call);
+            byCall.set(event.toolCallId, last);
+            break;
+          }
+          row = {
+            ...base,
+            kind: "edit",
+            path,
+            whole,
+            added: 0,
+            removed: 0,
+            edits: 0,
+          };
+          rowCalls.set(row.id, [call]);
         } else if (event.toolName === "bash") {
           const command = field(event.input, "command") ?? "";
           row = { ...base, kind: "command", command, exitCode: null };
@@ -278,16 +317,22 @@ export function buildRunView(events: RunEvent[]): RunView {
           row.running = row.items.some((i) => i.running);
           break;
         }
+        if (row.kind === "edit") {
+          const call = editCalls.get(event.toolCallId)!;
+          call.running = false;
+          call.failed = failed;
+          if (!failed) {
+            edits.push({
+              path: row.path,
+              added: call.added,
+              removed: call.removed,
+            });
+          }
+          break;
+        }
         row.running = false;
         row.failed = failed;
-        if (row.kind === "edit" && !failed) {
-          edits.push({
-            id: row.id,
-            path: row.path,
-            added: row.added,
-            removed: row.removed,
-          });
-        } else if (row.kind === "command") {
+        if (row.kind === "command") {
           const { exitCode, text } = commandResult(event.output);
           row.exitCode = exitCode;
           row.failed = failed || (exitCode !== null && exitCode !== 0);
@@ -340,6 +385,19 @@ export function buildRunView(events: RunEvent[]): RunView {
       default:
         break;
     }
+  }
+
+  for (const row of activity) {
+    if (row.kind === "edit") {
+      summarizeEdits(row, rowCalls.get(row.id)!, view.status !== null);
+    } else if (view.status !== null) {
+      // The run ended before these tools did, e.g. it was cancelled mid-command.
+      row.running = false;
+    }
+  }
+  if (view.status !== null) {
+    for (const item of items.values()) item.running = false;
+    for (const command of commands.values()) command.running = false;
   }
 
   const files = new Map<string, FileTouched>();

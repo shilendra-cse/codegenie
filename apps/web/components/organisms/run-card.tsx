@@ -1,6 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import { Badge, type BadgeProps } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Icon } from "@/components/atoms/icon";
 import { Logo } from "@/components/atoms/logo";
 import { RunStage, type RunStageState } from "@/components/molecules/run-stage";
 import {
@@ -26,12 +25,11 @@ export type RunCardProps = {
   stages: RunStageView[];
   activity: ActivityView[];
   reasoning: string;
-  /** How the run ended, until step 7's outcome card. */
-  outcome: {
-    text: string;
-    failed: boolean;
-    pullRequest: { number: number; url: string } | null;
-  } | null;
+  /** How the run ended; null while it's live. */
+  status: { label: string; tone: NonNullable<BadgeProps["tone"]> } | null;
+  /** Once ended: the stages are hidden behind Show steps. */
+  folded: boolean;
+  onToggleSteps?: () => void;
   /** Opens an activity row (an edit, a command, a check run) in the side panel. */
   onSelectActivity?: (row: ActivityView) => void;
 };
@@ -46,58 +44,54 @@ export function RunCard(props: RunCardProps) {
           !props.live && "border border-border",
         )}
       >
-        <header className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3">
+        <header
+          className={cn(
+            "flex flex-wrap items-center gap-2.5 px-4 py-3",
+            !props.folded && "border-b border-border",
+          )}
+        >
           <span className="flex size-7 items-center justify-center rounded-md border border-border bg-card">
             <Logo variant="mark" />
           </span>
           <span className="font-semibold">CodeGenie</span>
           <span className="text-[13px] text-faint">Run {props.number}</span>
+          {props.status && (
+            <Badge tone={props.status.tone}>{props.status.label}</Badge>
+          )}
           {props.meta && (
             <span className="ml-auto text-[13px] text-faint">{props.meta}</span>
           )}
-        </header>
-        {props.stages.map((stage) => (
-          <RunStage
-            key={stage.id}
-            name={stage.name}
-            state={stage.state}
-            summary={stage.summary}
-            durationMs={stage.durationMs}
-          >
-            {stage.id === "working" && (
-              <RunActivity
-                activity={props.activity}
-                reasoning={props.reasoning}
-                live={stage.state === "running"}
-                onSelect={props.onSelectActivity}
-              />
-            )}
-          </RunStage>
-        ))}
-        {props.outcome && (
-          <footer className="flex flex-col gap-3 border-t border-border bg-surface px-4 py-3.5">
-            <p
-              className={cn(
-                "whitespace-pre-wrap",
-                props.outcome.failed ? "text-err" : "text-muted-foreground",
-              )}
+          {props.status && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(!props.meta && "ml-auto")}
+              aria-expanded={!props.folded}
+              onClick={props.onToggleSteps}
             >
-              {props.outcome.text}
-            </p>
-            {props.outcome.pullRequest && (
-              <Button asChild size="sm" className="self-start">
-                <a
-                  href={props.outcome.pullRequest.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open PR #{props.outcome.pullRequest.number} on GitHub
-                  <Icon icon={ExternalLink} size={14} />
-                </a>
-              </Button>
-            )}
-          </footer>
-        )}
+              {props.folded ? "Show steps" : "Hide steps"}
+            </Button>
+          )}
+        </header>
+        {!props.folded &&
+          props.stages.map((stage) => (
+            <RunStage
+              key={stage.id}
+              name={stage.name}
+              state={stage.state}
+              summary={stage.summary}
+              durationMs={stage.durationMs}
+            >
+              {stage.id === "working" && (
+                <RunActivity
+                  activity={props.activity}
+                  reasoning={props.reasoning}
+                  live={stage.state === "running"}
+                  onSelect={props.onSelectActivity}
+                />
+              )}
+            </RunStage>
+          ))}
       </article>
     </div>
   );

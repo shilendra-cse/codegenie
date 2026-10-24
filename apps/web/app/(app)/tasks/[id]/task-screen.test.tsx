@@ -1,11 +1,18 @@
 import type { RunResponse, TaskDetail } from "@codegenie/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import { TaskScreen } from "./task-screen";
 
-const api = vi.hoisted(() => ({ get: vi.fn() }));
+const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/lib/api/client", async (original) => ({
   ...(await original<typeof import("@/lib/api/client")>()),
   api,
@@ -104,10 +111,16 @@ function renderScreen() {
 describe("TaskScreen", () => {
   beforeEach(() => {
     api.get.mockReset();
+    api.post.mockReset();
     FakeEventSource.last = undefined;
     vi.stubGlobal("EventSource", FakeEventSource);
+    // jsdom doesn't scroll; the page follows a run to its result.
+    vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it("shows the task, your message and the run as it happens", async () => {
     api.get.mockResolvedValue({ data: { task: task() } });
@@ -280,11 +293,193 @@ describe("TaskScreen", () => {
     });
     renderScreen();
 
-    expect(await screen.findByText("Added GET /health.")).toBeInTheDocument();
+    const result = await screen.findByRole("article", {
+      name: "Result of run 1",
+    });
+    expect(within(result).getByText("Added GET /health.")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open PR #7 on GitHub" }),
+      within(result).getByRole("link", { name: "Open PR #7 on GitHub" }),
     ).toHaveAttribute("href", "https://github.com/x/y/pull/7");
-    expect(screen.getByText(/1m 32s · \$0\.04/)).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("heading", { name: "Add a /health endpoint" })
+        .closest("header"),
+    ).toHaveTextContent("1m 32s · $0.04");
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  it("folds the steps of a run that ended before you opened it", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "no_changes",
+          runs: [runRecord({ status: "succeeded", durationMs: 60_000 })],
+        }),
+      },
+    });
+    renderScreen();
+
+    const card = await screen.findByRole("article", { name: "Run 1" });
+    expect(card).toHaveTextContent("No changes needed");
+    expect(within(card).queryByRole("region", { name: "Prepare" })).toBeNull();
+
+    fireEvent.click(within(card).getByRole("button", { name: "Show steps" }));
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a failed run's steps open", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "failed",
+          runs: [
+            runRecord({
+              status: "failed",
+              error: { code: "agent_failed", message: "The model gave up." },
+            }),
+          ],
+        }),
+      },
+    });
+    renderScreen();
+
+    const card = await screen.findByRole("article", { name: "Run 1" });
+    expect(
+      within(card).getByRole("button", { name: "Hide steps" }),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves a run you watched open when it ends", async () => {
+    api.get
+      .mockResolvedValueOnce({ data: { task: task() } })
+      .mockResolvedValue({
+        data: {
+          task: task({
+            label: "no_changes",
+            runs: [runRecord({ status: "succeeded", durationMs: 60_000 })],
+          }),
+        },
+      });
+    renderScreen();
+    await screen.findByRole("article", { name: "Run 1" });
+
+    FakeEventSource.last!.send({ type: "done", seq: 1, status: "succeeded" });
+
+    await screen.findByRole("article", { name: "Result of run 1" });
+    const card = screen.getByRole("article", { name: "Run 1" });
+    expect(card).toHaveTextContent("No changes needed");
+    expect(
+      within(card).getByRole("button", { name: "Hide steps" }),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says where a failed run went wrong, with a way to fix it", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "failed",
+          runs: [
+            runRecord({
+              status: "failed",
+              stage: "setup",
+              error: { code: "setup_failed", message: "pnpm install failed." },
+              durationMs: 60_000,
+            }),
+          ],
+        }),
+      },
+    });
+    renderScreen();
+
+    const result = await screen.findByRole("article", {
+      name: "Result of run 1",
+    });
+    expect(within(result).getByRole("alert")).toHaveTextContent(
+      "Failed during setuppnpm install failed.Nothing was pushed.",
+    );
+    expect(
+      within(result).getByRole("link", { name: "Re-run environment setup" }),
+    ).toHaveAttribute("href", "/projects/p1/environment");
+  });
+
+  it("says when you cancelled the run", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "cancelled",
+          runs: [runRecord({ status: "cancelled", durationMs: 182_000 })],
+        }),
+      },
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByRole("article", { name: "Result of run 1" }),
+    ).toHaveTextContent(
+      "You cancelled this run after 3m 02s.The sandbox was removed and nothing was pushed.",
+    );
+  });
+
+  it("cancels a queued run at once", async () => {
+    const queued = runRecord({
+      status: "queued",
+      stage: null,
+      startedAt: null,
+    });
+    api.get
+      .mockResolvedValueOnce({
+        data: { task: task({ label: "queued", runs: [queued] }) },
+      })
+      .mockResolvedValue({
+        data: {
+          task: task({
+            label: "cancelled",
+            runs: [{ ...queued, status: "cancelled" }],
+          }),
+        },
+      });
+    api.post.mockResolvedValue({ data: { outcome: "cancelled" } });
+    renderScreen();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull(),
+    );
+    expect(api.post).toHaveBeenCalledWith("/runs/r1/cancel");
+  });
+
+  it("says it's stopping a working run until the run ends", async () => {
+    api.get.mockResolvedValue({ data: { task: task() } });
+    api.post.mockResolvedValue({ data: { outcome: "stopping" } });
+    renderScreen();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Stopping…" }),
+    ).toBeDisabled();
+  });
+
+  it("says when it couldn't cancel, and lets you try again", async () => {
+    api.get.mockResolvedValue({ data: { task: task() } });
+    api.post.mockRejectedValue(new ApiError(500, "Down."));
+    renderScreen();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't cancel. Try again.",
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 
   it("says when the task doesn't exist", async () => {
