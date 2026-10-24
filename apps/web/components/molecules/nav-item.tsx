@@ -33,7 +33,13 @@ export function NavItem({
       className="flex min-h-8 items-center gap-2.5 rounded-sm px-2.5 text-[13.5px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
     >
       {icon ? <Icon icon={icon} /> : leading}
-      <span className="min-w-0 truncate">{children}</span>
+      <span
+        className="min-w-0 truncate"
+        // The full name on hover, when it's cut short.
+        title={typeof children === "string" ? children : undefined}
+      >
+        {children}
+      </span>
       {trailing && <span className="ml-auto shrink-0">{trailing}</span>}
     </Link>
   );
