@@ -111,7 +111,7 @@ export function toRunCard({
   live: RunLive;
   baseBranch: string;
   now: number;
-}): RunCardProps {
+}): Omit<RunCardProps, "status" | "folded" | "onToggleSteps"> {
   const active = run.status === "queued" || run.status === "running";
   const queued = run.status === "queued";
   const steps = live.steps ?? (run.steps > 0 ? run.steps : null);
@@ -122,7 +122,8 @@ export function toRunCard({
     meta: queued
       ? "queued"
       : [
-          steps !== null && `step ${steps}`,
+          !active && run.durationMs !== null && formatDuration(run.durationMs),
+          steps !== null && (active ? `step ${steps}` : plural(steps, "step")),
           cost !== null && `$${cost.toFixed(2)}`,
         ]
           .filter(Boolean)

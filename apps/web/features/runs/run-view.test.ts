@@ -255,6 +255,34 @@ describe("buildRunView", () => {
     expect(ended.files).toEqual([]);
   });
 
+  it("stops what was still running once the run is done", () => {
+    const view = buildRunView(
+      run(
+        start("e1", "edit_file", {
+          path: "src/a.ts",
+          oldString: "x",
+          newString: "y",
+        }),
+        end("e1", "edit_file", "Edited src/a.ts (1 replacement)."),
+        start("e2", "edit_file", {
+          path: "src/a.ts",
+          oldString: "y",
+          newString: "z",
+        }),
+        start("r1", "read_file", { path: "src/b.ts" }),
+        start("c1", "bash", { command: "pnpm test" }),
+        { type: "done", status: "cancelled" },
+      ),
+    );
+
+    expect(view.activity).toMatchObject([
+      { kind: "edit", running: false, failed: false, edits: 1, added: 1 },
+      { kind: "explored", running: false, items: [{ running: false }] },
+      { kind: "command", running: false, exitCode: null },
+    ]);
+    expect(view.commands).toMatchObject([{ id: "c1", running: false }]);
+  });
+
   it("keeps each command with its exit code and output, marked when cut short", () => {
     const view = buildRunView(
       run(

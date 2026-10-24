@@ -2,7 +2,7 @@
 
 import type { TaskDetail } from "@codegenie/shared";
 import { GitBranch, Square } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
@@ -24,6 +24,7 @@ import { useTask } from "@/features/tasks/use-tasks";
 import { ApiError } from "@/lib/api/client";
 import { timeAgo } from "@/lib/format";
 import { projectPath } from "@/lib/routes";
+import { useFollowEnd } from "@/lib/use-follow-end";
 import { useNow } from "@/lib/use-now";
 import {
   runTotals,
@@ -93,6 +94,12 @@ function TaskView({ task }: { task: TaskDetail }) {
   const title = view.title ?? task.title;
   const outcome =
     run && runOutcome({ task, run, title, checksDone: view.checksDone });
+  // A run you watched stays as it was; one you open afterwards starts folded, unless it failed.
+  const [watched] = useState(active);
+  const [stepsOpen, setStepsOpen] = useState<boolean | null>(null);
+  const folded = !!outcome && !(stepsOpen ?? (watched || outcome.unfoldSteps));
+  const conversation = useRef<HTMLDivElement>(null);
+  useFollowEnd(conversation, Boolean(outcome));
 
   const openActivity = (row: ActivityView) => {
     if (row.kind === "edit") {
@@ -148,7 +155,10 @@ function TaskView({ task }: { task: TaskDetail }) {
         </Alert>
       )}
       <div className="flex flex-1 flex-wrap min-[1200px]:min-h-0 min-[1200px]:flex-nowrap">
-        <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 pt-8 pb-20 min-[1200px]:overflow-y-auto">
+        <div
+          ref={conversation}
+          className="flex min-w-0 flex-[999_1_520px] flex-col gap-6 px-6 pt-8 pb-20 min-[1200px]:overflow-y-auto"
+        >
           <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6">
             {message && (
               <UserMessage
@@ -168,6 +178,9 @@ function TaskView({ task }: { task: TaskDetail }) {
                   baseBranch: task.baseBranch,
                   now,
                 })}
+                status={outcome?.status ?? null}
+                folded={folded}
+                onToggleSteps={() => setStepsOpen(folded)}
                 onSelectActivity={openActivity}
               />
             )}

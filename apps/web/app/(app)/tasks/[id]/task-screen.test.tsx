@@ -114,8 +114,13 @@ describe("TaskScreen", () => {
     api.post.mockReset();
     FakeEventSource.last = undefined;
     vi.stubGlobal("EventSource", FakeEventSource);
+    // jsdom doesn't scroll; the page follows a run to its result.
+    vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it("shows the task, your message and the run as it happens", async () => {
     api.get.mockResolvedValue({ data: { task: task() } });
@@ -295,8 +300,85 @@ describe("TaskScreen", () => {
     expect(
       within(result).getByRole("link", { name: "Open PR #7 on GitHub" }),
     ).toHaveAttribute("href", "https://github.com/x/y/pull/7");
-    expect(screen.getByText(/1m 32s · \$0\.04/)).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("heading", { name: "Add a /health endpoint" })
+        .closest("header"),
+    ).toHaveTextContent("1m 32s · $0.04");
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  it("folds the steps of a run that ended before you opened it", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "no_changes",
+          runs: [runRecord({ status: "succeeded", durationMs: 60_000 })],
+        }),
+      },
+    });
+    renderScreen();
+
+    const card = await screen.findByRole("article", { name: "Run 1" });
+    expect(card).toHaveTextContent("No changes needed");
+    expect(within(card).queryByRole("region", { name: "Prepare" })).toBeNull();
+
+    fireEvent.click(within(card).getByRole("button", { name: "Show steps" }));
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a failed run's steps open", async () => {
+    api.get.mockResolvedValue({
+      data: {
+        task: task({
+          label: "failed",
+          runs: [
+            runRecord({
+              status: "failed",
+              error: { code: "agent_failed", message: "The model gave up." },
+            }),
+          ],
+        }),
+      },
+    });
+    renderScreen();
+
+    const card = await screen.findByRole("article", { name: "Run 1" });
+    expect(
+      within(card).getByRole("button", { name: "Hide steps" }),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves a run you watched open when it ends", async () => {
+    api.get
+      .mockResolvedValueOnce({ data: { task: task() } })
+      .mockResolvedValue({
+        data: {
+          task: task({
+            label: "no_changes",
+            runs: [runRecord({ status: "succeeded", durationMs: 60_000 })],
+          }),
+        },
+      });
+    renderScreen();
+    await screen.findByRole("article", { name: "Run 1" });
+
+    FakeEventSource.last!.send({ type: "done", seq: 1, status: "succeeded" });
+
+    await screen.findByRole("article", { name: "Result of run 1" });
+    const card = screen.getByRole("article", { name: "Run 1" });
+    expect(card).toHaveTextContent("No changes needed");
+    expect(
+      within(card).getByRole("button", { name: "Hide steps" }),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByRole("region", { name: "Prepare" }),
+    ).toBeInTheDocument();
   });
 
   it("says where a failed run went wrong, with a way to fix it", async () => {

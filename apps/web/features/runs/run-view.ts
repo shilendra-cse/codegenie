@@ -137,9 +137,10 @@ type EditCall = {
 function summarizeEdits(
   row: Extract<Activity, { kind: "edit" }>,
   calls: EditCall[],
+  ended: boolean,
 ) {
   const worked = calls.filter((c) => !c.running && !c.failed);
-  row.running = calls.some((c) => c.running);
+  row.running = !ended && calls.some((c) => c.running);
   row.failed = calls.every((c) => c.failed);
   row.edits = worked.length;
   row.added = worked.reduce((sum, c) => sum + c.added, 0);
@@ -387,7 +388,16 @@ export function buildRunView(events: RunEvent[]): RunView {
   }
 
   for (const row of activity) {
-    if (row.kind === "edit") summarizeEdits(row, rowCalls.get(row.id)!);
+    if (row.kind === "edit") {
+      summarizeEdits(row, rowCalls.get(row.id)!, view.status !== null);
+    } else if (view.status !== null) {
+      // The run ended before these tools did, e.g. it was cancelled mid-command.
+      row.running = false;
+    }
+  }
+  if (view.status !== null) {
+    for (const item of items.values()) item.running = false;
+    for (const command of commands.values()) command.running = false;
   }
 
   const files = new Map<string, FileTouched>();
