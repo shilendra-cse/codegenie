@@ -124,6 +124,21 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
     result.diff = await collectDiff(sandbox, gitBase);
     const snapshot = options.deliver ? await snapshotChanges(sandbox) : null;
     result.verify = await runVerify(sandbox, setup.checks, setup.baseline);
+    emit({
+      type: "checks_completed",
+      runId,
+      ts: new Date().toISOString(),
+      passed: result.verify.passed,
+      checks: result.verify.checks.map(
+        ({ name, cwd, command, status, comparison }) => ({
+          name,
+          cwd,
+          command,
+          status,
+          comparison,
+        }),
+      ),
+    });
 
     const deliverable =
       agent.status === "succeeded" || agent.status === "incomplete";
