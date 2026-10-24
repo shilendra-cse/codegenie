@@ -40,7 +40,7 @@ pnpm dev:worker
 
 **Reaper:** every `REAPER_INTERVAL_MINUTES` and at startup, one worker runs a `reap` item. It fails runs whose worker is gone (`running` with no active queue item: `worker_lost`) or that never left the queue (`queued` over 15 minutes, item gone: `lost_in_queue`). For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox. Logs: `Reaped` (with the count), `Failed a lost run`, `Kept a lost run's work`.
 
-**Stopping:** Ctrl-C stops taking new work and waits for the work in progress (a run can take up to 30 minutes). Ctrl-C again, a second or more later, exits at once; anything unfinished is left for the reaper. There's no watch mode, because a restart would kill the runs in progress.
+**Stopping:** Ctrl-C stops taking new work and waits for the work in progress (a run can take up to 30 minutes). Ctrl-C again, a second or more later, exits at once; anything unfinished is left for the reaper. `pnpm dev:worker` reloads when a file it uses changes (the worker or the packages it imports, like the runner and the agent), the same as the server. A reload stops the worker the same way, but force-stops it after 5 seconds, so a run in progress at that moment is cut off and left for the reaper.
 
 ## Giving it work
 
