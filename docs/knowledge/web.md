@@ -248,7 +248,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 **The setup page `/projects/:id/environment`** (canvas: Environment setup):
 - **Top bar:** "<project> / Environment setup", a status badge (Queued, Setting up, Waiting for your answer, Saved as vN, Failed, Stopped), time and cost, **Stop setup** while it runs or waits.
 - **Not started:** what setup does, and **Start setup**.
-- **The conversation:** CodeGenie's intro; a **timeline card** built from the events (projects found, installed with a command, checks with their badges, the agent's work grouped and expandable, info lines) with the beam while running and new lines rising in; a **question card** (question, why, options with the first marked Recommended, Something else when allowed, **Answer**; then your answer with your avatar; "Question N · I ask at most 5"); the **result**: saved (the environment's steps, checks and decisions, "Saved. <project> is ready.", **Describe your first task**, coming soon until New task exists), failed (the reason, **Try again**), stopped (**Start again**).
+- **The conversation:** CodeGenie's intro; a **timeline card** built from the events (projects found, installed with a command, checks with their badges, the agent's work grouped and expandable, info lines) with the beam while running and new lines rising in; a **question card** (question, why, options with the first marked Recommended, Something else when allowed, **Answer**; then your answer with your avatar; "Question N · I ask at most 5"); the **result**: saved (the environment's steps, checks and decisions, "Saved. <project> is ready.", **Describe your first task**, to New task with the project picked), failed (the reason, **Try again**), stopped (**Start again**).
 - **Live:** reloading replays everything and continues; when setup ends the sidebar dot and the checklist update.
 
 **Welcome step 3, in place:** **Start setup** starts it; the step shows a compact live card (beam, "Setting up <project>", the latest 3 lines, **Watch it live →**); while waiting, the question and **Answer** (opens the setup page); done ticks the step; failed or stopped shows the reason and **Try again**.
@@ -270,3 +270,36 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **Batches:** 1. setup's structured events and the data layer; 2. the missing states on the canvas's Environment setup board; 3. the setup page; 4. Welcome step 3, the card and the sidebar.
 
+
+## 15. Start a task (requirements)
+
+**Goal:** you describe a change for a project that's set up, start it, and land on the task; the Welcome checklist's last step is done.
+
+**The New task page `/new`** (canvas: New task (home)):
+- "What should CodeGenie do?", a large composer, and below it a row with the **project picker**, the **base branch**, the shortcut hint (⌘↵) and **Start**.
+- **Project picker:** your projects with their default branch. Projects that aren't ready are listed but can't be picked, each with the reason: "Not set up" or "Needs attention". **Add a repository** at the bottom goes to `/projects/new`. It starts on the project in `?project=`, else the last one you used, else the first ready one.
+- **Base branch:** the project's default branch; **Change** turns it into a text field (a branch list comes later). An invalid name is shown under the field.
+- **Start:** enabled once there's text and a ready project; ⌘↵ (Ctrl↵) starts too. Busy while starting; then you go to `/tasks/:id`.
+- A one-line hint on writing good tasks.
+- **Recent tasks:** your latest 5 (title, project, status badge), each linking to its task; **View all** goes to the Inbox (coming soon until the Inbox exists). Hidden when you have none.
+- **States:** no projects (a note and **Add a repository**); no ready project (the picker shows why, with a link to finish setup); loading (skeletons); starting fails, shown above Start: not set up (409) with a link to its setup, needs attention (409) with a link to re-run setup, CodeGenie busy (503) "CodeGenie can't take new work right now. Try again in a moment.", anything else with **Try again**. The text you wrote is kept.
+- **Touches:** the backdrop and rise-in like the other pages; **Start** glows.
+
+**The task page `/tasks/:id`, first version:** the top bar (project › title, status badge), your message (avatar, time), and a card saying what the run is doing (Queued, Working, or how it ended) that refreshes every few seconds while it runs. The live run view replaces the card in step 6.
+
+**Welcome step 4, in place:** a small task box for the project you just set up (its branch, **Start**, the hint); after starting, the step reads "“<title>” is running." with **Watch it work**, and the heading becomes "Your first task is running." The step is done once any task exists.
+
+**Elsewhere:** the setup page's **Describe your first task** opens `/new?project=<id>`; the sidebar's **New task** goes to `/new` (marked when current) and **Recent** lists your last 10 tasks with a status icon, each linking to its task.
+
+**Underneath:** `features/tasks/`: `api.ts`; `useTasks({ projectId? })` (first page only), `useTask(id)` (refetching every 3 s while the latest run is queued or running), `useStartTask(projectId)` (refreshes the task lists); error codes mapped to the messages above. Uses `POST /projects/:id/tasks`, `GET /tasks`, `GET /tasks/:id`; no server changes.
+
+**Not here:** the live run view, outcomes and the PR card (steps 6–7), the Inbox (step 8), choosing a branch from a list.
+
+**Done when:**
+1. After setup: Describe your first task → `/new` with the project picked → Start → `/tasks/:id` shows Queued, then Working.
+2. From Welcome step 4, a task starts in place and the step ticks; the heading changes.
+3. A project that isn't ready can't be picked and says why; each start error shows its message and keeps the text.
+4. The pages match the canvas in light and dark and at phone width.
+5. Tests cover the picker's choices and reasons, the branch field, Start's enabling and shortcut, each error, the hooks, the task page's states, step 4, and the sidebar's Recent.
+
+**Batches:** 1. these requirements and the missing states on the canvas; 2. the tasks data layer; 3. the New task page; 4. the task page's first version, Welcome step 4, the setup page's link and the sidebar.
