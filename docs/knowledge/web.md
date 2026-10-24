@@ -303,3 +303,41 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 5. Tests cover the picker's choices and reasons, the branch field, Start's enabling and shortcut, each error, the hooks, the task page's states, step 4, and the sidebar's Recent.
 
 **Batches:** 1. these requirements and the missing states on the canvas; 2. the tasks data layer; 3. the New task page; 4. the task page's first version, Welcome step 4, the setup page's link and the sidebar.
+
+## 16. Watch it work (requirements)
+
+**Goal:** on a task's page you watch its run as it happens, the same way you watch setup: what stage it's in, what the agent is reading, editing and running, what it's thinking, which files changed and every command's output. Reloading loses nothing. (The finished run's full outcome, the PR card, Cancel and every outcome state are step 7.)
+
+**The task page `/tasks/:id`** (canvas: Task: run in progress):
+- **Top bar:** project › title (it updates when the run writes the task's short title, `task_titled`), the status badge, the base branch, duration and cost so far.
+- **Conversation:** your message, then the **run card**:
+  - header: CodeGenie, Run N, status, steps and cost (from `agent_step` while live; from the run once ended);
+  - **stages** Prepare · Set up · Working · Checks · Pull request, each pending / running (spinner) / done (✓) / failed, with a one-line summary and its duration: Prepare "Sandbox ready, cloned `main`"; Set up "Environment vN · before: 5 checks passing" (from `setup_completed`); Working "N steps"; Checks "run again and compared" until done, then "5 passing" or "1 broken by this change"; Pull request "on a new branch" until `pr_opened`;
+  - **Working** shows the agent's activity, built from `tool_start` / `tool_end`: consecutive reads, searches and listings fold into "Explored the code · read 6 files, searched 2 times" (expandable); each edit or written file is a row with its path; each command a row with its result (✓ exit 0, ✗ exit N); `run_checks` a row with its results; the one in progress has a spinner. The agent's latest reasoning streams underneath in a quieter style (`text_delta`, live only);
+  - the beam while the run is queued or running; new rows rise in.
+- **Side panel**, tabs:
+  - **Changes:** while running, the files the agent has edited or written, with +/− counted from its edits (the lines it replaced and wrote), and "The full diff appears when the run finishes."; once the run has ended, the real diff (`GET /runs/:id/diff`): files with +/−, a file's lines when picked.
+  - **Terminal:** every command the agent ran, newest last, with its output and exit code; the one running shows "running…". Output is what the run reports, at most 2,000 characters a command, marked when cut short (full logs come later).
+  - **Checks:** each check with **Before** (`setup_completed`) and **After** (`checks_completed`, new): passing · fixed · broken by this change · still failing · pending until Checks has run.
+  - Picking an edit or a command in the run card opens it in the panel.
+- **States:** queued (stages pending, "Waiting for a sandbox"), running, ended (stages final; the summary and the PR link as today, until step 7), the stream reconnecting, the task not found, couldn't load.
+- **At phone width** the panel stacks below the conversation.
+
+**Server:** the runner emits **`checks_completed`** when Checks ends: each check's name, folder, command, status and comparison with before (`passing`, `failing`, `fixed`, `regressed`, `still-failing`). Stored like the other events.
+
+**Underneath:**
+- `features/runs/`: `useRunEvents(runId)`: an `EventSource` on `/api/runs/:id/events`, stored then live, in order without repeats, closed on `done` or once the run has ended; `text_delta` and `agent_step` kept apart (live only). Refreshes the task when the run's stage, title or outcome changes.
+- `buildRunView(events)`: pure. The stages with their state, summary and duration; the activity groups; the latest reasoning; steps and cost; the files touched; the commands with their output; the checks before and after; the PR. Tested with lists of events, no browser or server.
+- `useRunDiff(runId)` once the run has ended.
+- The polling task page from step 5 stops polling: the stream drives it.
+
+**Not here:** Cancel, the finished run's outcome card (summary, checks table, PR card, failed / cancelled / no changes / incomplete), follow-ups (step 7); full command logs; a live diff while running.
+
+**Done when:**
+1. Starting a task and opening it shows each stage in turn, the agent's activity and reasoning as they happen, then the end.
+2. Reloading mid-run shows everything so far and keeps going; the stream comes through the Next rewrite as it happens.
+3. Changes, Terminal and Checks show what the run did; picking a row opens it.
+4. The page matches the canvas in light and dark and at phone width.
+5. Tests cover `buildRunView` for each event kind (grouping, stages, durations, checks), the events hook with a fake stream, each component state, and the page.
+
+**Batches:** 1. these requirements and the canvas; 2. `checks_completed` in the runner and worker; 3. the run's events in the browser (`useRunEvents`, `buildRunView`); 4. the run card (stages, activity, reasoning); 5. the side panel (Changes, Terminal, Checks) and linking rows to it.
