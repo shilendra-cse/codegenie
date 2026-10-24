@@ -1,6 +1,6 @@
 import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
 import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { SetupQuestion, UserChannel } from "@codegenie/shared";
+import type { RunEvent, SetupQuestion, UserChannel } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
 import { autoChannel } from "./auto-channel.js";
 import { runOnboarding, type RunOnboardingOptions } from "./run-onboarding.js";
@@ -110,6 +110,64 @@ describe("runOnboarding", () => {
     expect(
       created[1]!.execCalls.some((c) => c.command.includes("npm run lint")),
     ).toBe(false);
+  });
+
+  it("reports what it found and each try's results, for viewers", async () => {
+    const { createSandbox } = sandboxes(lintBroken, lintBroken);
+    const fixed = {
+      steps: [{ name: "install", cwd: ".", command: "npm ci" }],
+      checks: [{ name: "test", cwd: ".", command: "npm run test" }],
+    };
+    const { resolved } = scriptedModel([
+      { toolCalls: [{ toolName: "try_environment", input: fixed }] },
+      finishWithoutLint,
+    ]);
+    const events: RunEvent[] = [];
+
+    await runOnboarding(
+      options({ createSandbox, model: resolved, emit: (e) => events.push(e) }),
+    );
+
+    const reported = events.filter(
+      (e) => e.type === "setup_drafted" || e.type === "setup_completed",
+    );
+    expect(
+      reported.map((e) =>
+        e.type === "setup_completed" ? `${e.type}:${e.phase}` : e.type,
+      ),
+    ).toEqual([
+      "setup_drafted",
+      "setup_completed:first",
+      "setup_completed:agent",
+      "setup_completed:final",
+    ]);
+    expect(reported[0]).toMatchObject({
+      projects: [{ cwd: ".", packageManager: "npm" }],
+    });
+    expect(reported[1]).toMatchObject({
+      success: true,
+      steps: [{ name: "install", cwd: ".", command: "npm ci", status: "ok" }],
+      checks: expect.arrayContaining([
+        expect.objectContaining({
+          name: "lint",
+          command: "npm run lint",
+          status: "broken",
+        }),
+      ]),
+    });
+  });
+
+  it("reports only the first try and the final check when nothing needed fixing", async () => {
+    const { createSandbox } = sandboxes();
+    const events: RunEvent[] = [];
+
+    await runOnboarding(
+      options({ createSandbox, emit: (e) => events.push(e) }),
+    );
+
+    expect(
+      events.flatMap((e) => (e.type === "setup_completed" ? [e.phase] : [])),
+    ).toEqual(["first", "final"]);
   });
 
   it("keeps the drafted setup when the agent doesn't finish", async () => {

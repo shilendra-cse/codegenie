@@ -6,6 +6,9 @@
   "scripts": {
     "setup": "bash script/setup.sh",
     "migrate": "bash script/migrate.sh",
+    "db:generate": "pnpm --filter @codegenie/db generate",
+    "db:push": "pnpm --filter @codegenie/db push",
+    "db:studio": "pnpm --filter @codegenie/db studio",
     "agent:run": "pnpm --filter @codegenie/cli start",
     "agent:setup": "pnpm --filter @codegenie/cli run setup",
     "eval": "pnpm --filter @codegenie/evals start",

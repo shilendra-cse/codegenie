@@ -2,11 +2,15 @@
 
 import { InstallNotice } from "@/components/molecules/install-notice";
 import { RepositoryPicker } from "@/components/organisms/repository-picker";
+import { SetupProgressCard } from "@/components/organisms/setup-progress-card";
 import { WelcomeChecklist } from "@/components/organisms/welcome-checklist";
 import { useAccount } from "@/features/account/use-account";
 import { useRepositoryPicker } from "@/features/github/use-repository-picker";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
-import { APP_HOME } from "@/lib/routes";
+import { useStartOnboarding } from "@/features/setup/use-onboarding";
+import { useSetupProgress } from "@/features/setup/use-setup-progress";
+import { APP_HOME, projectPath } from "@/lib/routes";
+import { useNow } from "@/lib/use-now";
 import { useInstallOutcome } from "../use-install-outcome";
 
 export type WelcomeScreenProps = { github?: string };
@@ -18,6 +22,15 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
     checklist.status === "ready" &&
     checklist.steps.some((s) => s.id === "add-repo" && s.state === "current");
   const picker = useRepositoryPicker({ enabled: addingRepository });
+  const settingUp =
+    checklist.status === "ready"
+      ? checklist.steps.find((s) => s.id === "set-up" && s.state === "current")
+      : undefined;
+  const setupProjectId = settingUp?.projectId;
+  const setup = useSetupProgress(setupProjectId);
+  const startSetup = useStartOnboarding(setupProjectId ?? "");
+  const now = useNow(setup.active);
+  const startedAt = setup.onboarding?.startedAt;
   const outcome = useInstallOutcome(github, APP_HOME);
   const firstName = account?.name.trim().split(/\s+/)[0];
   const checklistView =
@@ -25,7 +38,25 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
       ? {
           status: checklist.status,
           steps: checklist.steps,
-          panels: { "add-repo": <RepositoryPicker {...picker} /> },
+          panels: {
+            "add-repo": <RepositoryPicker {...picker} />,
+            ...(setupProjectId && {
+              "set-up": (
+                <SetupProgressCard
+                  projectName={settingUp?.projectName ?? "your project"}
+                  status={setup.onboarding?.status ?? null}
+                  href={`${projectPath(setupProjectId)}/environment`}
+                  latest={setup.timeline.latest}
+                  elapsedMs={startedAt ? now - Date.parse(startedAt) : null}
+                  question={setup.timeline.openQuestion?.question ?? null}
+                  failure={setup.onboarding?.error?.message ?? null}
+                  onStart={() => startSetup.mutate()}
+                  starting={startSetup.isPending}
+                  startError={startSetup.error?.message ?? null}
+                />
+              ),
+            }),
+          },
         }
       : checklist.status === "error"
         ? { status: checklist.status, onRetry: checklist.retry }

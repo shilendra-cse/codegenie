@@ -25,6 +25,7 @@ describe("draftEnvironment", () => {
         { name: "test", command: "npm run test", cwd: "." },
       ],
       notes: ["JavaScript/TypeScript project using npm."],
+      projects: [{ cwd: ".", packageManager: "npm" }],
     });
   });
 

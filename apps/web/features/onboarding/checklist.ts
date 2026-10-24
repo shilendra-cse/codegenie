@@ -10,6 +10,8 @@ export type ChecklistStep = {
   external: boolean;
   /** The project a repository or setup step is about, once there is one. */
   projectName?: string;
+  /** The project the set-up step is about, while it still needs setting up. */
+  projectId?: string;
 };
 
 export type ChecklistInput = {
@@ -44,6 +46,7 @@ export function buildChecklist({
         : ADD_REPOSITORY,
       external: false,
       projectName: (ready ?? needsSetUp)?.repo.name,
+      projectId: needsSetUp?.id,
     },
     { id: "first-task", done: hasTasks, href: "/new", external: false },
   ];

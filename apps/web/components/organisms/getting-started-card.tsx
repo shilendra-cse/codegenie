@@ -18,12 +18,17 @@ export type GettingStartedCardProps = {
   done: number;
   next: StepId;
   projectName?: string;
+  /** How the next step's setup is going, when it has started. */
+  status?: "running" | "waiting";
 };
+
+const STATUS = { running: " · in progress", waiting: " · needs your answer" };
 
 export function GettingStartedCard({
   done,
   next,
   projectName,
+  status,
 }: GettingStartedCardProps) {
   return (
     <Link
@@ -44,6 +49,7 @@ export function GettingStartedCard({
       </span>
       <span className="flex items-center gap-1 text-[12.5px] text-muted-foreground">
         Next: {NEXT[next](projectName)}
+        {status && STATUS[status]}
         <Icon icon={ArrowRight} size={14} />
       </span>
     </Link>

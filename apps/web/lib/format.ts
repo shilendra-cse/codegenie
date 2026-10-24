@@ -18,3 +18,14 @@ export function timeAgo(iso: string, now = Date.now()) {
   }
   return "just now";
 }
+
+/** "14s", "1m 32s", "1h 05m". */
+export function formatDuration(ms: number) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m ${String(seconds % 60).padStart(2, "0")}s`;
+  }
+  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m`;
+}

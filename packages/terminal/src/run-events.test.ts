@@ -101,6 +101,28 @@ describe("createRunReporter", () => {
     ]);
   });
 
+  it("leaves out environment setup's own reports, which it prints itself", () => {
+    expect(
+      report([
+        {
+          type: "setup_drafted",
+          runId: "j",
+          ts,
+          projects: [{ cwd: ".", packageManager: "npm" }],
+        },
+        {
+          type: "setup_completed",
+          runId: "j",
+          ts,
+          phase: "first",
+          success: true,
+          steps: [{ name: "install", cwd: ".", status: "ok" }],
+          checks: [],
+        },
+      ]),
+    ).toEqual([]);
+  });
+
   it("colors by meaning when colors are on", () => {
     const [stepsLine] = report(
       [

@@ -79,6 +79,9 @@ describe("WelcomeChecklist", () => {
     expect(screen.getAllByRole("listitem")[1]).toHaveTextContent(
       "dodesk added.",
     );
-    expect(screen.getByRole("button", { name: "Start setup" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Start setup" })).toHaveAttribute(
+      "href",
+      steps[2]!.href,
+    );
   });
 });

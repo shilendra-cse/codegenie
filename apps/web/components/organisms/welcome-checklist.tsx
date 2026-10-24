@@ -58,7 +58,6 @@ const COPY: Record<StepId, Copy> = {
     title: "Set up its environment",
     body: "CodeGenie finds out how to install and check it, and asks you if it can’t decide. Once per repository, a few minutes.",
     label: "Start setup",
-    comingSoon: true,
     done: (name) => `${name} is ready.`,
   },
   "first-task": {

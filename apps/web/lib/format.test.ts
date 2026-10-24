@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { timeAgo } from "./format";
+import { formatDuration, timeAgo } from "./format";
 
 const now = Date.parse("2026-10-23T12:00:00Z");
 const ago = (seconds: number) => new Date(now - seconds * 1000).toISOString();
@@ -18,5 +18,17 @@ describe("timeAgo", () => {
     [400 * 86400, "last year"],
   ])("%i seconds ago reads as %s", (seconds, text) => {
     expect(timeAgo(ago(seconds), now)).toBe(text);
+  });
+});
+
+describe("formatDuration", () => {
+  it.each([
+    [0, "0s"],
+    [14_400, "14s"],
+    [92_000, "1m 32s"],
+    [7 * 60_000 + 5_000, "7m 05s"],
+    [65 * 60_000, "1h 05m"],
+  ])("%i ms reads as %s", (ms, text) => {
+    expect(formatDuration(ms)).toBe(text);
   });
 });

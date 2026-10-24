@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WelcomeScreen } from "./welcome-screen";
 
@@ -28,9 +28,35 @@ vi.mock("@/features/onboarding/use-welcome-checklist", () => ({
           ? "https://github.com/apps/codegenie/installations/new"
           : "/projects/new",
       external: id === "install",
-      projectName: id === "add-repo" ? "dodesk" : undefined,
+      projectName: id === "add-repo" || id === "set-up" ? "dodesk" : undefined,
+      projectId: id === "set-up" ? "p1" : undefined,
     })),
     retry: vi.fn(),
+  }),
+}));
+const setup = vi.hoisted(() => ({
+  onboarding: null as unknown,
+  latest: [] as string[],
+  question: null as string | null,
+  start: vi.fn(),
+}));
+vi.mock("@/features/setup/use-setup-progress", () => ({
+  useSetupProgress: () => ({
+    onboarding: setup.onboarding,
+    active: ["queued", "running", "waiting"].includes(
+      (setup.onboarding as { status?: string } | null)?.status ?? "",
+    ),
+    timeline: {
+      latest: setup.latest,
+      openQuestion: setup.question ? { question: setup.question } : null,
+    },
+  }),
+}));
+vi.mock("@/features/setup/use-onboarding", () => ({
+  useStartOnboarding: () => ({
+    mutate: setup.start,
+    isPending: false,
+    error: null,
   }),
 }));
 vi.mock("@/features/github/use-repository-picker", () => ({
@@ -56,6 +82,10 @@ describe("WelcomeScreen", () => {
   beforeEach(() => {
     router.replace.mockReset();
     checklist.at = "install";
+    setup.onboarding = null;
+    setup.latest = [];
+    setup.question = null;
+    setup.start.mockReset();
   });
 
   it("greets you and shows the checklist", () => {
@@ -120,6 +150,57 @@ describe("WelcomeScreen", () => {
     expect(picker.enabled).toBe(false);
     expect(screen.queryByRole("searchbox")).toBeNull();
     expect(screen.getByText("dodesk")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start setup" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Start setup" })).toBeEnabled();
+  });
+
+  it("starts setup right inside step 3", () => {
+    checklist.at = "set-up";
+    render(<WelcomeScreen />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
+    expect(setup.start).toHaveBeenCalledOnce();
+  });
+
+  it("follows setup in step 3, and sends you to answer its question", () => {
+    checklist.at = "set-up";
+    setup.onboarding = { status: "running", startedAt: null, error: null };
+    setup.latest = [
+      "Found 2 projects",
+      "Installed and ran checks: 4 of 5 checks passing",
+    ];
+    const { unmount } = render(<WelcomeScreen />);
+
+    expect(screen.getByText("Setting up dodesk")).toBeInTheDocument();
+    expect(screen.getByText("Found 2 projects")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Watch it live/ })).toHaveAttribute(
+      "href",
+      "/projects/p1/environment",
+    );
+    unmount();
+
+    setup.onboarding = { status: "waiting", startedAt: null, error: null };
+    setup.question = "Which tests?";
+    render(<WelcomeScreen />);
+    expect(screen.getByText("Which tests?")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Answer" })).toHaveAttribute(
+      "href",
+      "/projects/p1/environment",
+    );
+  });
+
+  it("says why setup stopped, and offers to try again", () => {
+    checklist.at = "set-up";
+    setup.onboarding = {
+      status: "failed",
+      startedAt: null,
+      error: {
+        message: "Setup stopped after waiting 30 minutes for an answer.",
+      },
+    };
+    render(<WelcomeScreen />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("waiting 30 minutes");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(setup.start).toHaveBeenCalledOnce();
   });
 });

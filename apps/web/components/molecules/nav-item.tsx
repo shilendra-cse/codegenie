@@ -8,6 +8,8 @@ export type NavItemProps = {
   active?: boolean;
   /** Replaces the text as the link's name, when the visible text needs context. */
   label?: string;
+  /** Shown at the end of the row, e.g. "Needs you". */
+  trailing?: ReactNode;
   children: ReactNode;
 } & (
   | { icon: LucideIcon; leading?: never }
@@ -20,6 +22,7 @@ export function NavItem({
   leading,
   active,
   label,
+  trailing,
   children,
 }: NavItemProps) {
   return (
@@ -31,6 +34,7 @@ export function NavItem({
     >
       {icon ? <Icon icon={icon} /> : leading}
       <span className="min-w-0 truncate">{children}</span>
+      {trailing && <span className="ml-auto shrink-0">{trailing}</span>}
     </Link>
   );
 }
