@@ -1,5 +1,6 @@
 import type { EnvironmentResponse } from "@codegenie/shared";
 import { Check } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -8,6 +9,7 @@ import { Icon } from "@/components/atoms/icon";
 export type EnvironmentCardProps = {
   projectName: string;
   environment: EnvironmentResponse;
+  newTaskHref: string;
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -49,6 +51,7 @@ function Row({
 export function EnvironmentCard({
   projectName,
   environment,
+  newTaskHref,
 }: EnvironmentCardProps) {
   const headingId = `environment-v${environment.version}`;
   return (
@@ -96,16 +99,9 @@ export function EnvironmentCard({
           <Icon icon={Check} />
           Saved. {projectName} is ready.
         </span>
-        <span className="ml-auto inline-flex items-center gap-2.5">
-          <span className="text-[13px] text-faint">Coming soon</span>
-          <Button
-            disabled
-            title="Coming soon"
-            className="disabled:text-faint disabled:opacity-100"
-          >
-            Describe your first task
-          </Button>
-        </span>
+        <Button asChild variant="primary" glow className="ml-auto">
+          <Link href={newTaskHref}>Describe your first task</Link>
+        </Button>
       </div>
     </section>
   );

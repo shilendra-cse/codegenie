@@ -291,7 +291,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 **Elsewhere:** the setup page's **Describe your first task** opens `/new?project=<id>`; the sidebar's **New task** goes to `/new` (marked when current) and **Recent** lists your last 10 tasks with a status icon, each linking to its task.
 
-**Underneath:** `features/tasks/`: `api.ts`; `useTasks({ projectId? })` (first page only), `useTask(id)` (refetching every 3 s while the latest run is queued or running), `useStartTask(projectId)` (refreshes the task lists); `taskReadiness(project)` (ready, or the reason and its fix) and `startTaskError` (the messages above). `lib/routes.ts` gains `NEW_TASK`, `environmentPath` and `taskPath`. Uses `POST /projects/:id/tasks`, `GET /tasks`, `GET /tasks/:id`; no server changes.
+**Underneath:** `features/tasks/`: `api.ts`; `useTasks(projectId?)` (first page only, refetched every 3 s while any task is queued or working), `useTask(id)` (refetching every 3 s while the latest run is queued or running), `useStartTask(projectId)` (refreshes the task lists); `taskReadiness(project)` (ready, or the reason and its fix) and `startTaskError` (the messages above). `useNewTask` (the composer's state: text, project, branch, starting), shared by `/new` and Welcome step 4. `lib/routes.ts` gains `NEW_TASK`, `newTaskPath`, `environmentPath` and `taskPath`. Uses `POST /projects/:id/tasks`, `GET /tasks`, `GET /tasks/:id`; no server changes.
 
 **Not here:** the live run view, outcomes and the PR card (steps 6–7), the Inbox (step 8), choosing a branch from a list.
 

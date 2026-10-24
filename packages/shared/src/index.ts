@@ -1,13 +1,13 @@
-export * from "./api/index.js";
+export * from "./api/index";
 
 export type {
   Check,
   CheckName,
   EcosystemId,
   PackageManager,
-} from "./types/setup.js";
+} from "./types/setup";
 
-export { CHECK_NAMES } from "./types/setup.js";
+export { CHECK_NAMES } from "./types/setup";
 
 export type {
   EnvironmentSource,
@@ -28,9 +28,9 @@ export type {
   SetupAnswer,
   UserChannel,
   OnboardingStatus,
-} from "./types/environment.js";
+} from "./types/environment";
 
-export { checkKey } from "./types/environment.js";
+export { checkKey } from "./types/environment";
 
 export {
   ANSWER_CHANNEL,
@@ -41,4 +41,4 @@ export {
   runChannel,
   type QueuedWork,
   type QueuedWorkKind,
-} from "./types/queue.js";
+} from "./types/queue";

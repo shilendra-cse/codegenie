@@ -1,4 +1,4 @@
-import type { CreateTaskInput, TaskDetail } from "@codegenie/shared";
+import type { CreateTaskInput, TaskListItem } from "@codegenie/shared";
 import {
   skipToken,
   useMutation,
@@ -9,15 +9,17 @@ import { fetchTask, fetchTaskPage, startTask, taskKey, tasksKey } from "./api";
 
 const REFRESH_MS = 3_000;
 
-export const isTaskActive = (task: TaskDetail | undefined) =>
+export const isTaskActive = (task: TaskListItem | undefined) =>
   task?.label === "queued" || task?.label === "working";
 
-/** Your latest tasks (the first page), across projects or for one. */
+/** Your latest tasks (the first page), across projects or for one; refreshed while any is running. */
 export function useTasks(projectId?: string) {
   return useQuery({
     queryKey: tasksKey(projectId),
     queryFn: () => fetchTaskPage(projectId ? { projectId } : {}),
     select: (page) => page.tasks,
+    refetchInterval: (query) =>
+      query.state.data?.tasks.some(isTaskActive) ? REFRESH_MS : false,
   });
 }
 

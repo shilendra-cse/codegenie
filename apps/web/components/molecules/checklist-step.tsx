@@ -4,10 +4,11 @@ import { Button } from "@/components/atoms/button";
 import { StepMarker } from "@/components/atoms/step-marker";
 import { cn } from "@/lib/utils";
 
-export type ChecklistStepAction =
-  | { label: string; href: string; external: boolean }
-  /** Not built yet: shown, but can't be used. */
-  | { label: string; comingSoon: true };
+export type ChecklistStepAction = {
+  label: string;
+  href: string;
+  external: boolean;
+};
 
 export type ChecklistStepProps = {
   number: number;
@@ -30,16 +31,6 @@ function Action({
   action: ChecklistStepAction;
   hint?: string;
 }) {
-  if ("comingSoon" in action) {
-    return (
-      <>
-        <Button disabled title="Coming soon">
-          {action.label}
-        </Button>
-        <span className="text-[13px] text-faint">Coming soon</span>
-      </>
-    );
-  }
   return (
     <>
       <Button asChild variant="primary" glow>

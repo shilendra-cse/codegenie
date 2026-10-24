@@ -1,4 +1,4 @@
-import type { Check } from "./setup.js";
+import type { Check } from "./setup";
 
 export type EnvironmentSource = "detected" | "ai" | "user" | "mixed";
 

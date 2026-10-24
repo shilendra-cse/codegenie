@@ -1,4 +1,15 @@
-import { Inbox, Plus } from "lucide-react";
+import type { TaskLabel } from "@codegenie/shared";
+import {
+  CircleCheck,
+  CircleDot,
+  CircleX,
+  GitMerge,
+  GitPullRequest,
+  GitPullRequestDraft,
+  Inbox,
+  type LucideIcon,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
@@ -10,8 +21,16 @@ import {
 import { Icon } from "@/components/atoms/icon";
 import { Logo } from "@/components/atoms/logo";
 import { Skeleton } from "@/components/atoms/skeleton";
+import { Spinner } from "@/components/atoms/spinner";
 import { NavItem } from "@/components/molecules/nav-item";
-import { ADD_REPOSITORY, APP_HOME, INBOX, projectPath } from "@/lib/routes";
+import {
+  ADD_REPOSITORY,
+  APP_HOME,
+  INBOX,
+  NEW_TASK,
+  projectPath,
+  taskPath,
+} from "@/lib/routes";
 
 export type SidebarProject = {
   id: string;
@@ -21,10 +40,14 @@ export type SidebarProject = {
   needsYou?: boolean;
 };
 
+export type SidebarTask = { id: string; title: string; label: TaskLabel };
+
 export type SidebarProps = {
   pathname: string;
   projects: SidebarProject[] | undefined;
   projectsFailed: boolean;
+  /** Your latest tasks, newest first. */
+  tasks?: SidebarTask[];
   /** Shown above the account until the first-run steps are done. */
   gettingStarted?: ReactNode;
   account: ReactNode;
@@ -34,7 +57,7 @@ function ProjectList({
   pathname,
   projects,
   projectsFailed,
-}: Omit<SidebarProps, "account">) {
+}: Pick<SidebarProps, "pathname" | "projects" | "projectsFailed">) {
   const note = "px-2.5 py-1 text-[13px] text-faint";
   if (projectsFailed)
     return <p className={note}>Couldn&apos;t load projects.</p>;
@@ -83,11 +106,51 @@ function ProjectList({
   );
 }
 
+const TASK_STATUS: Record<TaskLabel, string> = {
+  queued: "queued",
+  working: "working",
+  pr_open: "PR open",
+  pr_draft: "draft PR",
+  merged: "merged",
+  closed: "PR closed",
+  no_changes: "no changes",
+  failed: "failed",
+  cancelled: "cancelled",
+};
+
+const TASK_ICONS: Record<
+  Exclude<TaskLabel, "queued" | "working">,
+  { icon: LucideIcon; className: string }
+> = {
+  pr_open: { icon: GitPullRequest, className: "text-ok" },
+  pr_draft: {
+    icon: GitPullRequestDraft,
+    className: "text-warn",
+  },
+  merged: { icon: GitMerge, className: "text-merged" },
+  closed: { icon: GitPullRequest, className: "text-faint" },
+  no_changes: { icon: CircleCheck, className: "text-faint" },
+  failed: { icon: CircleX, className: "text-err" },
+  cancelled: { icon: CircleDot, className: "text-faint" },
+};
+
+function TaskIcon({ label }: { label: TaskLabel }) {
+  if (label === "queued" || label === "working") {
+    return <Spinner size={14} className="text-primary-text" />;
+  }
+  const { icon, className } = TASK_ICONS[label];
+  return <Icon icon={icon} size={14} className={className} />;
+}
+
+const RECENT = 10;
+
 export function Sidebar({
   account,
   gettingStarted,
+  tasks,
   ...projects
 }: SidebarProps) {
+  const recent = (tasks ?? []).slice(0, RECENT);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-0.5 p-3">
       <Link
@@ -98,12 +161,16 @@ export function Sidebar({
         <Logo />
       </Link>
       <Button
-        disabled
-        title="Coming soon"
-        className="w-full justify-start disabled:text-faint disabled:opacity-100"
+        asChild
+        className="w-full justify-start aria-[current=page]:bg-muted"
       >
-        <Icon icon={Plus} />
-        New task
+        <Link
+          href={NEW_TASK}
+          aria-current={projects.pathname === NEW_TASK ? "page" : undefined}
+        >
+          <Icon icon={Plus} />
+          New task
+        </Link>
       </Button>
       <nav
         aria-label="Main"
@@ -128,6 +195,27 @@ export function Sidebar({
         </div>
         <div className="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
           <ProjectList {...projects} />
+          {recent.length > 0 && (
+            <>
+              <h2 className="pt-[18px] pb-1.5 pl-2.5 text-xs font-medium text-faint">
+                Recent
+              </h2>
+              {recent.map((task) => {
+                const href = taskPath(task.id);
+                return (
+                  <NavItem
+                    key={task.id}
+                    href={href}
+                    label={`${task.title}, ${TASK_STATUS[task.label]}`}
+                    leading={<TaskIcon label={task.label} />}
+                    active={projects.pathname === href}
+                  >
+                    {task.title}
+                  </NavItem>
+                );
+              })}
+            </>
+          )}
         </div>
       </nav>
       {gettingStarted && <div className="mt-3">{gettingStarted}</div>}

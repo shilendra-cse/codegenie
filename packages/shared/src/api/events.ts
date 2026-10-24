@@ -1,6 +1,6 @@
-import type { CheckStatus, StepStatus } from "../types/environment.js";
-import type { PackageManager } from "../types/setup.js";
-import type { FinalRunStatus, RunStage } from "./runs.js";
+import type { CheckStatus, StepStatus } from "../types/environment";
+import type { PackageManager } from "../types/setup";
+import type { FinalRunStatus, RunStage } from "./runs";
 
 export type RunEventBase = {
   runId: string;

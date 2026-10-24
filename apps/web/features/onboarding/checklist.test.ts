@@ -83,8 +83,12 @@ describe("buildChecklist", () => {
       ["install", installUrl],
       ["add-repo", "/projects/new"],
       ["set-up", "/projects/fresh/environment"],
-      ["first-task", "/new"],
+      ["first-task", "/new?project=ready"],
     ]);
+    expect(steps[3]).toMatchObject({
+      projectId: "ready",
+      projectName: "ready",
+    });
   });
 
   it("names the project the repository and setup steps are about", () => {

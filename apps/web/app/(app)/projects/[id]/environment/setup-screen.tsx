@@ -24,7 +24,7 @@ import {
 import { useSetupProgress } from "@/features/setup/use-setup-progress";
 import { ApiError } from "@/lib/api/client";
 import { formatDuration } from "@/lib/format";
-import { projectPath } from "@/lib/routes";
+import { newTaskPath, projectPath } from "@/lib/routes";
 import { useNow } from "@/lib/use-now";
 import { toSetupBlocks } from "./setup-blocks";
 
@@ -201,6 +201,7 @@ export function SetupScreen({ projectId }: SetupScreenProps) {
               <EnvironmentCard
                 projectName={projectName}
                 environment={environment}
+                newTaskHref={newTaskPath(projectId)}
               />
             )}
           </>

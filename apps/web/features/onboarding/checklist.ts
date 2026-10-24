@@ -1,5 +1,10 @@
 import type { ProjectResponse } from "@codegenie/shared";
-import { ADD_REPOSITORY, environmentPath, NEW_TASK } from "@/lib/routes";
+import {
+  ADD_REPOSITORY,
+  environmentPath,
+  NEW_TASK,
+  newTaskPath,
+} from "@/lib/routes";
 
 export type ChecklistStepId = "install" | "add-repo" | "set-up" | "first-task";
 
@@ -10,7 +15,7 @@ export type ChecklistStep = {
   external: boolean;
   /** The project a repository or setup step is about, once there is one. */
   projectName?: string;
-  /** The project the set-up step is about, while it still needs setting up. */
+  /** The project the step is about: being set up, or ready for the first task. */
   projectId?: string;
 };
 
@@ -46,7 +51,14 @@ export function buildChecklist({
       projectName: (ready ?? needsSetUp)?.repo.name,
       projectId: needsSetUp?.id,
     },
-    { id: "first-task", done: hasTasks, href: NEW_TASK, external: false },
+    {
+      id: "first-task",
+      done: hasTasks,
+      href: ready ? newTaskPath(ready.id) : NEW_TASK,
+      external: false,
+      projectName: ready?.repo.name,
+      projectId: ready?.id,
+    },
   ];
 
   const current = steps.findIndex((step) => !step.done);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { RunError, RunResponse, RunStage, RunStatus } from "./runs.js";
+import type { RunError, RunResponse, RunStage, RunStatus } from "./runs";
 
 export const createTaskSchema = z.object({
   prompt: z.string().trim().min(1, "Describe the task.").max(20_000),

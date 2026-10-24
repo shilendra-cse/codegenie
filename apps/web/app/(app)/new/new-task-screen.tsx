@@ -1,10 +1,8 @@
 "use client";
 
-import { createTaskSchema, type ProjectResponse } from "@codegenie/shared";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
@@ -12,40 +10,12 @@ import { Skeleton } from "@/components/atoms/skeleton";
 import type { PickerProject } from "@/components/molecules/project-picker";
 import { RecentTasks } from "@/components/organisms/recent-tasks";
 import { TaskComposer } from "@/components/organisms/task-composer";
-import { toSidebarProject, useProjects } from "@/features/projects/projects";
-import {
-  defaultProjectId,
-  startTaskError,
-  taskReadiness,
-} from "@/features/tasks/start-task";
-import { useStartTask, useTasks } from "@/features/tasks/use-tasks";
+import { useProjects } from "@/features/projects/projects";
+import { useNewTask } from "@/features/tasks/use-new-task";
+import { useTasks } from "@/features/tasks/use-tasks";
 import { ADD_REPOSITORY, taskPath } from "@/lib/routes";
 
 const RECENT = 5;
-const LAST_PROJECT = "codegenie:last-project";
-
-// Only a convenience: storage can be unavailable (private windows, blocked site data).
-const lastProject = () => {
-  try {
-    return localStorage.getItem(LAST_PROJECT);
-  } catch {
-    return null;
-  }
-};
-const rememberProject = (id: string) => {
-  try {
-    localStorage.setItem(LAST_PROJECT, id);
-  } catch {}
-};
-
-function toPickerProject(project: ProjectResponse): PickerProject {
-  const readiness = taskReadiness(project);
-  return {
-    ...toSidebarProject(project),
-    branch: project.defaultBranch,
-    blocked: readiness.ready ? null : readiness,
-  };
-}
 
 export type NewTaskScreenProps = { projectId?: string };
 
@@ -53,36 +23,12 @@ export function NewTaskScreen({ projectId: requested }: NewTaskScreenProps) {
   const router = useRouter();
   const projects = useProjects();
   const tasks = useTasks();
-  const [text, setText] = useState("");
-  const [chosenId, setChosenId] = useState<string | null>(null);
-  const [branch, setBranch] = useState<string | null>(null);
-
   const all = projects.data ?? [];
-  const pickable = all.map(toPickerProject);
-  const projectId =
-    chosenId ?? defaultProjectId(all, [requested, lastProject()]);
-  const project = all.find((p) => p.id === projectId);
-  const startTask = useStartTask(projectId ?? "");
-
-  const baseBranch = branch ?? project?.defaultBranch ?? "";
-  const branchCheck = createTaskSchema.shape.baseBranch.safeParse(baseBranch);
-  const branchError =
-    branch !== null && !branchCheck.success
-      ? (branchCheck.error.issues[0]?.message ?? "Not a valid branch name.")
-      : null;
-
-  const start = () => {
-    if (!projectId) return;
-    startTask.mutate(
-      { prompt: text, baseBranch },
-      {
-        onSuccess: (created) => {
-          rememberProject(projectId);
-          router.push(taskPath(created.task.id));
-        },
-      },
-    );
-  };
+  const composer = useNewTask({
+    projects: all,
+    preferredProjectId: requested,
+    onStarted: (created) => router.push(taskPath(created.task.id)),
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-7 px-6 pt-[14vh] pb-16">
@@ -107,29 +53,10 @@ export function NewTaskScreen({ projectId: requested }: NewTaskScreenProps) {
         <NoProjects />
       ) : (
         <div className="rise flex flex-col gap-3 [animation-delay:80ms]">
-          <TaskComposer
-            text={text}
-            onTextChange={setText}
-            projects={pickable}
-            projectId={projectId}
-            onProjectChange={(id) => {
-              setChosenId(id);
-              setBranch(null);
-              startTask.reset();
-            }}
-            branch={baseBranch}
-            onBranchChange={setBranch}
-            branchError={branchError}
-            canStart={Boolean(text.trim()) && Boolean(project) && !branchError}
-            starting={startTask.isPending}
-            error={
-              startTask.error && projectId
-                ? startTaskError(startTask.error, projectId)
-                : null
-            }
-            onStart={start}
-          />
-          {!projectId && <NoReadyProject projects={pickable} />}
+          <TaskComposer {...composer} />
+          {!composer.projectId && (
+            <NoReadyProject projects={composer.projects} />
+          )}
           <p className="text-center text-[13px] text-faint">
             Specific tasks work best: &quot;Add pagination to GET /orders (page
             and pageSize, default 20), with tests&quot; beats &quot;improve the

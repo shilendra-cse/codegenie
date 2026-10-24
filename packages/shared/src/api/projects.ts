@@ -4,8 +4,8 @@ import type {
   EnvironmentHealth,
   EnvironmentSource,
   SetupStep,
-} from "../types/environment.js";
-import type { Check } from "../types/setup.js";
+} from "../types/environment";
+import type { Check } from "../types/setup";
 
 export const projectParamsSchema = z.object({
   id: z.uuid("The project id must be a UUID."),

@@ -7,6 +7,7 @@ describe("EnvironmentCard", () => {
     render(
       <EnvironmentCard
         projectName="dodesk"
+        newTaskHref="/new?project=p1"
         environment={{
           version: 1,
           active: true,
@@ -54,7 +55,7 @@ describe("EnvironmentCard", () => {
     expect(screen.getByText("(detected)")).toBeInTheDocument();
     expect(screen.getByText("Saved. dodesk is ready.")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Describe your first task" }),
-    ).toBeDisabled();
+      screen.getByRole("link", { name: "Describe your first task" }),
+    ).toHaveAttribute("href", "/new?project=p1");
   });
 });
