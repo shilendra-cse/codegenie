@@ -1,15 +1,11 @@
 import {
   checkKey,
+  type CheckComparison,
   type CheckResult,
   type CheckStatus,
 } from "@codegenie/shared";
 
-export type CheckComparison =
-  | "passing"
-  | "failing"
-  | "fixed"
-  | "regressed"
-  | "still-failing";
+export type { CheckComparison };
 
 export type ComparedCheck = CheckResult & { comparison: CheckComparison };
 

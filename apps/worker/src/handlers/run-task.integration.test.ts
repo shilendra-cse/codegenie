@@ -242,6 +242,9 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       type: "done",
       payload: { status: "succeeded" },
     });
+    expect(events.find((e) => e.type === "checks_completed")).toMatchObject({
+      payload: { checks: expect.any(Array) },
+    });
     expect(published.at(-1)).toMatchObject({
       type: "done",
       seq: events.length,

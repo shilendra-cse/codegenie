@@ -104,6 +104,28 @@ export type RunEventGitPush = RunEventBase & {
 };
 
 /** The task got its short title, written by the model at the start of its first run. */
+/** How a check after the agent's work compares with the same check before it. */
+export type CheckComparison =
+  | "passing"
+  | "failing"
+  | "fixed"
+  | "regressed"
+  | "still-failing";
+
+/** The checks run again after the agent's work (the Checks stage), compared with before. */
+export type RunEventChecksCompleted = RunEventBase & {
+  type: "checks_completed";
+  /** null when the repository has no checks. */
+  passed: boolean | null;
+  checks: {
+    name: string;
+    cwd: string;
+    command: string;
+    status: CheckStatus;
+    comparison: CheckComparison;
+  }[];
+};
+
 export type RunEventTaskTitled = RunEventBase & {
   type: "task_titled";
   title: string;
@@ -151,6 +173,7 @@ export type RunEvent =
   | RunEventGitPush
   | RunEventPrOpened
   | RunEventTaskTitled
+  | RunEventChecksCompleted
   | RunEventPreviewReady
   | RunEventError
   | RunEventDone;

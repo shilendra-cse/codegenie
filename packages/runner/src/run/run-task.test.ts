@@ -187,6 +187,33 @@ describe("runTask", () => {
     });
   });
 
+  it("reports the checks after the agent's work as an event", async () => {
+    const { sandbox } = fakeSandbox("npm run test");
+    const events: RunEvent[] = [];
+    await runTask(options(sandbox, { emit: (event) => events.push(event) }));
+
+    const completed = events.find((e) => e.type === "checks_completed");
+    expect(completed).toEqual({
+      type: "checks_completed",
+      runId: expect.any(String),
+      ts: expect.any(String),
+      passed: false,
+      checks: [
+        {
+          name: "test",
+          cwd: ".",
+          command: "npm run test",
+          status: "failing",
+          comparison: "still-failing",
+        },
+      ],
+    });
+    const types = events.map((e) => e.type);
+    expect(types.indexOf("checks_completed")).toBeGreaterThan(
+      types.lastIndexOf("stage_changed"),
+    );
+  });
+
   it("reports a regression the agent introduced", async () => {
     const { sandbox } = fakeSandbox();
     const base = sandbox.execHandler;

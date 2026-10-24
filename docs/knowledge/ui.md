@@ -160,6 +160,7 @@ The run view replays stored events and then follows live ones (`GET /runs/:id/ev
 |---|---|
 | `stage_changed`, `sandbox_created` | the stage list |
 | `setup_started`, `setup_completed` | the Set up line (steps, checks, health) |
+| `checks_completed` | the Checks line and the Checks tab's After column |
 | `tool_start`, `tool_end` | activity rows (grouped reads/searches, edits with +/−, commands with results), the Changes and Terminal tabs |
 | `text_delta` | the streaming reasoning line |
 | `agent_step` | step count and cost (streamed, not stored) |
