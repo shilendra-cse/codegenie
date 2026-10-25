@@ -21,6 +21,7 @@ describe("parseConfig", () => {
       sandbox: { provider: "docker" },
       reaperIntervalMs: 5 * 60_000,
       answerTimeoutMs: 30 * 60_000,
+      frontendUrl: undefined,
       github: { appId: "123", privateKey: key.GITHUB_APP_PRIVATE_KEY },
     });
   });
@@ -39,6 +40,13 @@ describe("parseConfig", () => {
     expect(
       parseConfig({ ...key, WORKER_CONCURRENCY: "5", NODE_ENV: "production" }),
     ).toMatchObject({ concurrency: 5, prettyLogs: false });
+  });
+
+  it("reads the web app's address without a trailing slash", () => {
+    expect(
+      parseConfig({ ...key, FRONTEND_URL: "https://codegenie.dev/" })
+        .frontendUrl,
+    ).toBe("https://codegenie.dev");
   });
 
   it("connects to Daytona when it's the sandbox provider", () => {
@@ -67,6 +75,7 @@ describe("parseConfig", () => {
     [{ ...key, SANDBOX_PROVIDER: "e2b" }, "SANDBOX_PROVIDER"],
     [{ ...key, SANDBOX_RETENTION_HOURS: "-1" }, "SANDBOX_RETENTION_HOURS"],
     [{ ...key, REAPER_INTERVAL_MINUTES: "0" }, "REAPER_INTERVAL_MINUTES"],
+    [{ ...key, FRONTEND_URL: "localhost:3000" }, "FRONTEND_URL"],
   ])("rejects %j", (env, message) => {
     expect(() => parseConfig(env)).toThrow(ConfigError);
     expect(() => parseConfig(env)).toThrow(message);

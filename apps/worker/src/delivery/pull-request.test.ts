@@ -99,6 +99,14 @@ describe("pullRequestBody", () => {
     expect(body).toContain("- …and 3 more");
   });
 
+  it("links to the task when CodeGenie's address is known", () => {
+    expect(
+      pullRequestBody(run({}), { taskUrl: "https://codegenie.dev/tasks/t1" }),
+    ).toMatch(
+      /\n\n<sub>Opened by CodeGenie · \[View the task\]\(https:\/\/codegenie\.dev\/tasks\/t1\)<\/sub>$/,
+    );
+  });
+
   it("says when there are no checks", () => {
     expect(pullRequestBody(run({ passed: null }))).toContain(
       "No checks are set up for this repository.",

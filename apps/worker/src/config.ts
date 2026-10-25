@@ -40,6 +40,7 @@ const schema = z
     SANDBOX_RETENTION_HOURS: z.coerce.number().min(0).default(4),
     REAPER_INTERVAL_MINUTES: z.coerce.number().min(1).default(5),
     ONBOARDING_ANSWER_TIMEOUT_MINUTES: z.coerce.number().min(1).default(30),
+    FRONTEND_URL: z.url({ protocol: /^https?$/ }).optional(),
 
     GITHUB_APP_ID: z
       .string({ error: `GITHUB_APP_ID is not set. Add it to ${ENV_FILE}.` })
@@ -73,6 +74,7 @@ export type WorkerConfig = {
   sandbox: SandboxConfig;
   reaperIntervalMs: number;
   answerTimeoutMs: number;
+  frontendUrl: string | undefined;
   github: { appId: string; privateKey: string };
 };
 
@@ -113,6 +115,7 @@ export function parseConfig(
         : { provider: "docker" },
     reaperIntervalMs: e.REAPER_INTERVAL_MINUTES * 60_000,
     answerTimeoutMs: e.ONBOARDING_ANSWER_TIMEOUT_MINUTES * 60_000,
+    frontendUrl: e.FRONTEND_URL?.replace(/\/+$/, ""),
     github: { appId: e.GITHUB_APP_ID, privateKey: e.GITHUB_APP_PRIVATE_KEY },
   };
 }

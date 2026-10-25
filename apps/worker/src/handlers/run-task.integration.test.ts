@@ -135,6 +135,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
           return sandbox;
         },
         github: github.github,
+        frontendUrl: "http://localhost:3000",
         ...(titleScript && {
           titleModel: scriptedModel(titleScript).resolved,
         }),
@@ -305,6 +306,11 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
       base: "main",
       draft: false,
       body: expect.stringContaining("Added GET /health."),
+    });
+    expect(githubCalls.at(-1)!.body).toMatchObject({
+      body: expect.stringContaining(
+        `[View the task](http://localhost:3000/tasks/${run.taskId})`,
+      ),
     });
 
     expect(await taskRow(run.taskId)).toMatchObject({

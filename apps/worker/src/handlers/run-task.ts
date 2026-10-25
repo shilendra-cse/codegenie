@@ -36,6 +36,7 @@ export type RunTaskDeps = {
   log: Log;
   createSandbox: SandboxFactory;
   github: Pick<GithubApp, "repoToken" | "repoClient">;
+  frontendUrl?: string;
   /** Writes the task's short title on its first run; without it, the task keeps its first line. */
   titleModel?: ResolvedModel;
 } & Pick<RunTaskOptions, "model" | "limits">;
