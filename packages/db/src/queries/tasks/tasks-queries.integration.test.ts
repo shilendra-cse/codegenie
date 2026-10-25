@@ -51,7 +51,7 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
     const project = await insertProject(db);
     const { task } = await createTaskWithRun(db, values(project));
 
-    await setTaskBranch(db, task.id, "codegenie/1234abcd-add-a-readme");
+    await setTaskBranch(db, task.id, "hobai/1234abcd-add-a-readme");
     await setTaskPullRequest(db, task.id, {
       number: 7,
       url: "https://github.com/acme/app/pull/7",
@@ -60,7 +60,7 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
 
     const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
     expect(row).toMatchObject({
-      branchName: "codegenie/1234abcd-add-a-readme",
+      branchName: "hobai/1234abcd-add-a-readme",
       prNumber: 7,
       prUrl: "https://github.com/acme/app/pull/7",
       prDraft: true,

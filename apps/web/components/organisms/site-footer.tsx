@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Logo } from "@/components/atoms/logo";
 
 export function SiteFooter() {
@@ -6,7 +7,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-[1160px] flex-wrap items-center gap-4 px-6 py-6">
         <Logo variant="mark" />
         <span className="text-[13px] text-faint">
-          © {new Date().getFullYear()} CodeGenie
+          © {new Date().getFullYear()} {PRODUCT_NAME}
         </span>
       </div>
     </footer>

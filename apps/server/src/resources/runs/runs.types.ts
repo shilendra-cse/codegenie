@@ -1,5 +1,5 @@
-import type { UserRun } from "@codegenie/db";
-import type { RunResponse } from "@codegenie/shared";
+import type { UserRun } from "@hobai/db";
+import type { RunResponse } from "@hobai/shared";
 
 export function runDurationMs(run: Pick<UserRun, "startedAt" | "finishedAt">) {
   return run.startedAt && run.finishedAt

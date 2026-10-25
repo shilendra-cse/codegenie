@@ -1,10 +1,10 @@
-import type { UserTask, UserTaskListItem } from "@codegenie/db";
+import type { UserTask, UserTaskListItem } from "@hobai/db";
 import type {
   QueuedWork,
   TaskDetail,
   TaskLabel,
   TaskListItem,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import type { JobsOptions } from "bullmq";
 import { runDurationMs, toRunResponse } from "../runs/runs.types";
 

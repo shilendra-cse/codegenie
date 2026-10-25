@@ -1,10 +1,6 @@
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
-import type {
-  SetupAnswer,
-  SetupQuestion,
-  UserChannel,
-} from "@codegenie/shared";
+import type { SetupAnswer, SetupQuestion, UserChannel } from "@hobai/shared";
 
 export class InputClosedError extends Error {
   constructor() {

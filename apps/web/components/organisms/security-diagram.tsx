@@ -1,5 +1,6 @@
 import { Bot, GitBranch, Lock, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Badge } from "@/components/atoms/badge";
 import { GitHubMark } from "@/components/atoms/github-mark";
 import { Icon } from "@/components/atoms/icon";
@@ -60,7 +61,7 @@ export function SecurityDiagram() {
       </div>
       <FlowArrow label="changes, checked by hash" />
       <div className={cn(box, "flex-[1_1_220px] border border-border")}>
-        <span className="font-semibold">CodeGenie</span>
+        <span className="font-semibold">{PRODUCT_NAME}</span>
         <Chip icon={Lock}>Write token · one repo · 1 hour</Chip>
         <span className={note}>Stays outside the sandbox.</span>
       </div>

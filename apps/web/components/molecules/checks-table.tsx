@@ -1,4 +1,4 @@
-import type { CheckComparison, CheckStatus } from "@codegenie/shared";
+import type { CheckComparison, CheckStatus } from "@hobai/shared";
 import { cn } from "@/lib/utils";
 
 export type CheckRowView = {

@@ -1,4 +1,5 @@
-import type { DeliverableRun } from "@codegenie/runner";
+import type { DeliverableRun } from "@hobai/runner";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 
 const MAX_SUBJECT = 72;
 const MAX_SUMMARY = 20_000;
@@ -77,8 +78,8 @@ export function pullRequestBody(
 
   sections.push(
     options.taskUrl
-      ? `<sub>Opened by CodeGenie · [View the task](${options.taskUrl})</sub>`
-      : "<sub>Opened by CodeGenie.</sub>",
+      ? `<sub>Opened by ${PRODUCT_NAME} · [View the task](${options.taskUrl})</sub>`
+      : `<sub>Opened by ${PRODUCT_NAME}.</sub>`,
   );
   return sections.join("\n\n");
 }

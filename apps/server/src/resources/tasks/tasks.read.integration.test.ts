@@ -6,8 +6,8 @@ import {
   saveRunDiff,
   setTaskPullRequest,
   setTaskStatusForPullRequest,
-} from "@codegenie/db";
-import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
+} from "@hobai/db";
+import { insertProject, testDatabaseOrSkip } from "@hobai/db/testing";
 import { eq } from "drizzle-orm";
 import type { Response } from "express";
 import { afterAll, describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ import {
   type TaskFilter,
   type TaskLabel,
   type TaskListItem,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 const database = await testDatabaseOrSkip("task and run reads");
 

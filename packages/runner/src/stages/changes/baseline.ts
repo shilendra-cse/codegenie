@@ -1,6 +1,7 @@
-import type { Sandbox } from "@codegenie/sandbox";
+import type { Sandbox } from "@hobai/sandbox";
+import { SHORT_NAME } from "@hobai/shared/brand";
 
-const BASELINE_MESSAGE = "codegenie: baseline";
+const BASELINE_MESSAGE = `${SHORT_NAME}: baseline`;
 
 export async function createBaseline(sandbox: Sandbox): Promise<string> {
   const result = await sandbox.exec(

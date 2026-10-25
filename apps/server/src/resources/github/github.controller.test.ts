@@ -46,9 +46,7 @@ function controllers(token: string | null = "ghu_user") {
   return createGithubControllers({
     githubToken: () => Promise.resolve(token),
     installUrl: () =>
-      Promise.resolve(
-        "https://github.com/apps/codegenie-dev/installations/new",
-      ),
+      Promise.resolve("https://github.com/apps/hobai-dev/installations/new"),
     userProjectRepos: () =>
       Promise.resolve([{ id: "project-1", repoGithubId: 1 }]),
     fetch: githubFetch,
@@ -72,7 +70,7 @@ describe("GitHub controllers", () => {
         installations: [
           { id: 42, accountLogin: "acme", accountType: "organization" },
         ],
-        installUrl: "https://github.com/apps/codegenie-dev/installations/new",
+        installUrl: "https://github.com/apps/hobai-dev/installations/new",
       },
     });
   });

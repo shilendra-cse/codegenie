@@ -1,4 +1,5 @@
-import type { RunResponse, TaskDetail } from "@codegenie/shared";
+import type { RunResponse, TaskDetail } from "@hobai/shared";
+import { PRODUCT_NAME, SHORT_NAME } from "@hobai/shared/brand";
 import { formatDuration } from "@/lib/format";
 import { environmentPath, projectPath } from "@/lib/routes";
 
@@ -58,9 +59,9 @@ const FAILURE_TITLES: Record<string, string> = {
   verify_failed: "Failed while running the checks",
   deliver_failed: "Couldn't open the pull request",
   github_access: "Couldn't reach the repository on GitHub",
-  worker_lost: "CodeGenie stopped unexpectedly",
-  lost_in_queue: "CodeGenie stopped unexpectedly",
-  worker_error: "CodeGenie stopped unexpectedly",
+  worker_lost: `${PRODUCT_NAME} stopped unexpectedly`,
+  lost_in_queue: `${PRODUCT_NAME} stopped unexpectedly`,
+  worker_error: `${PRODUCT_NAME} stopped unexpectedly`,
 };
 
 export const failureTitle = (code: string | undefined) =>
@@ -91,7 +92,7 @@ function prLine(
   baseBranch: string,
 ): string {
   const commit = run.commitSha
-    ? ` · verified commit ${run.commitSha.slice(0, 7)} by codegenie[bot]`
+    ? ` · verified commit ${run.commitSha.slice(0, 7)} by ${SHORT_NAME}[bot]`
     : "";
   switch (state) {
     case "pr_draft":

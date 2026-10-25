@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Skeleton } from "@/components/atoms/skeleton";
@@ -41,7 +42,7 @@ type Copy = {
 const COPY: Record<StepId, Copy> = {
   install: {
     title: "Install the GitHub App",
-    body: "Choose which repositories CodeGenie can see. You can change the selection on GitHub at any time.",
+    body: `Choose which repositories ${PRODUCT_NAME} can see. You can change the selection on GitHub at any time.`,
     label: "Install on GitHub",
     hint: "Opens GitHub, then brings you back here.",
   },
@@ -57,7 +58,7 @@ const COPY: Record<StepId, Copy> = {
   },
   "set-up": {
     title: "Set up its environment",
-    body: "CodeGenie finds out how to install and check it, and asks you if it can’t decide. Once per repository, a few minutes.",
+    body: `${PRODUCT_NAME} finds out how to install and check it, and asks you if it can’t decide. Once per repository, a few minutes.`,
     label: "Start setup",
     done: (name) => `${name} is ready.`,
   },

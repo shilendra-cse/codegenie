@@ -1,4 +1,4 @@
-import type { RunEvent } from "@codegenie/shared";
+import type { RunEvent } from "@hobai/shared";
 import type { TextStreamPart, ToolSet } from "ai";
 
 export const EVENT_OUTPUT_CHARS = 2_000;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { OnboardingAnswer } from "@codegenie/shared";
+import type { OnboardingAnswer } from "@hobai/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";

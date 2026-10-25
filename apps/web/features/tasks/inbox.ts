@@ -1,4 +1,4 @@
-import type { RunStage, TaskFilter, TaskListItem } from "@codegenie/shared";
+import type { RunStage, TaskFilter, TaskListItem } from "@hobai/shared";
 import { failureTitle } from "@/features/runs/outcome";
 
 export type InboxFilter = "all" | "needs_you" | TaskFilter;

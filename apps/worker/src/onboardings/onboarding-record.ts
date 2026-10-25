@@ -5,9 +5,9 @@ import {
   markOnboardingWaiting,
   type Db,
   type OnboardingOutcome,
-} from "@codegenie/db";
-import type { OnboardingResult } from "@codegenie/runner";
-import type { OnboardingEndStatus } from "@codegenie/shared";
+} from "@hobai/db";
+import type { OnboardingResult } from "@hobai/runner";
+import type { OnboardingEndStatus } from "@hobai/shared";
 
 export type OnboardingFailure = { code: string; message: string };
 

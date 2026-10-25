@@ -1,4 +1,4 @@
-import { SandboxFileError, SandboxGoneError } from "@codegenie/sandbox";
+import { SandboxFileError, SandboxGoneError } from "@hobai/sandbox";
 import { describe, expect, it } from "vitest";
 import { runTool } from "./run-tool.js";
 import { ToolError } from "./tool-error.js";

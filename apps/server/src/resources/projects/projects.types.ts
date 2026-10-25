@@ -1,5 +1,5 @@
-import type { DbStoredEnvironment, UserProject } from "@codegenie/db";
-import type { EnvironmentResponse, ProjectResponse } from "@codegenie/shared";
+import type { DbStoredEnvironment, UserProject } from "@hobai/db";
+import type { EnvironmentResponse, ProjectResponse } from "@hobai/shared";
 
 export function toProjectResponse(project: UserProject): ProjectResponse {
   const environment = project.environments[0];

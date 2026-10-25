@@ -1,11 +1,11 @@
-import type { Emit } from "@codegenie/agent";
-import type { Sandbox } from "@codegenie/sandbox";
+import type { Emit } from "@hobai/agent";
+import type { Sandbox } from "@hobai/sandbox";
 import {
   checkKey,
   type Check,
   type EnvironmentConfig,
   type SetupResult,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { applySteps } from "../../environment/apply.js";
 import { uncoveredProjects } from "../../environment/health.js";
 import { buildConfig } from "../../environment/build-config.js";

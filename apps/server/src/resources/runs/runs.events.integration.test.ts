@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import type { AddressInfo } from "node:net";
-import { type Db, insertRunEvent, runs } from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
+import { type Db, insertRunEvent, runs } from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
 import { eq } from "drizzle-orm";
 import express, { type ErrorRequestHandler } from "express";
 import { afterAll, describe, expect, it } from "vitest";

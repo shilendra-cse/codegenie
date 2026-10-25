@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
 import { createToolContext } from "../../../tools/core/context.js";
 import { readFile } from "../../../tools/read-file/read-file.js";
 import { editFile } from "./edit-file.js";

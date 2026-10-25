@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { RepositoryRow, type RepositoryRowProps } from "./repository-row";
 
 const repo: RepositoryRowProps["repo"] = {
@@ -56,7 +57,7 @@ describe("RepositoryRow", () => {
     fireEvent.focus(badge.closest("[tabindex]")!);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "CodeGenie supports JavaScript and TypeScript.",
+      `${PRODUCT_NAME} supports JavaScript and TypeScript.`,
     );
   });
 

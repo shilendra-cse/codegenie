@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { StepCard } from "@/components/molecules/step-card";
 
 export function HowItWorks() {
@@ -14,7 +15,7 @@ export function HowItWorks() {
         </div>
         <div className="reveal flex flex-wrap gap-4">
           <StepCard number="01" title="Connect a repository">
-            Install the GitHub App on the repositories you choose. CodeGenie
+            Install the GitHub App on the repositories you choose. {PRODUCT_NAME}
             learns how to install and check each one, and asks you only what it
             can&apos;t work out.
           </StepCard>

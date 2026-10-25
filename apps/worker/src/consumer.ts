@@ -5,7 +5,7 @@ import {
   type OnboardingAnswerMessage,
   type QueuedWork,
   type QueuedWorkKind,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { Worker, type Job } from "bullmq";
 import type { Redis } from "ioredis";
 import type { Log } from "./lib/log.js";

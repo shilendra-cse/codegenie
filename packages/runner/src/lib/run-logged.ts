@@ -1,4 +1,4 @@
-import { SANDBOX_LOG_DIR, type Sandbox } from "@codegenie/sandbox";
+import { SANDBOX_LOG_DIR, type Sandbox } from "@hobai/sandbox";
 import { shellQuote } from "./shell-quote.js";
 
 export type LoggedRun = {

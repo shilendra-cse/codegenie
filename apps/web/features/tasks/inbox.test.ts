@@ -1,4 +1,4 @@
-import type { TaskListItem } from "@codegenie/shared";
+import type { TaskListItem } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { groupByDay, parseInboxFilter, taskDetail } from "./inbox";
 

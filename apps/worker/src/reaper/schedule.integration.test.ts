@@ -1,4 +1,4 @@
-import { WORK_QUEUE } from "@codegenie/shared";
+import { WORK_QUEUE } from "@hobai/shared";
 import { Queue } from "bullmq";
 import { afterAll, describe, expect, it } from "vitest";
 import { testRedisOrSkip } from "../testing/test-redis.js";

@@ -9,6 +9,7 @@ import {
   DaytonaProcessExecutionTimeoutError,
   type CreateSandboxFromSnapshotParams,
 } from "@daytonaio/sdk";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import {
   SandboxCreateError,
   SandboxError,
@@ -194,7 +195,7 @@ export class DaytonaSandbox implements Sandbox {
       MAX_EXEC_TIMEOUT_MS,
     );
     const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
-    const marker = `__codegenie_${randomBytes(8).toString("hex")}__`;
+    const marker = `__${SHORT_NAME}_${randomBytes(8).toString("hex")}__`;
 
     const started = Date.now();
     let response: { exitCode: number; result: string };

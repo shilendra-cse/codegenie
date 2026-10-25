@@ -1,7 +1,4 @@
-import type {
-  OnboardingAnswer,
-  OnboardingAnswerMessage,
-} from "@codegenie/shared";
+import type { OnboardingAnswer, OnboardingAnswerMessage } from "@hobai/shared";
 
 type Receive = (questionId: string, answer: OnboardingAnswer) => void;
 

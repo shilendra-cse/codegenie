@@ -3,7 +3,7 @@ import type {
   EnvironmentListResponse,
   OnboardingCancelOutcome,
   OnboardingResponse,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { api } from "@/lib/api/client";
 
 export const onboardingKey = (projectId: string) => [

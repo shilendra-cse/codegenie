@@ -1,4 +1,4 @@
-import type { QueuedWork } from "@codegenie/shared";
+import type { QueuedWork } from "@hobai/shared";
 import type { Queue } from "bullmq";
 
 const SCHEDULER_ID = "reaper";

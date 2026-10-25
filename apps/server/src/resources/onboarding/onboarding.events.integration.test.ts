@@ -8,8 +8,8 @@ import {
   markOnboardingEnded,
   markOnboardingStarted,
   markOnboardingWaiting,
-} from "@codegenie/db";
-import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
+} from "@hobai/db";
+import { insertProject, testDatabaseOrSkip } from "@hobai/db/testing";
 import express, { type ErrorRequestHandler } from "express";
 import { afterAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";

@@ -2,7 +2,7 @@
 
 > Status: **Accepted** · Last updated: 2026-10-25 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
 
-The agent is the part of CodeGenie that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@codegenie/agent`); the runner's `runTask()` calls `runAgent()`, and the CLI, the worker and the evals all go through `runTask()`. The worker also calls `titleTask()` directly (section 10). A second agent, the setup agent (section 9), shares the same loop.
+The agent is the part of hobai that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@hobai/agent`); the runner's `runTask()` calls `runAgent()`, and the CLI, the worker and the evals all go through `runTask()`. The worker also calls `titleTask()` directly (section 10). A second agent, the setup agent (section 9), shares the same loop.
 
 ## 1. How it fits
 
@@ -76,7 +76,7 @@ Shared rules:
 - **Paths:** resolved against `/workspace`; anything outside is refused; writes inside `.git` are refused. The container is the real security boundary.
 - **Read before edit:** editing or overwriting a file requires reading it first in the same run.
 - **Output size:** every result is capped at 30,000 characters, keeping whole lines from the start (40%) and end (60%).
-- **Full output kept:** `bash` and `run_checks` save complete output to `/tmp/codegenie/logs/NNNN-*.log` (outside the repo). Shortened results say where the log is; the agent can `search` or `read_file` it.
+- **Full output kept:** `bash` and `run_checks` save complete output to `/tmp/hobai/logs/NNNN-*.log` (outside the repo). Shortened results say where the log is; the agent can `search` or `read_file` it.
 - **Errors:** expected failures return `Error: …` to the model so it can retry. Infrastructure failures (sandbox gone) stop the run.
 
 ## 4. The loop
@@ -146,7 +146,7 @@ To add a model: add a catalog entry with values from the provider's model and pr
 ## 8. Testing
 
 - **Fake model** (`testing/mock-model.ts`): a scripted LLM that replays tool calls and text per call, with configurable usage, delays and errors. No network, no cost.
-- **Fake sandbox** (`packages/sandbox/src/testing/fake-sandbox.ts`, imported from `@codegenie/sandbox/testing`): in-memory files and scripted `exec`.
+- **Fake sandbox** (`packages/sandbox/src/testing/fake-sandbox.ts`, imported from `@hobai/sandbox/testing`): in-memory files and scripted `exec`.
 - **Loop tests** cover finishing, real tool execution, event order, the prompt sent, nudges, all three limits with forced wrap-up, cancellation, sandbox loss before and during the run, provider errors, and recovery from tool errors.
 - **Integration tests** run tools against a real `DockerSandbox`.
 

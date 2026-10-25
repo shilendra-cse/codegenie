@@ -1,4 +1,4 @@
-import { SandboxFileError } from "@codegenie/sandbox";
+import { SandboxFileError } from "@hobai/sandbox";
 import { ToolError } from "./tool-error.js";
 import { truncateForModel } from "../../lib/truncate.js";
 

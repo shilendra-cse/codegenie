@@ -1,5 +1,5 @@
-import type { Sandbox } from "@codegenie/sandbox";
-import type { Check, SetupStep } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { Check, SetupStep } from "@hobai/shared";
 import type { Detection, EcosystemDetector, Project } from "./detector.js";
 import { RepoReader } from "./repo-reader.js";
 import { DETECTORS } from "./detectors.js";

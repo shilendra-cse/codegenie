@@ -2,7 +2,7 @@ import type {
   OnboardingEventBody,
   RunEvent,
   SetupQuestion,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createEventChannel } from "./event-channel.js";
 

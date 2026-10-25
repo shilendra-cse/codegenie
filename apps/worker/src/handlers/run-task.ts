@@ -1,18 +1,14 @@
-import { titleTask, type ResolvedModel } from "@codegenie/agent";
+import { titleTask, type ResolvedModel } from "@hobai/agent";
 import {
   DbEnvironmentStore,
   getLatestUserMessage,
   getRunWithProject,
   setTaskTitle,
   type Db,
-} from "@codegenie/db";
-import {
-  runTask,
-  type RunResult,
-  type RunTaskOptions,
-} from "@codegenie/runner";
-import type { GithubApp } from "@codegenie/github";
-import type { RunEvent, QueuedWork } from "@codegenie/shared";
+} from "@hobai/db";
+import { runTask, type RunResult, type RunTaskOptions } from "@hobai/runner";
+import type { GithubApp } from "@hobai/github";
+import type { RunEvent, QueuedWork } from "@hobai/shared";
 import {
   createEventSink,
   runEventTarget,

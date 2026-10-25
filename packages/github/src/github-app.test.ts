@@ -122,8 +122,8 @@ describe("createGithubApp", () => {
   it("knows the bot's commit identity, looked up once", async () => {
     const github = fakeGithub((call) =>
       call.path === "/app"
-        ? { status: 200, body: { slug: "codegenie-dev" } }
-        : { status: 200, body: { id: 4242, login: "codegenie-dev[bot]" } },
+        ? { status: 200, body: { slug: "hobai-dev" } }
+        : { status: 200, body: { id: 4242, login: "hobai-dev[bot]" } },
     );
     const app = createGithubApp({ appId: 123, privateKey }, github);
 
@@ -131,12 +131,12 @@ describe("createGithubApp", () => {
     await app.botIdentity();
 
     expect(identity).toEqual({
-      name: "codegenie-dev[bot]",
-      email: "4242+codegenie-dev[bot]@users.noreply.github.com",
+      name: "hobai-dev[bot]",
+      email: "4242+hobai-dev[bot]@users.noreply.github.com",
     });
     expect(github.calls.map((c) => c.path)).toEqual([
       "/app",
-      "/users/codegenie-dev%5Bbot%5D",
+      "/users/hobai-dev%5Bbot%5D",
     ]);
     expect(verifiedJwtPayload(github.calls[0]!.authorization)).toMatchObject({
       iss: 123,
@@ -148,24 +148,24 @@ describe("createGithubApp", () => {
       i === 0
         ? { status: 500, body: { message: "Server Error" } }
         : call.path === "/app"
-          ? { status: 200, body: { slug: "codegenie-dev" } }
+          ? { status: 200, body: { slug: "hobai-dev" } }
           : { status: 200, body: { id: 4242 } },
     );
     const app = createGithubApp({ appId: 123, privateKey }, github);
 
     await expect(app.botIdentity()).rejects.toThrow();
-    expect((await app.botIdentity()).name).toBe("codegenie-dev[bot]");
+    expect((await app.botIdentity()).name).toBe("hobai-dev[bot]");
   });
 
   it("looks the App's slug up once, shared with the bot identity", async () => {
     const github = fakeGithub((call) =>
       call.path === "/app"
-        ? { status: 200, body: { slug: "codegenie-dev" } }
+        ? { status: 200, body: { slug: "hobai-dev" } }
         : { status: 200, body: { id: 4242 } },
     );
     const app = createGithubApp({ appId: 123, privateKey }, github);
 
-    expect(await app.slug()).toBe("codegenie-dev");
+    expect(await app.slug()).toBe("hobai-dev");
     await app.botIdentity();
     await app.slug();
 

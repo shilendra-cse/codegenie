@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { BranchPicker, type BranchPickerProps } from "./branch-picker";
 
 function renderPicker(overrides: Partial<BranchPickerProps> = {}) {
@@ -77,10 +78,10 @@ describe("BranchPicker", () => {
   it("says why it couldn't load, with Try again", () => {
     const { onRetry } = renderPicker({
       branches: undefined,
-      error: "This repository is no longer available to CodeGenie.",
+      error: `This repository is no longer available to ${PRODUCT_NAME}.`,
     });
     expect(
-      screen.getByText("This repository is no longer available to CodeGenie."),
+      screen.getByText(`This repository is no longer available to ${PRODUCT_NAME}.`),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();

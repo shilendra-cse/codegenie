@@ -257,11 +257,11 @@ Insert first; on conflict, skip processing. If processing fails, the row is dele
 
 Migrations live in `packages/db/drizzle`, are additive, and are generated with `drizzle-kit generate`.
 
-The schema, client, migrations and every query live in `packages/db` (queries in `src/queries/`, one folder per domain like the schema; apps never build queries themselves), shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
+The schema, client, migrations and every query live in `packages/db` (queries in `src/queries/`, one folder per domain like the schema; apps never build queries themselves), shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @hobai/db generate`; apply migrations with `pnpm migrate`.
 
 The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way. Since then: `0001_run_diffs`, `0002_installation_uninstalled_at`, `0003_task_pr_draft`, `0004_onboardings`.
 
-**Tests** that need Postgres use `testDatabaseOrSkip` from `@codegenie/db/testing`: a fresh, migrated database per run, created next to the development one (or on `TEST_DATABASE_URL`) and dropped afterwards; skipped without Postgres, required in CI (which runs a Postgres service).
+**Tests** that need Postgres use `testDatabaseOrSkip` from `@hobai/db/testing`: a fresh, migrated database per run, created next to the development one (or on `TEST_DATABASE_URL`) and dropped afterwards; skipped without Postgres, required in CI (which runs a Postgres service).
 
 ## 6. Post-MVP
 

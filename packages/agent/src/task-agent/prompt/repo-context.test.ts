@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { createToolContext } from "../../tools/core/context.js";
 import { buildRepoContext } from "./repo-context.js";
 
@@ -91,7 +91,7 @@ describe("buildRepoContext", () => {
           command: "npm install",
           status: "failed",
           durationMs: 1,
-          logPath: "/tmp/codegenie/logs/setup-2-install.log",
+          logPath: "/tmp/hobai/logs/setup-2-install.log",
           errorTail: "npm ERR! 404 Not Found",
         },
       ],
@@ -123,7 +123,7 @@ describe("buildRepoContext", () => {
         "## Setup (done before you started)",
         "Steps:",
         "- install: `npm ci` ✓",
-        "- install (in web): `npm install` FAILED. Full output: /tmp/codegenie/logs/setup-2-install.log",
+        "- install (in web): `npm install` FAILED. Full output: /tmp/hobai/logs/setup-2-install.log",
         "  Last lines:",
         "npm ERR! 404 Not Found",
         "Checks (run_checks) and their status before your changes:",

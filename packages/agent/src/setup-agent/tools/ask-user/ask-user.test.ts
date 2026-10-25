@@ -1,4 +1,4 @@
-import type { SetupAnswer, SetupQuestion } from "@codegenie/shared";
+import type { SetupAnswer, SetupQuestion } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import type { SetupToolContext } from "../../context.js";
 import { askUser, MAX_QUESTIONS } from "./ask-user.js";

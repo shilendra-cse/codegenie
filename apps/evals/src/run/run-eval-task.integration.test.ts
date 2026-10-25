@@ -1,8 +1,8 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { scriptedModel } from "@codegenie/agent/testing";
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { scriptedModel } from "@hobai/agent/testing";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { ensureEnvironment } from "../suite/environments.js";
 import { loadTasks } from "../suite/tasks.js";

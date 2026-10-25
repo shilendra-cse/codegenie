@@ -1,4 +1,4 @@
-import type { EnvironmentProposal } from "@codegenie/shared";
+import type { EnvironmentProposal } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import type { SetupToolContext } from "../../context.js";
 import { tryEnvironment } from "./try-environment.js";

@@ -1,5 +1,6 @@
-import { getInstallationById, type Db } from "@codegenie/db";
-import type { GithubApp } from "@codegenie/github";
+import { getInstallationById, type Db } from "@hobai/db";
+import type { GithubApp } from "@hobai/github";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 
 export class GithubAccessError extends Error {}
 
@@ -19,12 +20,12 @@ export async function repoInstallationId(
   const installation = await getInstallationById(db, project.installationId);
   if (!installation || installation.uninstalledAt) {
     throw new GithubAccessError(
-      `The CodeGenie GitHub App is no longer installed for ${repo}.`,
+      `The ${PRODUCT_NAME} GitHub App is no longer installed for ${repo}.`,
     );
   }
   if (installation.suspendedAt) {
     throw new GithubAccessError(
-      `The CodeGenie GitHub App is suspended on ${installation.accountLogin}.`,
+      `The ${PRODUCT_NAME} GitHub App is suspended on ${installation.accountLogin}.`,
     );
   }
   return installation.installationId;

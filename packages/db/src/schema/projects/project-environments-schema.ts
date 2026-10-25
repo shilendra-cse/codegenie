@@ -1,4 +1,4 @@
-import type { EnvironmentConfig } from "@codegenie/shared";
+import type { EnvironmentConfig } from "@hobai/shared";
 import { sql } from "drizzle-orm";
 import {
   index,

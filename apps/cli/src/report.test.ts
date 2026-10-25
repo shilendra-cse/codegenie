@@ -1,6 +1,6 @@
-import type { AgentResult } from "@codegenie/agent";
-import type { RunResult, OnboardingResult } from "@codegenie/runner";
-import { createStyle, plain } from "@codegenie/terminal";
+import type { AgentResult } from "@hobai/agent";
+import type { RunResult, OnboardingResult } from "@hobai/runner";
+import { createStyle, plain } from "@hobai/terminal";
 import { describe, expect, it } from "vitest";
 import {
   exitCode,
@@ -226,7 +226,7 @@ describe("setup output", () => {
         }),
         {
           version: 3,
-          file: "/home/me/.codegenie/environments/x.json",
+          file: "/home/me/.hobai/environments/x.json",
           copy: "/tmp/env.json",
         },
         plain,
@@ -234,7 +234,7 @@ describe("setup output", () => {
     ).toBe(
       [
         "│",
-        "│ Saved as version 3 · /home/me/.codegenie/environments/x.json",
+        "│ Saved as version 3 · /home/me/.hobai/environments/x.json",
         "│ Copy written to /tmp/env.json",
         "└ ✓ approved · setup agent: 6 steps · $0.0123 · 2m 5s",
       ].join("\n"),

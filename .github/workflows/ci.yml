@@ -43,13 +43,13 @@ jobs:
       postgres:
         image: postgres:15-alpine # same as apps/server/docker-compose.yml
         env:
-          POSTGRES_USER: codegenie
-          POSTGRES_PASSWORD: codegenie
-          POSTGRES_DB: codegenie
+          POSTGRES_USER: hobai
+          POSTGRES_PASSWORD: hobai
+          POSTGRES_DB: hobai
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U codegenie"
+          --health-cmd "pg_isready -U hobai"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -83,7 +83,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: packages/sandbox/images/base
-          tags: codegenie-base
+          tags: hobai-base
           load: true
           cache-from: type=gha,scope=sandbox-base
           cache-to: type=gha,mode=max,scope=sandbox-base
@@ -92,5 +92,5 @@ jobs:
         run: pnpm test
         env:
           # Database tests each create (and drop) their own database on this server.
-          TEST_DATABASE_URL: postgresql://codegenie:codegenie@localhost:5432/codegenie
+          TEST_DATABASE_URL: postgresql://hobai:hobai@localhost:5432/hobai
           TEST_REDIS_URL: redis://localhost:6379

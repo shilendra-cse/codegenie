@@ -1,7 +1,7 @@
 import type {
   EnvironmentResponse,
   OnboardingResponse,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   fireEvent,
@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { ApiError } from "@/lib/api/client";
 import { EnvironmentScreen } from "./environment-screen";
 
@@ -200,7 +201,7 @@ describe("EnvironmentScreen", () => {
     const versions = within(screen.getByRole("region", { name: "Versions" }));
     expect(versions.getByText("v2").nextSibling).toHaveTextContent("active");
     expect(versions.getByText("v1").nextSibling).toHaveTextContent("replaced");
-    expect(versions.getAllByText(/Set up by CodeGenie/)).toHaveLength(2);
+    expect(versions.getAllByText(new RegExp(`Set up by ${PRODUCT_NAME}`))).toHaveLength(2);
     expect(versions.getAllByRole("button", { name: "Restore" })).toHaveLength(
       1,
     );

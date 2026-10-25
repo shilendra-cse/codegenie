@@ -1,8 +1,9 @@
 "use client";
 
-import type { TaskListItem } from "@codegenie/shared";
+import type { TaskListItem } from "@hobai/shared";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
 import { Skeleton } from "@/components/atoms/skeleton";
@@ -70,7 +71,7 @@ export function ProjectTasksScreen({ projectId }: ProjectTasksScreenProps) {
       <div className={centered}>
         <span className="font-semibold">No tasks in this project yet</span>
         <span className="text-muted-foreground">
-          Describe a change to {name} and CodeGenie opens a pull request for it.
+          Describe a change to {name} and {PRODUCT_NAME} opens a pull request for it.
         </span>
         <Button asChild size="sm" variant="primary" glow>
           <Link href={newTaskPath(projectId)}>

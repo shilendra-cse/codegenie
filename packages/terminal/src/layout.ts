@@ -3,7 +3,7 @@ import { SYMBOLS } from "./symbols.js";
 
 const WIDTH = 48;
 
-/** The output's opening line: "◆ CodeGenie · gpt-6-luna · ../repo". */
+/** The output's opening line: "◆ hobai · gpt-6-luna · ../repo". */
 export function intro(style: Style, title: string) {
   return `${style.accent(SYMBOLS.start)} ${style.bold(title)}`;
 }

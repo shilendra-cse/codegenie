@@ -4,9 +4,9 @@ import {
   type AgentLimits,
   type Emit,
   type ResolvedModel,
-} from "@codegenie/agent";
-import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
-import type { EnvironmentConfig, RunStage } from "@codegenie/shared";
+} from "@hobai/agent";
+import { DockerSandbox, type Sandbox } from "@hobai/sandbox";
+import type { EnvironmentConfig, RunStage } from "@hobai/shared";
 import { collectDiff } from "../stages/changes/index.js";
 import { checkoutRepo, type RepoSource } from "../stages/checkout/index.js";
 import { listChanges, snapshotChanges } from "../stages/deliver/index.js";

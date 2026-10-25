@@ -1,4 +1,4 @@
-import type { OnboardingEvent, OnboardingEventBody } from "@codegenie/shared";
+import type { OnboardingEvent, OnboardingEventBody } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { buildTimeline } from "./timeline";
 

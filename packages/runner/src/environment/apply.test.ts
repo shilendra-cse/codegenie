@@ -1,4 +1,5 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { SANDBOX_LOG_DIR } from "@hobai/sandbox";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { describe, expect, it } from "vitest";
 import { applySteps } from "./apply.js";
 
@@ -19,8 +20,8 @@ describe("applySteps", () => {
       { name: "install web", cwd: "web", command: "npm ci" },
     ]);
     expect(results.map((r) => [r.name, r.status, r.logPath])).toEqual([
-      ["install api", "ok", "/tmp/codegenie/logs/setup-1-install-api.log"],
-      ["install web", "ok", "/tmp/codegenie/logs/setup-2-install-web.log"],
+      ["install api", "ok", `${SANDBOX_LOG_DIR}/setup-1-install-api.log`],
+      ["install web", "ok", `${SANDBOX_LOG_DIR}/setup-2-install-web.log`],
     ]);
     expect(sandbox.execCalls.map((c) => c.options.cwd)).toEqual(["api", "web"]);
   });
@@ -37,7 +38,7 @@ describe("applySteps", () => {
     expect(result).toMatchObject({
       command: "npm install",
       status: "ok",
-      logPath: "/tmp/codegenie/logs/setup-1-install-alt1.log",
+      logPath: `${SANDBOX_LOG_DIR}/setup-1-install-alt1.log`,
     });
   });
 

@@ -1,4 +1,4 @@
-import type { OnboardingResponse } from "@codegenie/shared";
+import type { OnboardingResponse } from "@hobai/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";

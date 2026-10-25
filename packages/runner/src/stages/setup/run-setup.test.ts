@@ -1,6 +1,7 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { EnvironmentConfig, RunEvent } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { runSetup } from "./run-setup.js";
 
 const repo = {
@@ -103,7 +104,9 @@ describe("runSetup", () => {
     const lastCheck = commands
       .map((c) => c.includes("npm run "))
       .lastIndexOf(true);
-    const commit = commands.findIndex((c) => c.includes("codegenie: baseline"));
+    const commit = commands.findIndex((c) =>
+      c.includes(`${SHORT_NAME}: baseline`),
+    );
     expect(lastCheck).toBeGreaterThan(-1);
     expect(commit).toBeGreaterThan(lastCheck);
   });

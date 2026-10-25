@@ -1,4 +1,4 @@
-import type { Check, PackageManager } from "@codegenie/shared";
+import type { Check, PackageManager } from "@hobai/shared";
 import type { PackageJson } from "./package-json.js";
 
 const TYPECHECK_SCRIPTS = ["typecheck", "type-check", "tsc", "check-types"];

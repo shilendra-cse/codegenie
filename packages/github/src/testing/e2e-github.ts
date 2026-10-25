@@ -1,6 +1,6 @@
 /** The GitHub the end-to-end test signs in to: one user, one installation, one public repository. */
 export const E2E_GITHUB = {
-  appSlug: "codegenie-e2e",
+  appSlug: "hobai-e2e",
   accessToken: "gho_e2etoken0123456789abcdefghijklmnopqr",
   user: {
     id: 583231,

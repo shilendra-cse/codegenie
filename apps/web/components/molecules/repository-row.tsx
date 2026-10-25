@@ -1,6 +1,7 @@
-import type { GitHubRepo } from "@codegenie/shared";
+import type { GitHubRepo } from "@hobai/shared";
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
@@ -10,7 +11,7 @@ import { timeAgo } from "@/lib/format";
 import { projectPath } from "@/lib/routes";
 
 const SUPPORTED = ["TypeScript", "JavaScript"];
-const UNSUPPORTED = "CodeGenie supports JavaScript and TypeScript.";
+const UNSUPPORTED = `${PRODUCT_NAME} supports JavaScript and TypeScript.`;
 
 export type RepositoryRowProps = {
   repo: Pick<

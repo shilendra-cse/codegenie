@@ -1,5 +1,5 @@
-import { type Db, findUserProjects } from "@codegenie/db";
-import type { ProjectResponse } from "@codegenie/shared";
+import { type Db, findUserProjects } from "@hobai/db";
+import type { ProjectResponse } from "@hobai/shared";
 import { toProjectResponse } from "../projects.types";
 
 export async function listUserProjects(

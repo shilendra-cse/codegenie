@@ -1,7 +1,8 @@
 import path from "node:path";
-import type { DaytonaConnection } from "@codegenie/sandbox";
-import { DEFAULT_AGENT_MODEL } from "@codegenie/shared";
+import type { DaytonaConnection } from "@hobai/sandbox";
+import { DEFAULT_AGENT_MODEL } from "@hobai/shared";
 import { z } from "zod";
+import { SHORT_NAME } from "@hobai/shared/brand";
 
 export const ENV_FILE = path.join(import.meta.dirname, "..", ".env");
 const PLACEHOLDER_KEY = "your-openai-api-key";
@@ -18,9 +19,9 @@ const schema = z
     DATABASE_URL: z.string().min(1).optional(),
     DB_HOST: z.string().default("localhost"),
     DB_PORT: z.coerce.number().int().default(5439),
-    DB_NAME: z.string().default("codegenie_db"),
-    DB_USER: z.string().default("codegenie_user"),
-    DB_PASSWORD: z.string().default("codegenie_password"),
+    DB_NAME: z.string().default(`${SHORT_NAME}_db`),
+    DB_USER: z.string().default(`${SHORT_NAME}_user`),
+    DB_PASSWORD: z.string().default(`${SHORT_NAME}_password`),
 
     REDIS_URL: z.string().default("redis://localhost:6380"),
 

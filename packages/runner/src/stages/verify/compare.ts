@@ -3,7 +3,7 @@ import {
   type CheckComparison,
   type CheckResult,
   type CheckStatus,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 export type { CheckComparison };
 

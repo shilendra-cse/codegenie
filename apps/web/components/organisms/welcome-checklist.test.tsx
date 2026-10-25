@@ -6,7 +6,7 @@ const steps: WelcomeStep[] = [
   {
     id: "install",
     state: "done",
-    href: "https://github.com/apps/codegenie/installations/new",
+    href: "https://github.com/apps/hobai/installations/new",
     external: true,
   },
   { id: "add-repo", state: "current", href: "/projects/new", external: false },

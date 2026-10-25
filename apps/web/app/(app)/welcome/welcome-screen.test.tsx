@@ -29,7 +29,7 @@ vi.mock("@/features/onboarding/use-welcome-checklist", () => ({
             : "todo",
       href:
         id === "install"
-          ? "https://github.com/apps/codegenie/installations/new"
+          ? "https://github.com/apps/hobai/installations/new"
           : "/projects/new",
       external: id === "install",
       projectName: id === "add-repo" || id === "set-up" ? "dodesk" : undefined,

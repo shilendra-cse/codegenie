@@ -1,6 +1,6 @@
-import { type Db, findUserRun } from "@codegenie/db";
+import { type Db, findUserRun } from "@hobai/db";
 import { HttpError } from "@/lib/http-error";
-import type { RunResponse } from "@codegenie/shared";
+import type { RunResponse } from "@hobai/shared";
 import { toRunResponse } from "../runs.types";
 
 export async function getUserRun(

@@ -1,4 +1,4 @@
-import type { ProjectResponse } from "@codegenie/shared";
+import type { ProjectResponse } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { isSettingUp, toSidebarProject } from "./projects";
 

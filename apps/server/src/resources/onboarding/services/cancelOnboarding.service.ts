@@ -1,8 +1,5 @@
-import { cancelQueuedOnboarding, type Db, findOnboarding } from "@codegenie/db";
-import {
-  CANCEL_CHANNEL,
-  type OnboardingCancelOutcome,
-} from "@codegenie/shared";
+import { cancelQueuedOnboarding, type Db, findOnboarding } from "@hobai/db";
+import { CANCEL_CHANNEL, type OnboardingCancelOutcome } from "@hobai/shared";
 import { HttpError } from "@/lib/http-error";
 import type { Publisher } from "../../runs/services/cancelRun.service";
 import { getUserOnboarding } from "./getUserOnboarding.service";

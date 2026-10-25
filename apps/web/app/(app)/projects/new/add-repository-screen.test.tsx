@@ -31,7 +31,7 @@ const responses: Record<string, unknown> = {
       { id: 1, accountLogin: "ada", accountType: "user" },
       { id: 2, accountLogin: "acme", accountType: "organization" },
     ],
-    installUrl: "https://github.com/apps/codegenie/installations/new",
+    installUrl: "https://github.com/apps/hobai/installations/new",
   },
   "/github/installations/1/repositories": {
     repositories: [repo(10, "dodesk")],
@@ -120,7 +120,7 @@ describe("AddRepositoryScreen", () => {
     api.get.mockResolvedValue({
       data: {
         installations: [],
-        installUrl: "https://github.com/apps/codegenie/installations/new",
+        installUrl: "https://github.com/apps/hobai/installations/new",
       },
     });
     renderScreen();
@@ -129,7 +129,7 @@ describe("AddRepositoryScreen", () => {
       await screen.findByRole("link", { name: "Install on GitHub" }),
     ).toHaveAttribute(
       "href",
-      "https://github.com/apps/codegenie/installations/new?state=add-repo",
+      "https://github.com/apps/hobai/installations/new?state=add-repo",
     );
   });
 

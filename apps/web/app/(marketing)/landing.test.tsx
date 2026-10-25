@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Landing } from "./landing";
 
 const auth = vi.hoisted(() => ({ session: null as unknown }));
@@ -17,7 +18,7 @@ describe("Landing", () => {
         expect(link).toHaveAttribute("href", "/signin");
       }
     }
-    expect(screen.queryByRole("link", { name: "Open CodeGenie" })).toBeNull();
+    expect(screen.queryByRole("link", { name: `Open ${PRODUCT_NAME}` })).toBeNull();
   });
 
   it("links its menu to its own sections", () => {
@@ -38,7 +39,7 @@ describe("Landing", () => {
     auth.session = { user: { id: "u1" } };
     render(<Landing />);
 
-    const open = screen.getAllByRole("link", { name: "Open CodeGenie" });
+    const open = screen.getAllByRole("link", { name: `Open ${PRODUCT_NAME}` });
     expect(open.length).toBeGreaterThan(0);
     open.forEach((link) => expect(link).toHaveAttribute("href", "/inbox"));
     expect(screen.queryByRole("link", { name: "Get started" })).toBeNull();

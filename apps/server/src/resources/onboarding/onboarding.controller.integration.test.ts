@@ -10,13 +10,13 @@ import {
   markOnboardingStarted,
   markOnboardingWaiting,
   setInstallationSuspended,
-} from "@codegenie/db";
-import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
+} from "@hobai/db";
+import { insertProject, testDatabaseOrSkip } from "@hobai/db/testing";
 import {
   ANSWER_CHANNEL,
   CANCEL_CHANNEL,
   type OnboardingResponse,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import type { Response } from "express";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";

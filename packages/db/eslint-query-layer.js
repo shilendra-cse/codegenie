@@ -1,6 +1,6 @@
-// For apps that use @codegenie/db: every query goes through the query layer (src/queries), never built in the app.
+// For apps that use @hobai/db: every query goes through the query layer (src/queries), never built in the app.
 const message =
-  "Queries live in @codegenie/db (packages/db/src/queries): call a query function instead.";
+  "Queries live in @hobai/db (packages/db/src/queries): call a query function instead.";
 
 const DB = "/^(db|tx)$/";
 const QUERY_CALLS = "/^(insert|select|update|delete|execute|transaction)$/";

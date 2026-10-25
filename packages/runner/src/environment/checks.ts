@@ -1,5 +1,5 @@
-import type { Sandbox } from "@codegenie/sandbox";
-import type { Check, CheckResult, CheckStatus } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { Check, CheckResult, CheckStatus } from "@hobai/shared";
 import { lastLines, runLogged, type LoggedRun } from "../lib/run-logged.js";
 
 export const CHECK_TIMEOUT_MS = 10 * 60_000;

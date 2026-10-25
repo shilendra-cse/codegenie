@@ -1,9 +1,10 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
-import { parseEnvironmentConfig, runTask } from "@codegenie/runner";
+import { parseEnvironmentConfig, runTask } from "@hobai/runner";
 import { UsageError } from "../args/common.js";
 import { parseCliArgs, RUN_USAGE } from "../args/run-args.js";
-import type { StoredEnvironment } from "@codegenie/shared";
-import { intro, line, oneLine, styleFor } from "@codegenie/terminal";
+import type { StoredEnvironment } from "@hobai/shared";
+import { intro, line, oneLine, styleFor } from "@hobai/terminal";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { loadModel } from "../config.js";
 import { createLiveRun } from "../live-run.js";
 import { FileEnvironmentStore } from "../store/file-store.js";
@@ -99,7 +100,7 @@ export async function runCommand(argv: string[], cwd: string): Promise<number> {
     live.print(
       intro(
         style,
-        `CodeGenie ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
+        `${PRODUCT_NAME} ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
       ),
       line(style, `Task: ${oneLine(task, 300)}`),
       line(

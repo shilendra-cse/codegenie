@@ -1,4 +1,4 @@
-import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
+import { DockerSandbox, type Sandbox } from "@hobai/sandbox";
 import { gitAuthEnv } from "../../lib/git-auth.js";
 import { shellQuote } from "../../lib/shell-quote.js";
 import { listLocalFiles } from "./local-files.js";

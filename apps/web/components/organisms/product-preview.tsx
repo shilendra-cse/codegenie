@@ -6,6 +6,7 @@ import {
   SquareTerminal,
   type LucideIcon,
 } from "lucide-react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Badge } from "@/components/atoms/badge";
 import { Icon } from "@/components/atoms/icon";
 import { Spinner } from "@/components/atoms/spinner";
@@ -137,7 +138,7 @@ export function ProductPreview() {
                       Succeeded
                     </Badge>
                   </span>
-                  <span className="text-xs text-faint">CodeGenie · run 1</span>
+                  <span className="text-xs text-faint">{PRODUCT_NAME} · run 1</span>
                 </div>
                 <ul className="flex flex-col gap-[7px] text-[13px]">
                   {STEPS.map((step) => (

@@ -1,10 +1,10 @@
-import { insertOnboardingEvent, insertRunEvent, type Db } from "@codegenie/db";
+import { insertOnboardingEvent, insertRunEvent, type Db } from "@hobai/db";
 import {
   onboardingChannel,
   runChannel,
   type OnboardingEventBody,
   type RunEvent,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { redactGithubTokensIn } from "../lib/redact.js";
 import { createSerialQueue } from "../lib/serial-queue.js";
 

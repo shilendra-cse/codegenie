@@ -28,7 +28,7 @@ describe("middleware", () => {
       "/",
       "/signin",
       "/api/projects",
-      "/brand/black/codegenie_icon_black.png",
+      "/brand/black/hobai_icon_black.png",
     ]) {
       expect(guarded(url), url).toBe(false);
     }

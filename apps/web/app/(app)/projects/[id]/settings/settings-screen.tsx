@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { RemoveProjectDialog } from "@/components/organisms/remove-project-dialog";
 import { manageAccessUrl, repositoryUrl } from "@/features/github/links";
@@ -55,7 +56,7 @@ export function SettingsScreen({ projectId }: SettingsScreenProps) {
           </span>
         </Field>
         <Field label="GitHub access">
-          Through the CodeGenie app installed on{" "}
+          Through the {PRODUCT_NAME} app installed on{" "}
           <strong className="font-semibold">{installation.accountLogin}</strong>
           .{" "}
           <a
@@ -71,7 +72,7 @@ export function SettingsScreen({ projectId }: SettingsScreenProps) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 rounded-lg border border-border bg-card px-[18px] py-4">
         <span className="flex-[0_0_200px] font-medium">Remove project</span>
         <span className="min-w-0 flex-[1_1_280px] text-muted-foreground">
-          Deletes its tasks, runs and environment from CodeGenie. The repository
+          Deletes its tasks, runs and environment from {PRODUCT_NAME}. The repository
           and its pull requests on GitHub are not touched.
         </span>
         <Button

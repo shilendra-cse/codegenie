@@ -1,5 +1,5 @@
-import type { StoredEnvironment } from "@codegenie/shared";
-import { plain } from "@codegenie/terminal";
+import type { StoredEnvironment } from "@hobai/shared";
+import { plain } from "@hobai/terminal";
 import { describe, expect, it } from "vitest";
 import {
   describeSaved,
@@ -78,7 +78,7 @@ describe("saved environment output", () => {
         plain,
         "github.com/acme/app",
         [stored(), stored({ version: 2 })],
-        "/home/me/.codegenie/environments/x.json",
+        "/home/me/.hobai/environments/x.json",
       ),
     ).toBe(
       [
@@ -89,7 +89,7 @@ describe("saved environment output", () => {
         "│ Checks: lint (web) · test",
         "│ Answers:",
         "│   - Lint the api? → No (automatic)",
-        "└ /home/me/.codegenie/environments/x.json",
+        "└ /home/me/.hobai/environments/x.json",
       ].join("\n"),
     );
     expect(

@@ -1,4 +1,4 @@
-# codegenie-base: the image every sandbox container starts from.
+# hobai-base: the image every sandbox container starts from.
 # Build: pnpm sandbox:build-image
 # node:24-bookworm already ships git, curl, python3, make/gcc (node-gyp), timeout, find and ps.
 FROM node:24-bookworm
@@ -23,7 +23,7 @@ RUN useradd -m -s /bin/bash agent \
 USER agent
 WORKDIR /workspace
 
-RUN git config --global user.name "CodeGenie" \
-  && git config --global user.email "bot@codegenie.dev" \
+RUN git config --global user.name "hobai" \
+  && git config --global user.email "bot@hobai.app" \
   && git config --global --add safe.directory /workspace \
   && git config --global init.defaultBranch main

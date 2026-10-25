@@ -1,4 +1,4 @@
-import type { BranchListResponse } from "@codegenie/shared";
+import type { BranchListResponse } from "@hobai/shared";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 

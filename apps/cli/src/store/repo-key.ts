@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import { promisify } from "node:util";
-import type { RepoSource } from "@codegenie/runner";
+import type { RepoSource } from "@hobai/runner";
 
 const execFileAsync = promisify(execFile);
 

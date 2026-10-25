@@ -1,4 +1,4 @@
-import type { CreateTaskInput, TaskListItem } from "@codegenie/shared";
+import type { CreateTaskInput, TaskListItem } from "@hobai/shared";
 import {
   skipToken,
   useMutation,

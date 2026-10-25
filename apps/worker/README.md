@@ -1,16 +1,16 @@
-# @codegenie/worker
+# @hobai/worker
 
 Takes work off the Redis queue and runs it in a sandbox: task runs (`run-task`) and project onboarding (`onboard-project`). Design: [docs/knowledge/architecture.md](../../docs/knowledge/architecture.md) §3 and §5.
 
 ```
-server API ──────────► Redis queue "codegenie-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
+server API ──────────► Redis queue "hobai-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
                                                                    │            │
                                      "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, onboardings, onboarding_events, project_environments
                                                                                 ├──► Redis: run:{id}, onboarding:{id}
                                                                                 └──► GitHub API: commit, branch, pull request
 ```
 
-A run that succeeds or ends incomplete with changes is delivered: one commit by the App on `codegenie/<task>-<slug>` and a pull request, a draft when checks failed or the run is incomplete ([github.md](../../docs/knowledge/github.md) §8).
+A run that succeeds or ends incomplete with changes is delivered: one commit by the App on `hobai/<task>-<slug>` and a pull request, a draft when checks failed or the run is incomplete ([github.md](../../docs/knowledge/github.md) §8).
 
 ## Running it
 
@@ -60,14 +60,14 @@ The web app does each of these (add a repository, environment setup, New task, C
 Watching a run:
 
 ```bash
-docker exec -it codegenie-redis redis-cli psubscribe 'run:*' 'project:*'     # live events
-docker exec -it codegenie-postgres psql -U codegenie_user -d codegenie_db \
+docker exec -it hobai-redis redis-cli psubscribe 'run:*' 'project:*'     # live events
+docker exec -it hobai-postgres psql -U hobai_user -d hobai_db \
   -c "select id, status, stage, error_code, commit_sha, cost_usd from runs order by queued_at desc limit 5"
 ```
 
 ## Tests
 
-`pnpm --filter @codegenie/worker test`. Tests that need Postgres, Redis or Docker are skipped when those aren't running, and required in CI:
+`pnpm --filter @hobai/worker test`. Tests that need Postgres, Redis or Docker are skipped when those aren't running, and required in CI:
 
 - `consumer.integration.test.ts`: the consumer on Redis with fake handlers (dispatch, cancellation, failures, closing).
 - `handlers/*.integration.test.ts`: each handler on Postgres with a fake sandbox and a scripted model.
@@ -80,7 +80,7 @@ Redis tests use a key prefix of their own (`testRedisOrSkip`), so they never tou
 ```
 src/
 ├── index.ts          the process: config, logger, startWorker, shutdown
-├── start-worker.ts   startWorker: connections, consumer, reaper (the @codegenie/worker export, used by the e2e)
+├── start-worker.ts   startWorker: connections, consumer, reaper (the @hobai/worker export, used by the e2e)
 ├── config.ts         apps/worker/.env, validated
 ├── consumer.ts       BullMQ worker: work kind → handler, cancel messages, close()
 ├── handlers/         run-task, onboard-project

@@ -1,4 +1,4 @@
-import type { TaskLabel } from "@codegenie/shared";
+import type { TaskLabel } from "@hobai/shared";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 

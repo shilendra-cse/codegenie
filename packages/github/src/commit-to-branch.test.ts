@@ -11,7 +11,7 @@ const sha = (c: string) => c.repeat(40);
 const commit: NewCommit = {
   owner: "acme",
   repo: "app",
-  branch: "codegenie/1234abcd-add-health",
+  branch: "hobai/1234abcd-add-health",
   message: "Add GET /health\n\nAdded the route and a test.",
   parent: sha("p"),
   tree: sha("t"),
@@ -88,7 +88,7 @@ describe("commitToBranch", () => {
       parents: [sha("p")],
     });
     expect(calls[5]!.body).toEqual({
-      ref: "refs/heads/codegenie/1234abcd-add-health",
+      ref: "refs/heads/hobai/1234abcd-add-health",
       sha: sha("c"),
     });
   });

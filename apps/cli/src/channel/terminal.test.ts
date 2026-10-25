@@ -1,5 +1,5 @@
 import { PassThrough } from "node:stream";
-import type { SetupQuestion } from "@codegenie/shared";
+import type { SetupQuestion } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { InputClosedError, terminalChannel } from "./terminal.js";
 

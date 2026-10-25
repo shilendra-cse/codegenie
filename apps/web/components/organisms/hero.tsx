@@ -1,5 +1,6 @@
 import { GitBranch } from "lucide-react";
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { GitHubMark } from "@/components/atoms/github-mark";
@@ -21,14 +22,14 @@ export function Hero({ signedIn }: HeroProps) {
         <span className="text-muted-foreground">Review the pull request.</span>
       </h1>
       <p className="max-w-[620px] text-lg leading-relaxed text-muted-foreground">
-        CodeGenie works in an isolated sandbox: it installs your repository,
+        {PRODUCT_NAME} works in an isolated sandbox: it installs your repository,
         makes the change, runs your checks and opens a pull request for you to
         review.
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
         {signedIn ? (
           <Button asChild variant="primary" size="lg" glow>
-            <Link href={APP_HOME}>Open CodeGenie</Link>
+            <Link href={APP_HOME}>Open {PRODUCT_NAME}</Link>
           </Button>
         ) : (
           <Button asChild variant="primary" size="lg" glow>

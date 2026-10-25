@@ -1,4 +1,4 @@
-import type { RunEvent } from "@codegenie/shared";
+import type { RunEvent } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { buildRunView } from "./run-view";
 
@@ -435,7 +435,7 @@ describe("buildRunView", () => {
         { type: "task_titled", title: "Add a health check" },
         {
           type: "branch_created",
-          branchName: "codegenie/add-a-health-check-1a2b",
+          branchName: "hobai/add-a-health-check-1a2b",
         },
         {
           type: "pr_opened",
@@ -448,7 +448,7 @@ describe("buildRunView", () => {
     );
     expect(view).toMatchObject({
       title: "Add a health check",
-      branch: "codegenie/add-a-health-check-1a2b",
+      branch: "hobai/add-a-health-check-1a2b",
       pullRequest: {
         number: 7,
         url: "https://github.com/acme/app/pull/7",

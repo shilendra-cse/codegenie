@@ -3,7 +3,7 @@ import type {
   EnvironmentConfig,
   EnvironmentDecision,
   TryResult,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 const where = (item: { name: string; cwd: string }) =>
   item.cwd === "." ? item.name : `${item.name} (${item.cwd})`;

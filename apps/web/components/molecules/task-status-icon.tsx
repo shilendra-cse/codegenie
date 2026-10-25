@@ -1,4 +1,4 @@
-import type { TaskLabel } from "@codegenie/shared";
+import type { TaskLabel } from "@hobai/shared";
 import {
   CircleCheck,
   CircleDot,

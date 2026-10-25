@@ -3,7 +3,8 @@ import path from "node:path";
 import { parseEvalArgs, USAGE, UsageError } from "./args.js";
 import { loadModel } from "./config.js";
 import { RESULTS_DIR } from "./paths.js";
-import { cost, duration, intro, outro, styleFor } from "@codegenie/terminal";
+import { cost, duration, intro, outro, styleFor } from "@hobai/terminal";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { formatReport } from "./report.js";
 import { EvalProgress } from "./run/progress.js";
 import { attemptName, runEvals } from "./run/run-evals.js";
@@ -44,7 +45,7 @@ async function main(): Promise<number> {
   await mkdir(resultsDir, { recursive: true });
   const style = styleFor(process.stdout);
   out(
-    `${intro(style, `CodeGenie evals · ${model.spec.id} · ${tasks.length} task${tasks.length === 1 ? "" : "s"}${options.repeat > 1 ? ` × ${options.repeat}` : ""}`)}\n`,
+    `${intro(style, `${PRODUCT_NAME} evals · ${model.spec.id} · ${tasks.length} task${tasks.length === 1 ? "" : "s"}${options.repeat > 1 ? ` × ${options.repeat}` : ""}`)}\n`,
   );
 
   const names = tasks.flatMap((task) =>

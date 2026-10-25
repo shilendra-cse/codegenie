@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { Check } from "@codegenie/shared";
+import type { Check } from "@hobai/shared";
 import type { EcosystemDetector, Project } from "../detector.js";
 import type { RepoReader } from "../repo-reader.js";
 import type { PackageJson } from "./package-json.js";

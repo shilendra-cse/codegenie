@@ -1,8 +1,8 @@
 {
-  "name": "@codegenie/evals",
+  "name": "@hobai/evals",
   "version": "0.0.0",
   "private": true,
-  "description": "Eval tasks for the CodeGenie agent and the harness that runs them",
+  "description": "Eval tasks for the hobai agent and the harness that runs them",
   "type": "module",
   "scripts": {
     "start": "tsx src/main.ts",
@@ -13,11 +13,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@codegenie/agent": "workspace:*",
-    "@codegenie/runner": "workspace:*",
-    "@codegenie/sandbox": "workspace:*",
-    "@codegenie/shared": "workspace:*",
-    "@codegenie/terminal": "workspace:*",
+    "@hobai/agent": "workspace:*",
+    "@hobai/runner": "workspace:*",
+    "@hobai/sandbox": "workspace:*",
+    "@hobai/shared": "workspace:*",
+    "@hobai/terminal": "workspace:*",
     "dotenv": "^17.2.2",
     "zod": "^4.4.3"
   },

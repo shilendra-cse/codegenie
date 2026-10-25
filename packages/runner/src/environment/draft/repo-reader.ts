@@ -1,9 +1,5 @@
 import path from "node:path";
-import {
-  SandboxFileError,
-  WORKSPACE_DIR,
-  type Sandbox,
-} from "@codegenie/sandbox";
+import { SandboxFileError, WORKSPACE_DIR, type Sandbox } from "@hobai/sandbox";
 
 export type JsonRead<T> =
   | { status: "ok"; value: T }

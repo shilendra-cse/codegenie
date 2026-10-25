@@ -1,4 +1,5 @@
 import path from "node:path";
+import { SHORT_NAME } from "@hobai/shared/brand";
 
 // Ports of their own, so a run never meets the dev servers on 3000 and 3001.
 export const WEB_URL = "http://localhost:3100";
@@ -9,7 +10,7 @@ export const WORKER_HEALTH_PORT = 3102;
 // The dev Postgres and Redis servers, with a database and a Redis database number of their own.
 export const DATABASE_URL =
   process.env.E2E_DATABASE_URL ??
-  "postgresql://codegenie_user:codegenie_password@localhost:5439/codegenie_e2e";
+  `postgresql://${SHORT_NAME}_user:${SHORT_NAME}_password@localhost:5439/${SHORT_NAME}_e2e`;
 export const REDIS_URL =
   process.env.E2E_REDIS_URL ?? "redis://localhost:6380/1";
 

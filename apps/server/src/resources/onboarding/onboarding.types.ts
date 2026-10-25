@@ -1,5 +1,5 @@
-import type { Onboarding } from "@codegenie/db";
-import type { OnboardingQuestion, OnboardingResponse } from "@codegenie/shared";
+import type { Onboarding } from "@hobai/db";
+import type { OnboardingQuestion, OnboardingResponse } from "@hobai/shared";
 
 /** A stored `question_asked` payload as the API shows it. */
 export function toOnboardingQuestion(

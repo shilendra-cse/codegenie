@@ -5,6 +5,7 @@ import {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { ApiError, createApiClient } from "./client";
 
 function answer(status: number, body: unknown): AxiosAdapter {
@@ -83,7 +84,7 @@ describe("createApiClient", () => {
 
     await expect(client.get("/projects")).rejects.toMatchObject({
       status: 0,
-      message: "Couldn't reach CodeGenie. Check your connection and try again.",
+      message: `Couldn't reach ${PRODUCT_NAME}. Check your connection and try again.`,
     });
   });
 

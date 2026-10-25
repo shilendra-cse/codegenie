@@ -1,4 +1,4 @@
-import { checkKey, type SetupResult } from "@codegenie/shared";
+import { checkKey, type SetupResult } from "@hobai/shared";
 import { describeRepository } from "../../prompt/repository.js";
 import type { ToolContext } from "../../tools/core/context.js";
 

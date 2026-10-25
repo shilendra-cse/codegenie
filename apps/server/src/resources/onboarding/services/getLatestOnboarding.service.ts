@@ -1,9 +1,5 @@
-import {
-  type Db,
-  findOnboardingQuestion,
-  findUserOnboarding,
-} from "@codegenie/db";
-import type { OnboardingResponse } from "@codegenie/shared";
+import { type Db, findOnboardingQuestion, findUserOnboarding } from "@hobai/db";
+import type { OnboardingResponse } from "@hobai/shared";
 import { getUserProject } from "../../projects/services/getUserProject.service";
 import {
   toOnboardingQuestion,

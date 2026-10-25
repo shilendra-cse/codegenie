@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskDetail } from "@codegenie/shared";
+import type { TaskDetail } from "@hobai/shared";
 import { GitBranch, Square } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Alert } from "@/components/atoms/alert";

@@ -1,5 +1,5 @@
 import { PassThrough } from "node:stream";
-import { plain } from "@codegenie/terminal";
+import { plain } from "@hobai/terminal";
 import { describe, expect, it } from "vitest";
 import { EvalProgress, reason } from "./progress.js";
 import type { TaskResult } from "./run-eval-task.js";

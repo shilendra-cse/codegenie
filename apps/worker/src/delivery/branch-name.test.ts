@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { branchName, slugify } from "./branch-name.js";
 
 describe("branchName", () => {
@@ -8,7 +9,7 @@ describe("branchName", () => {
         id: "1234abcd-0000-0000-0000-000000000000",
         title: "Add a /health endpoint",
       }),
-    ).toBe("codegenie/add-a-health-endpoint-1234");
+    ).toBe(`${SHORT_NAME}/add-a-health-endpoint-1234`);
   });
 
   it.each([

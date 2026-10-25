@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { RunResult, type RunResultProps } from "./run-result";
 
 const props = (overrides: Partial<RunResultProps> = {}): RunResultProps => ({
@@ -42,7 +43,7 @@ describe("RunResult", () => {
       />,
     );
 
-    expect(result()).toHaveTextContent("CodeGenie2 minutes ago");
+    expect(result()).toHaveTextContent(`${PRODUCT_NAME}2 minutes ago`);
     expect(screen.getByText(/Added GET \/health\./)).toHaveTextContent(
       "Added GET /health. Tests cover both cases.",
     );

@@ -1,4 +1,4 @@
-import type { EnvironmentResponse } from "@codegenie/shared";
+import type { EnvironmentResponse } from "@hobai/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api/client";
 

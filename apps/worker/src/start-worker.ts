@@ -1,14 +1,15 @@
-import { resolveModel, type ResolvedModel } from "@codegenie/agent";
-import { createDb } from "@codegenie/db";
-import { createGithubApp, type GithubApp } from "@codegenie/github";
+import { resolveModel, type ResolvedModel } from "@hobai/agent";
+import { createDb } from "@hobai/db";
+import { createGithubApp, type GithubApp } from "@hobai/github";
 import {
   connectSandbox,
   createSandbox,
   type SandboxLabels,
-} from "@codegenie/sandbox";
-import { WORK_QUEUE } from "@codegenie/shared";
+} from "@hobai/sandbox";
+import { WORK_QUEUE } from "@hobai/shared";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import type { WorkerConfig } from "./config.js";
 import { startConsumer } from "./consumer.js";
 import { handleOnboardProject } from "./handlers/onboard-project.js";
@@ -45,7 +46,7 @@ export async function startWorker(
   const connect = (name: string) => {
     const redis = new Redis(config.redisUrl, {
       maxRetriesPerRequest: null,
-      connectionName: `codegenie-worker-${name}`,
+      connectionName: `${SHORT_NAME}-worker-${name}`,
     });
     redis.on("error", (error) =>
       log("error", "Redis connection error", { name, error: error.message }),

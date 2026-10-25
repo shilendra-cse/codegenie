@@ -20,16 +20,16 @@ importers:
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
-      '@codegenie/agent':
+      '@hobai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@codegenie/runner':
+      '@hobai/runner':
         specifier: workspace:*
         version: link:../../packages/runner
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@codegenie/terminal':
+      '@hobai/terminal':
         specifier: workspace:*
         version: link:../../packages/terminal
       dotenv:
@@ -69,21 +69,24 @@ importers:
 
   apps/e2e:
     devDependencies:
-      '@codegenie/agent':
-        specifier: workspace:*
-        version: link:../../packages/agent
-      '@codegenie/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@codegenie/github':
-        specifier: workspace:*
-        version: link:../../packages/github
-      '@codegenie/worker':
-        specifier: workspace:*
-        version: link:../worker
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@9.37.0(jiti@2.6.1))
+      '@hobai/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@hobai/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@hobai/github':
+        specifier: workspace:*
+        version: link:../../packages/github
+      '@hobai/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@hobai/worker':
+        specifier: workspace:*
+        version: link:../worker
       '@playwright/test':
         specifier: ^1.64.1
         version: 1.64.1
@@ -117,19 +120,19 @@ importers:
 
   apps/evals:
     dependencies:
-      '@codegenie/agent':
+      '@hobai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@codegenie/runner':
+      '@hobai/runner':
         specifier: workspace:*
         version: link:../../packages/runner
-      '@codegenie/sandbox':
+      '@hobai/sandbox':
         specifier: workspace:*
         version: link:../../packages/sandbox
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@codegenie/terminal':
+      '@hobai/terminal':
         specifier: workspace:*
         version: link:../../packages/terminal
       dotenv:
@@ -169,13 +172,13 @@ importers:
 
   apps/server:
     dependencies:
-      '@codegenie/db':
+      '@hobai/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@codegenie/github':
+      '@hobai/github':
         specifier: workspace:*
         version: link:../../packages/github
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@types/swagger-ui-express':
@@ -275,7 +278,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@radix-ui/react-avatar':
@@ -384,22 +387,22 @@ importers:
 
   apps/worker:
     dependencies:
-      '@codegenie/agent':
+      '@hobai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@codegenie/db':
+      '@hobai/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@codegenie/github':
+      '@hobai/github':
         specifier: workspace:*
         version: link:../../packages/github
-      '@codegenie/runner':
+      '@hobai/runner':
         specifier: workspace:*
         version: link:../../packages/runner
-      '@codegenie/sandbox':
+      '@hobai/sandbox':
         specifier: workspace:*
         version: link:../../packages/sandbox
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       bullmq:
@@ -457,10 +460,10 @@ importers:
       '@ai-sdk/openai':
         specifier: ^2.0.44
         version: 2.0.44(zod@4.4.3)
-      '@codegenie/sandbox':
+      '@hobai/sandbox':
         specifier: workspace:*
         version: link:../sandbox
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../shared
       ai:
@@ -497,7 +500,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../shared
       drizzle-orm:
@@ -583,13 +586,13 @@ importers:
 
   packages/runner:
     dependencies:
-      '@codegenie/agent':
+      '@hobai/agent':
         specifier: workspace:*
         version: link:../agent
-      '@codegenie/sandbox':
+      '@hobai/sandbox':
         specifier: workspace:*
         version: link:../sandbox
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../shared
       zod:
@@ -626,6 +629,9 @@ importers:
       '@daytonaio/sdk':
         specifier: ^0.225.0
         version: 0.225.0
+      '@hobai/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -667,7 +673,7 @@ importers:
 
   packages/terminal:
     dependencies:
-      '@codegenie/shared':
+      '@hobai/shared':
         specifier: workspace:*
         version: link:../shared
       log-update:

@@ -1,4 +1,4 @@
-import type { UserChannel } from "@codegenie/shared";
+import type { UserChannel } from "@hobai/shared";
 
 /** For non-interactive runs (--yes, evals): always the recommended option. */
 export function autoChannel(

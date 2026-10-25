@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { GitHubMark } from "@/components/atoms/github-mark";
@@ -22,7 +23,7 @@ export function SignInCard({ busy, error, onSignIn }: SignInCardProps) {
             id="sign-in-title"
             className="text-[22px] font-semibold tracking-[-0.015em]"
           >
-            Sign in to CodeGenie
+            Sign in to {PRODUCT_NAME}
           </h1>
           <p className="text-muted-foreground">
             Use your GitHub account. New here? This creates your account.

@@ -5,7 +5,7 @@ import {
   recordInstallation,
   setInstallationSuspended,
   setTaskStatusForPullRequest,
-} from "@codegenie/db";
+} from "@hobai/db";
 import { z } from "zod";
 
 export type WebhookLog = (

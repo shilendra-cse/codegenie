@@ -3,6 +3,7 @@ import path from "node:path";
 import { config as loadEnv } from "dotenv";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { createDb, type Db } from "../client.js";
 
 const MIGRATIONS = path.join(import.meta.dirname, "..", "..", "drizzle");
@@ -61,7 +62,7 @@ export async function testDatabaseOrSkip(
     return null;
   }
 
-  const name = `codegenie_test_${randomBytes(4).toString("hex")}`;
+  const name = `${SHORT_NAME}_test_${randomBytes(4).toString("hex")}`;
   await admin.query(`CREATE DATABASE ${name}`);
   const testUrl = new URL(url!);
   testUrl.pathname = `/${name}`;

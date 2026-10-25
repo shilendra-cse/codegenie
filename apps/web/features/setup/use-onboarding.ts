@@ -1,7 +1,7 @@
 import type {
   AnswerOnboardingInput,
   OnboardingResponse,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import {
   skipToken,
   useMutation,

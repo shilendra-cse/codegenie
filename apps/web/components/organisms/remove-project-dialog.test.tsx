@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import {
   RemoveProjectDialog,
   type RemoveProjectDialogProps,
@@ -27,7 +28,7 @@ describe("RemoveProjectDialog", () => {
     expect(
       screen.getByRole("dialog", { name: "Remove dodesk?" }),
     ).toHaveAccessibleDescription(
-      "Its 6 tasks, their runs and the environment are deleted from CodeGenie. The repository and its pull requests on GitHub are not touched.",
+      `Its 6 tasks, their runs and the environment are deleted from ${PRODUCT_NAME}. The repository and its pull requests on GitHub are not touched.`,
     );
   });
 

@@ -1,9 +1,5 @@
 import { isCancel, select, text } from "@clack/prompts";
-import type {
-  SetupAnswer,
-  SetupQuestion,
-  UserChannel,
-} from "@codegenie/shared";
+import type { SetupAnswer, SetupQuestion, UserChannel } from "@hobai/shared";
 import { InputClosedError } from "./terminal.js";
 
 const OTHER = -1;

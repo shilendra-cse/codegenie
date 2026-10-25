@@ -4,7 +4,7 @@ import type {
   OnboardingQuestion,
   PackageManager,
   RunEventSetupCompleted,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 type Tried = Pick<RunEventSetupCompleted, "steps" | "checks">;
 

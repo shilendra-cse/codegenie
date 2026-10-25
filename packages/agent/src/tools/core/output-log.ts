@@ -1,4 +1,4 @@
-import type { Sandbox } from "@codegenie/sandbox";
+import type { Sandbox } from "@hobai/sandbox";
 import { shellQuote } from "../../lib/shell-quote.js";
 import { LOG_DIR } from "./workspace-path.js";
 

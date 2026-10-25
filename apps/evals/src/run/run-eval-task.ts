@@ -1,14 +1,15 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Emit, ResolvedModel } from "@codegenie/agent";
-import { runTask, type RunResult } from "@codegenie/runner";
-import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
-import type { EnvironmentConfig } from "@codegenie/shared";
+import type { Emit, ResolvedModel } from "@hobai/agent";
+import { runTask, type RunResult } from "@hobai/runner";
+import { DockerSandbox, type Sandbox } from "@hobai/sandbox";
+import type { EnvironmentConfig } from "@hobai/shared";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { grade, type Grade } from "../graders/grade.js";
 import { pinCommit, repoSource } from "../suite/repos.js";
 import type { EvalTask } from "../suite/tasks.js";
 
-const PATCH_FILE = ".codegenie-eval.patch";
+const PATCH_FILE = `.${SHORT_NAME}-eval.patch`;
 
 export type TaskResult = {
   id: string;

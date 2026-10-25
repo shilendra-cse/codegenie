@@ -1,4 +1,4 @@
-import type { EnvironmentConfig } from "@codegenie/shared";
+import type { EnvironmentConfig } from "@hobai/shared";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";

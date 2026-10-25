@@ -1,5 +1,5 @@
-import { type Db, findRunEventsAfter, findUserRun } from "@codegenie/db";
-import { runChannel, type RunEvent } from "@codegenie/shared";
+import { type Db, findRunEventsAfter, findUserRun } from "@hobai/db";
+import { runChannel, type RunEvent } from "@hobai/shared";
 import { type EventStreamDeps, streamEvents } from "@/lib/event-stream";
 import type { SseStream } from "@/lib/sse";
 import { getUserRun } from "./getUserRun.service";

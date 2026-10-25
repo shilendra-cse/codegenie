@@ -2,7 +2,7 @@ import type {
   ProjectResponse,
   TaskListItem,
   TaskPage,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   fireEvent,

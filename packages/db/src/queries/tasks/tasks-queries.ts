@@ -1,4 +1,4 @@
-import type { TaskCounts, TaskFilter } from "@codegenie/shared";
+import type { TaskCounts, TaskFilter } from "@hobai/shared";
 import { and, asc, count, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { projects } from "../../schema/projects/projects-schema.js";
@@ -61,7 +61,7 @@ export async function setTaskPullRequest(
 
 export type TaskStatus = (typeof tasks.$inferSelect)["status"];
 
-/** Sets the status of the task whose pull request this is; returns the tasks changed (none for a PR CodeGenie didn't open). */
+/** Sets the status of the task whose pull request this is; returns the tasks changed (none for a PR hobai didn't open). */
 export async function setTaskStatusForPullRequest(
   db: Db,
   pullRequest: { repoGithubId: number; number: number },

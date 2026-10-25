@@ -6,9 +6,9 @@ import {
   onboardings,
   createOnboarding,
   type Db,
-} from "@codegenie/db";
-import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
-import { WORK_QUEUE, type OnboardingEvent } from "@codegenie/shared";
+} from "@hobai/db";
+import { insertProject, testDatabaseOrSkip } from "@hobai/db/testing";
+import { WORK_QUEUE, type OnboardingEvent } from "@hobai/shared";
 import { Queue, Worker } from "bullmq";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";

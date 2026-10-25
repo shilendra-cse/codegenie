@@ -3,19 +3,19 @@ import {
   findOnboarding,
   getProject,
   type Db,
-} from "@codegenie/db";
-import type { GithubApp } from "@codegenie/github";
+} from "@hobai/db";
+import type { GithubApp } from "@hobai/github";
 import {
   runOnboarding,
   type OnboardingResult,
   type RunOnboardingOptions,
-} from "@codegenie/runner";
+} from "@hobai/runner";
 import type {
   OnboardingEndStatus,
   OnboardingEventBody,
   QueuedWork,
   RunEvent,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import {
   createEventSink,
   onboardingEventTarget,

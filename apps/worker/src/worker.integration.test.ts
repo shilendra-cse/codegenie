@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
-import { scriptedModel } from "@codegenie/agent/testing";
+import { scriptedModel } from "@hobai/agent/testing";
 import {
   createOnboarding,
   createTaskWithRun,
@@ -12,11 +12,11 @@ import {
   runs,
   upsertProject,
   type Db,
-} from "@codegenie/db";
-import { testDatabaseOrSkip } from "@codegenie/db/testing";
-import { DockerSandbox } from "@codegenie/sandbox";
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
-import { WORK_QUEUE, type RunEvent } from "@codegenie/shared";
+} from "@hobai/db";
+import { testDatabaseOrSkip } from "@hobai/db/testing";
+import { DockerSandbox } from "@hobai/sandbox";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
+import { WORK_QUEUE, type RunEvent } from "@hobai/shared";
 import { Queue, QueueEvents } from "bullmq";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";

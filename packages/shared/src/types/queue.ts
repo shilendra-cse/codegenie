@@ -1,5 +1,7 @@
+import { SHORT_NAME } from "../brand";
 
-export const WORK_QUEUE = "codegenie-work";
+
+export const WORK_QUEUE = `${SHORT_NAME}-work`;
 
 export const DEFAULT_AGENT_MODEL = "openai:gpt-6-luna";
 

@@ -1,4 +1,4 @@
-import type { OnboardingState } from "@codegenie/shared";
+import type { OnboardingState } from "@hobai/shared";
 import { Check } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Icon } from "@/components/atoms/icon";

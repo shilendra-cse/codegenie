@@ -1,8 +1,4 @@
-import {
-  type Db,
-  findUserOnboarding,
-  type UserOnboarding,
-} from "@codegenie/db";
+import { type Db, findUserOnboarding, type UserOnboarding } from "@hobai/db";
 import { HttpError } from "@/lib/http-error";
 import { getUserProject } from "../../projects/services/getUserProject.service";
 

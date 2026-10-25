@@ -6,15 +6,16 @@ import {
   ensureUser,
   getInstallation,
   tasks,
-} from "@codegenie/db";
+} from "@hobai/db";
 import {
   insertProject,
   insertTask,
   testDatabaseOrSkip,
-} from "@codegenie/db/testing";
+} from "@hobai/db/testing";
 import { eq } from "drizzle-orm";
 import express from "express";
 import { afterAll, describe, expect, it } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { keepRawBody } from "@/lib/raw-body";
 import { createGithubWebhookHandler } from "./github.webhooks";
 
@@ -229,7 +230,7 @@ describe.skipIf(!database)("GitHub webhook endpoint", () => {
       expect(logs).toContain("Pull request status recorded");
     });
 
-    it("keeps the status for other actions, and ignores pull requests CodeGenie didn't open", async () => {
+    it(`keeps the status for other actions, and ignores pull requests ${PRODUCT_NAME} didn't open`, async () => {
       const { repoId, status } = await taskWithPullRequest();
 
       await deliver(

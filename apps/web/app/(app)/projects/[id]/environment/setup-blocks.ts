@@ -1,4 +1,4 @@
-import type { OnboardingQuestion } from "@codegenie/shared";
+import type { OnboardingQuestion } from "@hobai/shared";
 import type { SetupLineView } from "@/components/organisms/setup-timeline";
 import type { TimelineLine } from "@/features/setup/timeline";
 

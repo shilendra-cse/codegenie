@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { SecurityDiagram } from "./security-diagram";
 
 describe("SecurityDiagram", () => {
@@ -12,7 +13,7 @@ describe("SecurityDiagram", () => {
     const order = [
       "Sandbox",
       "changes, checked by hash",
-      "CodeGenie",
+      PRODUCT_NAME,
       "Write token · one repo · 1 hour",
       "verified commit + pull request",
       "GitHub",

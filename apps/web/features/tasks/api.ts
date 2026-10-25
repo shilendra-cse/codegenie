@@ -4,7 +4,7 @@ import type {
   ListTasksQuery,
   TaskDetail,
   TaskPage,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { api } from "@/lib/api/client";
 
 export const tasksKey = (projectId?: string) => [

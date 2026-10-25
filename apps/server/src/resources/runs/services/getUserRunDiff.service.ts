@@ -1,4 +1,4 @@
-import { type Db, getRunDiff } from "@codegenie/db";
+import { type Db, getRunDiff } from "@hobai/db";
 import { getUserRun } from "./getUserRun.service";
 
 export async function getUserRunDiff(db: Db, userId: string, runId: string) {

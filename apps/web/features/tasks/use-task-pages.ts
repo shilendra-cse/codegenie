@@ -1,4 +1,4 @@
-import type { TaskFilter } from "@codegenie/shared";
+import type { TaskFilter } from "@hobai/shared";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchTaskPage } from "./api";
 import { isTaskActive } from "./use-tasks";

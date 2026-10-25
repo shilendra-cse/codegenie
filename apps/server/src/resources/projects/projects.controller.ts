@@ -4,7 +4,7 @@ import {
   createProjectSchema,
   environmentParamsSchema,
   projectParamsSchema,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import {
   createProject,
   type CreateProjectDeps,

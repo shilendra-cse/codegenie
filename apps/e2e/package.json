@@ -1,5 +1,5 @@
 {
-  "name": "@codegenie/e2e",
+  "name": "@hobai/e2e",
   "version": "0.0.0",
   "private": true,
   "description": "The end-to-end test: the whole journey in a browser against the real apps, with GitHub faked and a scripted model",
@@ -11,10 +11,11 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@codegenie/agent": "workspace:*",
-    "@codegenie/db": "workspace:*",
-    "@codegenie/github": "workspace:*",
-    "@codegenie/worker": "workspace:*",
+    "@hobai/agent": "workspace:*",
+    "@hobai/db": "workspace:*",
+    "@hobai/github": "workspace:*",
+    "@hobai/shared": "workspace:*",
+    "@hobai/worker": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@types/node": "^24.5.2",

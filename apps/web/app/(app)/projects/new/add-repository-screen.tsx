@@ -1,5 +1,6 @@
 "use client";
 
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { InstallNotice } from "@/components/molecules/install-notice";
 import { RepositoryPicker } from "@/components/organisms/repository-picker";
 import { TopBar } from "@/components/organisms/top-bar";
@@ -22,7 +23,7 @@ export function AddRepositoryScreen({ github }: AddRepositoryScreenProps) {
             Choose a repository
           </h1>
           <p className="text-muted-foreground">
-            Only repositories you gave the CodeGenie GitHub App access to appear
+            Only repositories you gave the {PRODUCT_NAME} GitHub App access to appear
             here.
           </p>
         </div>

@@ -14,7 +14,7 @@ vi.mock("@/lib/api/client", async (original) => ({
 const responses: Record<string, unknown> = {
   "/github/installations": {
     installations: [{ id: 1, accountLogin: "ada", accountType: "user" }],
-    installUrl: "https://github.com/apps/codegenie/installations/new",
+    installUrl: "https://github.com/apps/hobai/installations/new",
   },
   "/projects": { projects: [] },
   "/tasks": { tasks: [], nextCursor: null },

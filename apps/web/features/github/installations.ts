@@ -1,4 +1,4 @@
-import type { GitHubInstallationsResponse } from "@codegenie/shared";
+import type { GitHubInstallationsResponse } from "@hobai/shared";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 

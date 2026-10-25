@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Sandbox } from "@codegenie/sandbox";
+import { SANDBOX_TMP_DIR, type Sandbox } from "@hobai/sandbox";
 import { shellQuote } from "../../lib/shell-quote.js";
 
 export type FileMode = "100644" | "100755" | "120000";
@@ -33,7 +33,7 @@ export const MAX_FILES = 1000;
 export const MAX_BYTES = 50 * 1024 * 1024;
 // Base64 of a chunk stays under the sandbox's 1 MB output limit.
 const CHUNK_BYTES = 700 * 1024;
-const TEMP_INDEX = "/tmp/codegenie/deliver.index";
+const TEMP_INDEX = `${SANDBOX_TMP_DIR}/deliver.index`;
 const ENTRIES_PER_COMMAND = 200;
 const FILE_MODES = new Set<string>(["100644", "100755", "120000"]);
 
@@ -112,7 +112,7 @@ async function expectedTree(
 ) {
   const index = `GIT_INDEX_FILE=${TEMP_INDEX}`;
   const commands = [
-    `mkdir -p /tmp/codegenie && rm -f ${TEMP_INDEX} && ${index} git read-tree ${parent}`,
+    `mkdir -p ${SANDBOX_TMP_DIR} && rm -f ${TEMP_INDEX} && ${index} git read-tree ${parent}`,
   ];
   for (let i = 0; i < writes.length; i += ENTRIES_PER_COMMAND) {
     const entries = writes

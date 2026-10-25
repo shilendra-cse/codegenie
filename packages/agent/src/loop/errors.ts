@@ -1,4 +1,4 @@
-import { SandboxGoneError, SandboxUnavailableError } from "@codegenie/sandbox";
+import { SandboxGoneError, SandboxUnavailableError } from "@hobai/sandbox";
 
 export function isInfrastructureError(error: unknown) {
   return (

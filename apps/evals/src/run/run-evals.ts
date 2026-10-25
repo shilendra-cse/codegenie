@@ -1,8 +1,8 @@
 import { createWriteStream } from "node:fs";
 import path from "node:path";
-import type { ResolvedModel } from "@codegenie/agent";
-import type { EnvironmentConfig } from "@codegenie/shared";
-import { createRunReporter, plain } from "@codegenie/terminal";
+import type { ResolvedModel } from "@hobai/agent";
+import type { EnvironmentConfig } from "@hobai/shared";
+import { createRunReporter, plain } from "@hobai/terminal";
 import { ensureEnvironment } from "../suite/environments.js";
 import type { EvalTask } from "../suite/tasks.js";
 import type { EvalProgress } from "./progress.js";

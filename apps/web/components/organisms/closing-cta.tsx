@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { Glow } from "@/components/atoms/glow";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
@@ -19,7 +20,7 @@ export function ClosingCta({ signedIn }: ClosingCtaProps) {
         </p>
         <Button asChild variant="primary" size="lg" glow>
           {signedIn ? (
-            <Link href={APP_HOME}>Open CodeGenie</Link>
+            <Link href={APP_HOME}>Open {PRODUCT_NAME}</Link>
           ) : (
             <Link href={SIGN_IN}>Sign in with GitHub</Link>
           )}

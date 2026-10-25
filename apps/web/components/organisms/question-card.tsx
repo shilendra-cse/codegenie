@@ -1,7 +1,8 @@
 "use client";
 
-import type { OnboardingAnswer, OnboardingQuestion } from "@codegenie/shared";
+import type { OnboardingAnswer, OnboardingQuestion } from "@hobai/shared";
 import { useState } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
@@ -46,7 +47,7 @@ export function QuestionCard(props: QuestionCardProps) {
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="flex size-6 items-center justify-center rounded-sm border border-border bg-card">
+        <span className="flex size-6 items-center justify-center">
           <Logo variant="mark" />
         </span>
         <span className="text-[13px] text-faint">
@@ -103,7 +104,7 @@ export function QuestionCard(props: QuestionCardProps) {
                 {choice === OTHER && (
                   <Input
                     aria-label="Your answer"
-                    placeholder="Tell CodeGenie what to do"
+                    placeholder={`Tell ${PRODUCT_NAME} what to do`}
                     value={other}
                     maxLength={2000}
                     onChange={(event) => setOther(event.target.value)}

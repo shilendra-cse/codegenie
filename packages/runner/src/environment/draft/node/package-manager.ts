@@ -1,4 +1,4 @@
-import type { PackageManager } from "@codegenie/shared";
+import type { PackageManager } from "@hobai/shared";
 import type { InstallPlan } from "../detector.js";
 import type { PackageJson } from "./package-json.js";
 

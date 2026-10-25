@@ -1,5 +1,5 @@
-import type { RunResult } from "@codegenie/runner";
-import type { Sandbox } from "@codegenie/sandbox";
+import type { RunResult } from "@hobai/runner";
+import type { Sandbox } from "@hobai/sandbox";
 import type { EvalTask } from "../suite/tasks.js";
 import { checks } from "./checks.js";
 import { hiddenTests } from "./hidden-tests.js";

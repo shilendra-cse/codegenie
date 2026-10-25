@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { type Db, runs } from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import { CANCEL_CHANNEL } from "@codegenie/shared";
+import { type Db, runs } from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
+import { CANCEL_CHANNEL } from "@hobai/shared";
 import { eq } from "drizzle-orm";
 import type { Response } from "express";
 import { afterAll, describe, expect, it } from "vitest";

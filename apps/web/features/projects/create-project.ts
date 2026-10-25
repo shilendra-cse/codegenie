@@ -1,5 +1,6 @@
-import type { CreateProjectInput, ProjectResponse } from "@codegenie/shared";
+import type { CreateProjectInput, ProjectResponse } from "@hobai/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { repositoriesKey } from "@/features/github/repositories";
 import { api, ApiError } from "@/lib/api/client";
 
@@ -32,7 +33,7 @@ export function addProjectError(error: unknown) {
       return "The GitHub App is suspended on this account.";
     case "GITHUB_REPOSITORY_NOT_FOUND":
     case "GITHUB_INSTALLATION_NOT_FOUND":
-      return "This repository is no longer available to CodeGenie.";
+      return `This repository is no longer available to ${PRODUCT_NAME}.`;
     default:
       return error.message;
   }

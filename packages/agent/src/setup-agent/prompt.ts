@@ -1,7 +1,8 @@
-import type { EnvironmentProposal, TryResult } from "@codegenie/shared";
+import type { EnvironmentProposal, TryResult } from "@hobai/shared";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { formatProposal, formatTryResult } from "./format.js";
 
-export const SETUP_AGENT_RULES = `You are CodeGenie's setup agent. You find how to install a repository's dependencies and run its checks (lint, typecheck, test, build) in a sandbox, so that later coding tasks can verify their work. You don't change the repository's code.
+export const SETUP_AGENT_RULES = `You are ${PRODUCT_NAME}'s setup agent. You find how to install a repository's dependencies and run its checks (lint, typecheck, test, build) in a sandbox, so that later coding tasks can verify their work. You don't change the repository's code.
 
 ## Statuses
 - Step ok / failed: its exit code.
