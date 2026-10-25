@@ -2,8 +2,17 @@ import type {
   EnvironmentResponse,
   OnboardingResponse,
 } from "@codegenie/shared";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api/client";
 import { EnvironmentScreen } from "./environment-screen";
 
 const state = vi.hoisted(() => ({
@@ -14,6 +23,11 @@ const state = vi.hoisted(() => ({
   start: vi.fn(),
 }));
 
+const api = vi.hoisted(() => ({ post: vi.fn() }));
+vi.mock("@/lib/api/client", async (original) => ({
+  ...(await original<typeof import("@/lib/api/client")>()),
+  api,
+}));
 vi.mock("@/features/setup/use-onboarding", async (original) => ({
   ...(await original<typeof import("@/features/setup/use-onboarding")>()),
   useOnboarding: () => ({
@@ -58,8 +72,21 @@ const environment = (
   decisions: [],
 });
 
+function wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={new QueryClient()}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+
 const show = (view?: string) =>
-  render(<EnvironmentScreen projectId="p1" view={view} />);
+  render(<EnvironmentScreen projectId="p1" view={view} />, { wrapper });
+
+const askToRestore = () => {
+  fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+  fireEvent.click(screen.getByRole("button", { name: "Restore v1" }));
+};
 
 describe("EnvironmentScreen", () => {
   beforeEach(() => {
@@ -68,6 +95,9 @@ describe("EnvironmentScreen", () => {
     state.failed = false;
     state.refetch.mockReset();
     state.start.mockReset();
+    api.post
+      .mockReset()
+      .mockResolvedValue({ data: { environment: environment(1, true) } });
   });
 
   it("shows the active environment", () => {
@@ -162,5 +192,54 @@ describe("EnvironmentScreen", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(state.refetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("lists every version, newest first, with how it was made", () => {
+    show();
+
+    const versions = within(screen.getByRole("region", { name: "Versions" }));
+    expect(versions.getByText("v2").nextSibling).toHaveTextContent("active");
+    expect(versions.getByText("v1").nextSibling).toHaveTextContent("replaced");
+    expect(versions.getAllByText(/Set up by CodeGenie/)).toHaveLength(2);
+    expect(versions.getAllByRole("button", { name: "Restore" })).toHaveLength(
+      1,
+    );
+  });
+
+  it("restores an older version once you confirm", async () => {
+    show();
+
+    askToRestore();
+
+    await waitFor(() =>
+      expect(screen.queryByRole("group", { name: "Restore v1" })).toBeNull(),
+    );
+    expect(api.post).toHaveBeenCalledWith(
+      "/projects/p1/environments/1/restore",
+    );
+  });
+
+  it("refuses while a setup is in progress", async () => {
+    api.post.mockRejectedValue(
+      new ApiError(409, "Finish or stop the setup first.", "SETUP_IN_PROGRESS"),
+    );
+    show();
+
+    askToRestore();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Finish or stop the setup first.",
+    );
+  });
+
+  it("asks to try again when restoring fails", async () => {
+    api.post.mockRejectedValue(new Error("down"));
+    show();
+
+    askToRestore();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't restore v1. Try again.",
+    );
   });
 });
