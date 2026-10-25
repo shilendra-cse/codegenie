@@ -11,8 +11,9 @@ import { useAccount } from "@/features/account/use-account";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
 import { toSidebarProject, useProjects } from "@/features/projects/projects";
 import { useOnboarding } from "@/features/setup/use-onboarding";
-import { useTasks } from "@/features/tasks/use-tasks";
-import { APP_HOME, SIGN_IN } from "@/lib/routes";
+import { useSetupsNeedingYou } from "@/features/projects/use-setups-needing-you";
+import { useTaskCounts, useTasks } from "@/features/tasks/use-tasks";
+import { SIGN_IN, WELCOME } from "@/lib/routes";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -21,12 +22,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { account, pending, signingOut, signOut } = useAccount();
   const projects = useProjects();
   const tasks = useTasks();
+  const counts = useTaskCounts();
+  const setupsNeedingYou = useSetupsNeedingYou();
   const checklist = useWelcomeChecklist();
   // The card is hidden on the welcome page itself, where the checklist is.
   const steps =
-    checklist.status === "ready" && pathname !== APP_HOME
-      ? checklist.steps
-      : [];
+    checklist.status === "ready" && pathname !== WELCOME ? checklist.steps : [];
   const next = steps.find((step) => step.state === "current");
   const setupProjectId =
     checklist.status === "ready"
@@ -59,6 +60,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           }))}
           projectsFailed={projects.isError}
           tasks={tasks.data}
+          inboxCount={(counts.data?.running ?? 0) + setupsNeedingYou.length}
           gettingStarted={
             next && (
               <GettingStartedCard

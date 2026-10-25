@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 import { RecentTasks } from "./recent-tasks";
 
 describe("RecentTasks", () => {
-  it("lists tasks with their project and status, each linking to it", () => {
+  it("lists tasks with their project and status, each linking to it, and all of them", () => {
     render(
       <RecentTasks
+        viewAllHref="/inbox"
         tasks={[
           {
             id: "t1",
@@ -22,10 +23,16 @@ describe("RecentTasks", () => {
     expect(row).toHaveAttribute("href", "/tasks/t1");
     expect(row).toHaveTextContent("buyerbook");
     expect(row).toHaveTextContent("PR #41 open");
+    expect(screen.getByRole("link", { name: "View all" })).toHaveAttribute(
+      "href",
+      "/inbox",
+    );
   });
 
   it("is hidden without tasks", () => {
-    const { container } = render(<RecentTasks tasks={[]} />);
+    const { container } = render(
+      <RecentTasks tasks={[]} viewAllHref="/inbox" />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 });

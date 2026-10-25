@@ -41,6 +41,7 @@ export type SidebarProps = {
   projectsFailed: boolean;
   /** Your latest tasks, newest first. */
   tasks?: SidebarTask[];
+  inboxCount?: number;
   /** Shown above the account until the first-run steps are done. */
   gettingStarted?: ReactNode;
   account: ReactNode;
@@ -105,6 +106,7 @@ export function Sidebar({
   account,
   gettingStarted,
   tasks,
+  inboxCount = 0,
   ...projects
 }: SidebarProps) {
   const recent = (tasks ?? []).slice(0, RECENT);
@@ -137,6 +139,18 @@ export function Sidebar({
           href={INBOX}
           icon={Inbox}
           active={projects.pathname.startsWith(INBOX)}
+          label={
+            inboxCount > 0
+              ? `Inbox, ${inboxCount} running or waiting for you`
+              : undefined
+          }
+          trailing={
+            inboxCount > 0 && (
+              <span className="text-xs font-medium text-faint">
+                {inboxCount}
+              </span>
+            )
+          }
         >
           Inbox
         </NavItem>

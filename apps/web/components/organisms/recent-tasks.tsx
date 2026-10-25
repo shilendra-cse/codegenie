@@ -11,15 +11,23 @@ export type RecentTask = {
   prNumber: number | null;
 };
 
-export type RecentTasksProps = { tasks: RecentTask[] };
+export type RecentTasksProps = { tasks: RecentTask[]; viewAllHref: string };
 
-export function RecentTasks({ tasks }: RecentTasksProps) {
+export function RecentTasks({ tasks, viewAllHref }: RecentTasksProps) {
   if (tasks.length === 0) return null;
   return (
     <section aria-labelledby="recent-tasks" className="flex flex-col gap-1.5">
-      <h2 id="recent-tasks" className="px-3 text-xs font-medium text-faint">
-        Recent tasks
-      </h2>
+      <div className="flex items-center justify-between px-3">
+        <h2 id="recent-tasks" className="text-xs font-medium text-faint">
+          Recent tasks
+        </h2>
+        <Link
+          href={viewAllHref}
+          className="text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          View all
+        </Link>
+      </div>
       <ul className="flex flex-col">
         {tasks.map((task) => (
           <li key={task.id}>

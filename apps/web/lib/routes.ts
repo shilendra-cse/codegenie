@@ -1,6 +1,7 @@
-export const APP_HOME = "/welcome";
-export const SIGN_IN = "/signin";
 export const INBOX = "/inbox";
+export const APP_HOME = INBOX;
+export const WELCOME = "/welcome";
+export const SIGN_IN = "/signin";
 export const ADD_REPOSITORY = "/projects/new";
 export const NEW_TASK = "/new";
 

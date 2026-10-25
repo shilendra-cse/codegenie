@@ -142,4 +142,18 @@ describe("Sidebar", () => {
     });
     expect(link).toHaveTextContent("Needs you");
   });
+
+  it("counts what's running or needs you on the Inbox", () => {
+    renderSidebar({ inboxCount: 3 });
+    expect(
+      screen.getByRole("link", {
+        name: "Inbox, 3 running or waiting for you",
+      }),
+    ).toHaveAttribute("href", "/inbox");
+  });
+
+  it("leaves the count out when nothing is going on", () => {
+    renderSidebar({ inboxCount: 0 });
+    expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
+  });
 });

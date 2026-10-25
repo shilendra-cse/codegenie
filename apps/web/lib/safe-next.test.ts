@@ -15,6 +15,6 @@ describe("safeNext", () => {
     ["a backslash trick", "/\\evil.example"],
     ["a relative path", "projects"],
   ])("falls back for %s", (_case, next) => {
-    expect(safeNext(next)).toBe("/welcome");
+    expect(safeNext(next)).toBe("/inbox");
   });
 });
