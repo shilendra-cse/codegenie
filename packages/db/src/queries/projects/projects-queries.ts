@@ -1,5 +1,6 @@
 import { and, desc, eq, exists, inArray, not } from "drizzle-orm";
 import type { Db } from "../../client.js";
+import { onboardings } from "../../schema/projects/onboardings-schema.js";
 import { projectEnvironments } from "../../schema/projects/project-environments-schema.js";
 import { projects } from "../../schema/projects/projects-schema.js";
 import { runs } from "../../schema/runs/runs-schema.js";
@@ -38,6 +39,11 @@ const withContext = {
   environments: {
     where: eq(projectEnvironments.status, "active"),
     columns: { config: false },
+  },
+  onboardings: {
+    columns: { id: true, status: true },
+    orderBy: desc(onboardings.queuedAt),
+    limit: 1,
   },
 } as const;
 

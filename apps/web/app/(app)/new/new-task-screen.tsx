@@ -13,7 +13,7 @@ import { TaskComposer } from "@/components/organisms/task-composer";
 import { useProjects } from "@/features/projects/projects";
 import { useNewTask } from "@/features/tasks/use-new-task";
 import { useTasks } from "@/features/tasks/use-tasks";
-import { ADD_REPOSITORY, taskPath } from "@/lib/routes";
+import { ADD_REPOSITORY, INBOX, taskPath } from "@/lib/routes";
 
 const RECENT = 5;
 
@@ -68,6 +68,7 @@ export function NewTaskScreen({ projectId: requested }: NewTaskScreenProps) {
       {all.length > 0 && (
         <div className="rise [animation-delay:160ms]">
           <RecentTasks
+            viewAllHref={INBOX}
             tasks={(tasks.data ?? []).slice(0, RECENT).map((task) => ({
               id: task.id,
               href: taskPath(task.id),

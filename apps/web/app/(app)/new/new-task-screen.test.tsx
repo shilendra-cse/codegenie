@@ -28,6 +28,7 @@ const project = (
     savedAt: "2026-10-24T08:00:00.000Z",
   },
   installation: { accountLogin: "ada", suspended: false, uninstalled: false },
+  setup: null,
   createdAt: "2026-10-24T08:00:00.000Z",
   ...overrides,
 });

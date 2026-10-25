@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import type { TaskCounts, TaskFilter } from "@codegenie/shared";
+import { and, asc, count, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { projects } from "../../schema/projects/projects-schema.js";
 import { runs } from "../../schema/runs/runs-schema.js";
@@ -94,26 +95,77 @@ const projectColumns = {
   columns: { id: true, repoOwner: true, repoName: true },
 } as const;
 
+// The same order as the API's task label: a queued or running latest run comes before the pull request.
+function taskFilterCondition(db: Db, filter: TaskFilter) {
+  const latestStatus = db
+    .select({ status: runs.status })
+    .from(runs)
+    .where(eq(runs.taskId, tasks.id))
+    .orderBy(desc(runs.queuedAt))
+    .limit(1);
+  const active = sql`coalesce((${latestStatus}) in ('queued', 'running'), false)`;
+  if (filter === "running") return active;
+  return and(
+    not(active),
+    filter === "pr" ? eq(tasks.status, "pr_open") : ne(tasks.status, "pr_open"),
+  )!;
+}
+
+const userTasksIn = (db: Db, userId: string, projectId?: string) =>
+  and(
+    inArray(tasks.projectId, ownedProjectIds(db, userId)),
+    projectId ? eq(tasks.projectId, projectId) : undefined,
+  );
+
 export async function findUserTasks(
   db: Db,
   userId: string,
-  options: { projectId?: string; afterTaskId?: string; limit: number },
+  options: {
+    projectId?: string;
+    filter?: TaskFilter;
+    afterTaskId?: string;
+    limit: number;
+  },
 ) {
   return db.query.tasks.findMany({
     where: and(
-      inArray(tasks.projectId, ownedProjectIds(db, userId)),
-      options.projectId ? eq(tasks.projectId, options.projectId) : undefined,
+      userTasksIn(db, userId, options.projectId),
+      options.filter ? taskFilterCondition(db, options.filter) : undefined,
       options.afterTaskId
         ? sql`(${tasks.createdAt}, ${tasks.id}) < (select created_at, id from tasks where id = ${options.afterTaskId})`
         : undefined,
     ),
     with: {
       project: projectColumns,
-      runs: { orderBy: desc(runs.queuedAt) },
+      runs: {
+        orderBy: desc(runs.queuedAt),
+        with: { diff: { columns: { files: true } } },
+      },
     },
     orderBy: [desc(tasks.createdAt), desc(tasks.id)],
     limit: options.limit,
   });
+}
+
+export async function countUserTasks(
+  db: Db,
+  userId: string,
+  options: { projectId?: string } = {},
+): Promise<TaskCounts> {
+  const within = (filter: TaskFilter) =>
+    sql`count(*) filter (where ${taskFilterCondition(db, filter)})`.mapWith(
+      Number,
+    );
+  const [counts] = await db
+    .select({
+      all: count(),
+      running: within("running"),
+      pr: within("pr"),
+      done: within("done"),
+    })
+    .from(tasks)
+    .where(userTasksIn(db, userId, options.projectId));
+  return counts!;
 }
 
 export async function findUserTask(db: Db, userId: string, taskId: string) {

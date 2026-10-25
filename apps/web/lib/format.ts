@@ -29,3 +29,5 @@ export function formatDuration(ms: number) {
   }
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m`;
 }
+
+export const formatCost = (usd: number) => `$${usd.toFixed(2)}`;

@@ -6,9 +6,17 @@ import type {
   SetupStep,
 } from "../types/environment";
 import type { Check } from "../types/setup";
+import type { OnboardingState } from "./onboarding";
 
 export const projectParamsSchema = z.object({
   id: z.uuid("The project id must be a UUID."),
+});
+
+export const environmentParamsSchema = projectParamsSchema.extend({
+  version: z.coerce
+    .number("The version must be a number.")
+    .int("The version must be a whole number.")
+    .positive("The version must be positive."),
 });
 
 export const createProjectSchema = z.object({
@@ -33,6 +41,7 @@ export type ProjectResponse = {
     suspended: boolean;
     uninstalled: boolean;
   };
+  setup: { id: string; status: OnboardingState } | null;
   createdAt: string;
 };
 

@@ -1,5 +1,6 @@
 import { randomInt, randomUUID } from "node:crypto";
 import {
+  createOnboarding,
   type Db,
   DbEnvironmentStore,
   ensureUser,
@@ -110,6 +111,10 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
       },
       "detected",
     );
+    const { onboarding } = await createOnboarding(db, {
+      projectId: mine.id,
+      userId: mine.userId,
+    });
 
     const result = await projects.listProjects(request(mine.userId), response);
 
@@ -131,6 +136,7 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
               suspended: false,
               uninstalled: false,
             },
+            setup: { id: onboarding.id, status: "queued" },
           },
         ],
       },
@@ -147,7 +153,7 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
 
     expect(result).toMatchObject({
       status: 200,
-      data: { project: { id: project.id, environment: null } },
+      data: { project: { id: project.id, environment: null, setup: null } },
     });
   });
 
@@ -364,7 +370,7 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
       },
     });
 
-    it("lists the saved versions, newest and active first", async () => {
+    it("lists the saved versions, newest first", async () => {
       const project = await insertProject(db);
       const store = new DbEnvironmentStore(db);
       const environments = (userId: string) =>
@@ -400,6 +406,68 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
       await expect(environments(randomUUID())).rejects.toMatchObject({
         status: 404,
         code: "PROJECT_NOT_FOUND",
+      });
+    });
+
+    it("restores an older version for the project's owner, unless a setup is in progress", async () => {
+      const project = await insertProject(db);
+      const store = new DbEnvironmentStore(db);
+      await store.save(project.id, config("npm ci"), "ai");
+      await store.save(project.id, config("npm install"), "ai");
+      const restore = (version: string, userId = project.userId) =>
+        projects.restoreVersion(
+          request(userId, { id: project.id, version }),
+          response,
+        );
+
+      expect(await restore("1")).toMatchObject({
+        status: 200,
+        data: {
+          environment: {
+            version: 1,
+            active: true,
+            steps: [{ command: "npm ci" }],
+          },
+        },
+      });
+      expect(
+        await projects.getEnvironments(
+          request(project.userId, { id: project.id }),
+          response,
+        ),
+      ).toMatchObject({
+        data: {
+          environments: [
+            { version: 2, active: false },
+            { version: 1, active: true },
+          ],
+        },
+      });
+      expect(
+        await projects.getProject(
+          request(project.userId, { id: project.id }),
+          response,
+        ),
+      ).toMatchObject({ data: { project: { environment: { version: 1 } } } });
+
+      await expect(restore("9")).rejects.toMatchObject({
+        status: 404,
+        code: "ENVIRONMENT_NOT_FOUND",
+      });
+      await expect(restore("1", randomUUID())).rejects.toMatchObject({
+        status: 404,
+        code: "PROJECT_NOT_FOUND",
+      });
+      await expect(restore("one")).rejects.toBeInstanceOf(ZodError);
+      await expect(restore("0")).rejects.toBeInstanceOf(ZodError);
+
+      await createOnboarding(db, {
+        projectId: project.id,
+        userId: project.userId,
+      });
+      await expect(restore("2")).rejects.toMatchObject({
+        status: 409,
+        code: "SETUP_IN_PROGRESS",
       });
     });
   });

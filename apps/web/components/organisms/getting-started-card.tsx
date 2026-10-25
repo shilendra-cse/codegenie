@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Icon } from "@/components/atoms/icon";
-import { APP_HOME } from "@/lib/routes";
+import { WELCOME } from "@/lib/routes";
 
 type StepId = "install" | "add-repo" | "set-up" | "first-task";
 
@@ -32,7 +32,7 @@ export function GettingStartedCard({
 }: GettingStartedCardProps) {
   return (
     <Link
-      href={APP_HOME}
+      href={WELCOME}
       className="flex flex-col gap-2 rounded-[10px] border border-border bg-card p-3 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
     >
       <span className="flex items-center justify-between">

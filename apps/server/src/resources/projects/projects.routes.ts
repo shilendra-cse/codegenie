@@ -13,4 +13,7 @@ api.post("/projects").authSecure(projects.addProject);
 api.get("/projects/:id").authSecure(projects.getProject);
 api.delete("/projects/:id").authSecure(projects.deleteProject);
 api.get("/projects/:id/environments").authSecure(projects.getEnvironments);
+api
+  .post("/projects/:id/environments/:version/restore")
+  .authSecure(projects.restoreVersion);
 api.get("/projects/:id/branches").authSecure(projects.getBranches);

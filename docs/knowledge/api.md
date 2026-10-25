@@ -53,17 +53,18 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | GET | `/projects/:id/onboarding/events` | The latest setup's events as a stream, replayed then live (§6) |
 | POST | `/projects/:id/onboarding/answer` | `{ questionId, answer: { option } \| { other } }` → 202; checked against the open question, then handed to the worker |
 | POST | `/projects/:id/onboarding/cancel` | 202 `{ outcome: "cancelled" }` for a queued setup, `"stopping"` for a running or waiting one |
-| GET | `/projects/:id/environments` | The saved environment versions, newest (active) first |
+| GET | `/projects/:id/environments` | The saved environment versions, newest first |
+| POST | `/projects/:id/environments/:version/restore` | Makes an older version active again: 200 `{ environment }` |
 | GET | `/projects/:id/branches` | `{ branches, defaultBranch, truncated }`: the repository's branch names from GitHub (with the user's token), the default first, at most 1,000 |
 | POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued |
-| GET | `/tasks?projectId=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` |
+| GET | `/tasks?projectId=&filter=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` and `counts` |
 | GET | `/tasks/:id` | A task with its messages and runs |
 | GET | `/runs/:id` | One run |
 | GET | `/runs/:id/diff` | The run's patch and files, or `null` |
 | POST | `/runs/:id/cancel` | 202 `{ outcome: "cancelled" }` for a queued run, `"stopping"` for a running one |
 | GET | `/runs/:id/events` | The run's events as a stream (server-sent events), replayed then live (§6) |
 
-A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) and installation state (`accountLogin`, `suspended`, `uninstalled`).
+A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) installation state (`accountLogin`, `suspended`, `uninstalled`) and latest setup (`id`, `status`, or `null` before the first).
 
 **Adding a project** checks, in order: the installation is recorded and installed (404), not suspended (409), the user has a GitHub token (401), GitHub shows the user that installation (404) and the repository in it (404). The project belongs to the signed-in user, whoever installed the App; the repository's owner, name and default branch come from GitHub at that moment.
 
@@ -71,7 +72,7 @@ A **project** is its repository (`githubId`, `owner`, `name`), default branch, a
 
 **Starting work** (a task or setup) needs the App installed and not suspended (409); a task also needs the environment set up and healthy (409). The task's title is the prompt's first line (≤ 120 characters), its base branch the project's default unless given, and its run records the server's `AGENT_MODEL`. The database is written first, then the queue; if Redis can't be reached the run is failed and the request answers 503.
 
-A **task** in a list: `id`, `title`, `project` (`id`, `owner`, `name`), `label`, `baseBranch`, `branchName`, `pullRequest` (`number`, `url`, `draft`, or `null`), `latestRun` (`id`, `status`, `stage`, `error`), `runCount`, `durationMs` and `costUsd` across runs, `createdAt`, `updatedAt` (latest activity). Its **label**, in order: latest run queued → `queued`, running → `working`; PR merged → `merged`, closed → `closed`, open → `pr_open` / `pr_draft`; latest run failed → `failed`, cancelled → `cancelled`; otherwise `no_changes` ([ui.md](./ui.md) §5). Pages are cursored by the last task's id. The task detail adds `messages` (oldest first) and `runs` (newest first).
+A **task** in a list: `id`, `title`, `project` (`id`, `owner`, `name`), `label`, `baseBranch`, `branchName`, `pullRequest` (`number`, `url`, `draft`, or `null`), `latestRun` (`id`, `status`, `stage`, `error`, `checksPassed`, `filesChanged`, and `summaryLine`, the summary's first line that isn't a heading), `runCount`, `durationMs` and `costUsd` across runs, `createdAt`, `updatedAt` (latest activity). Its **label**, in order: latest run queued → `queued`, running → `working`; PR merged → `merged`, closed → `closed`, open → `pr_open` / `pr_draft`; latest run failed → `failed`, cancelled → `cancelled`; otherwise `no_changes` ([ui.md](./ui.md) §5). Pages are cursored by the last task's id. **Filters** follow the label: `running` is queued or working; `pr` is `pr_open` / `pr_draft`; `done` is the rest. Each page carries `counts` (`all`, `running`, `pr`, `done`) across every page, for one project with `projectId`, whatever the filter. The task detail adds `messages` (oldest first) and `runs` (newest first).
 
 A **run**: `id`, `taskId`, `trigger`, `status`, `stage`, `model`, `summary`, `checksPassed`, `commitSha`, `error` (`code`, `message`, or `null`), `steps`, `inputTokens`, `outputTokens`, `costUsd`, `queuedAt`, `startedAt`, `finishedAt`, `durationMs`, `changes` (`files`, `truncated`, or `null`; the patch comes from `/runs/:id/diff`).
 
@@ -79,7 +80,7 @@ A **run**: `id`, `taskId`, `trigger`, `status`, `stage`, `model`, `summary`, `ch
 
 A **setup** (onboarding): `id`, `status` (`queued`, `running`, `waiting` for an answer, `succeeded`, `failed`, `cancelled`), `question` (the open one while `waiting`: `id`, `question`, `why`, `options` with the recommended one first, `allowOther`), `environmentVersion` (what it saved), `error` (`code`, `message`; e.g. `NO_ANSWER` after 30 minutes without one), tokens, `costUsd`, `queuedAt`, `startedAt`, `finishedAt`, `durationMs` ([environment.md](./environment.md) §3.5). **Answering** requires the setup to be `waiting` on that question (409 `QUESTION_NOT_OPEN` otherwise), an existing option or, where allowed, 1–2000 characters of your own (400 otherwise); the answer goes to the worker over Redis (`onboarding-answer`). **Stopping** works like cancelling a run, over `run-cancel` with the setup's id.
 
-An **environment version**: `version`, `active`, `source`, `savedAt`, `health`, `healthReasons`, `steps`, `checks`, `decisions` (the questions asked and how they were answered). Rollback to an older version comes with the project page.
+An **environment version**: `version`, `active`, `source`, `savedAt`, `health`, `healthReasons`, `steps`, `checks`, `decisions` (the questions asked and how they were answered). **Restoring** a version makes it active again with the health it had; the one that was active is kept, and the next setup saves the next number. It's refused while a setup is queued, running or waiting (409 `SETUP_IN_PROGRESS`); an unknown version is 404 `ENVIRONMENT_NOT_FOUND`. The project row is locked as when saving, so a restore and a save take turns.
 
 ## 5. Code layout
 

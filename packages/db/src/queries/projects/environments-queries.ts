@@ -5,18 +5,24 @@ import type {
   EnvironmentStore,
   StoredEnvironment,
 } from "@codegenie/shared";
-import { and, desc, eq, max } from "drizzle-orm";
+import { and, desc, eq, inArray, max } from "drizzle-orm";
 import type { Db } from "../../client.js";
+import { onboardings } from "../../schema/projects/onboardings-schema.js";
+import { ACTIVE_ONBOARDING } from "./onboardings-queries.js";
 import { projectEnvironments } from "../../schema/projects/project-environments-schema.js";
 import { projects } from "../../schema/projects/projects-schema.js";
 
 type Row = typeof projectEnvironments.$inferSelect;
 
-export type DbStoredEnvironment = StoredEnvironment & { id: string };
+export type DbStoredEnvironment = StoredEnvironment & {
+  id: string;
+  active: boolean;
+};
 
 function toStored(row: Row): DbStoredEnvironment {
   return {
     id: row.id,
+    active: row.status === "active",
     repoKey: row.projectId,
     version: row.version,
     source: row.source,
@@ -119,4 +125,66 @@ export class DbEnvironmentStore implements EnvironmentStore {
         ),
       );
   }
+}
+
+export type RestoreOutcome =
+  | { status: "restored"; environment: DbStoredEnvironment }
+  | { status: "not_found" }
+  | { status: "setup_in_progress" };
+
+export async function restoreEnvironmentUnlessSettingUp(
+  db: Db,
+  projectId: string,
+  version: number,
+): Promise<RestoreOutcome> {
+  return db.transaction(async (tx) => {
+    // The same lock as saving, so a restore and a setup's save take turns.
+    await tx
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .for("update");
+
+    const [settingUp] = await tx
+      .select({ id: onboardings.id })
+      .from(onboardings)
+      .where(
+        and(
+          eq(onboardings.projectId, projectId),
+          inArray(onboardings.status, ACTIVE_ONBOARDING),
+        ),
+      )
+      .limit(1);
+    if (settingUp) return { status: "setup_in_progress" };
+
+    const [target] = await tx
+      .select()
+      .from(projectEnvironments)
+      .where(
+        and(
+          eq(projectEnvironments.projectId, projectId),
+          eq(projectEnvironments.version, version),
+        ),
+      );
+    if (!target) return { status: "not_found" };
+    if (target.status === "active") {
+      return { status: "restored", environment: toStored(target) };
+    }
+
+    await tx
+      .update(projectEnvironments)
+      .set({ status: "superseded" })
+      .where(
+        and(
+          eq(projectEnvironments.projectId, projectId),
+          eq(projectEnvironments.status, "active"),
+        ),
+      );
+    const [restored] = await tx
+      .update(projectEnvironments)
+      .set({ status: "active" })
+      .where(eq(projectEnvironments.id, target.id))
+      .returning();
+    return { status: "restored", environment: toStored(restored!) };
+  });
 }

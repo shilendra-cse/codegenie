@@ -1,8 +1,9 @@
-import type { UserProject } from "@codegenie/db";
-import type { ProjectResponse } from "@codegenie/shared";
+import type { DbStoredEnvironment, UserProject } from "@codegenie/db";
+import type { EnvironmentResponse, ProjectResponse } from "@codegenie/shared";
 
 export function toProjectResponse(project: UserProject): ProjectResponse {
   const environment = project.environments[0];
+  const setup = project.onboardings[0];
   return {
     id: project.id,
     repo: {
@@ -24,6 +25,23 @@ export function toProjectResponse(project: UserProject): ProjectResponse {
       suspended: project.installation.suspendedAt !== null,
       uninstalled: project.installation.uninstalledAt !== null,
     },
+    setup: setup ? { id: setup.id, status: setup.status } : null,
     createdAt: project.createdAt.toISOString(),
+  };
+}
+
+export function toEnvironmentResponse(
+  environment: DbStoredEnvironment,
+): EnvironmentResponse {
+  return {
+    version: environment.version,
+    active: environment.active,
+    source: environment.source,
+    savedAt: environment.savedAt,
+    health: environment.health.status,
+    healthReasons: environment.health.reasons,
+    steps: environment.config.steps,
+    checks: environment.config.checks,
+    decisions: environment.config.meta.decisions,
   };
 }

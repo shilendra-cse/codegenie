@@ -100,7 +100,7 @@ Constraints and indexes:
 - **Partial unique** on (`project_id`) `WHERE status = 'active'`: at most one active config per project.
 - (`project_id`, `created_at`).
 
-Lifecycle: onboarding (or a user edit) inserts version N+1 as `active` and marks the previous one `superseded` in the same transaction; rollback reactivates an older version (Phase 4).
+Lifecycle: onboarding (or a user edit) inserts version N+1 as `active` and marks the previous one `superseded` in the same transaction; restoring reactivates an older version with its health and supersedes the active one, also in one transaction, refused while a setup is in progress.
 
 Code: `DbEnvironmentStore` in `packages/db/src/queries/projects/environments-queries.ts` (`load`, `list`, `save`, `markHealth`, keyed by project id; the same `EnvironmentStore` interface as the CLI's file store). `save` locks the project row, so concurrent saves for one project get versions 1, 2, 3 in turn.
 

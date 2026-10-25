@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
-import { messages, tasks } from "../../schema/index.js";
+import { messages, runs, tasks } from "../../schema/index.js";
 import {
   insertProject,
   insertTask,
@@ -10,6 +10,7 @@ import {
 } from "../../testing/index.js";
 import { saveRunDiff } from "../runs/run-diffs-queries.js";
 import {
+  countUserTasks,
   createTaskWithRun,
   findUserTask,
   findUserTasks,
@@ -144,6 +145,79 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
         project: { id: other.id, repoOwner: "acme", repoName: "app" },
         runs: [{ id: third.run.id, status: "queued" }],
       });
+    });
+
+    it("filters by the latest run, then the pull request, and counts each filter", async () => {
+      const project = await insertProject(db);
+      const other = await insertProject(db, {
+        userId: project.userId,
+        installationId: project.installationId,
+      });
+      const withRuns = async (
+        values: Partial<typeof tasks.$inferInsert>,
+        statuses: (typeof runs.$inferInsert)["status"][],
+        on: { id: string; userId: string } = project,
+      ) => {
+        const task = await insertTask(db, on, values);
+        for (const [i, status] of statuses.entries()) {
+          await db.insert(runs).values({
+            taskId: task.id,
+            trigger: "initial",
+            model: "test:scripted",
+            status,
+            queuedAt: new Date(Date.now() + i * 1000),
+          });
+        }
+        return task.id;
+      };
+      const noRuns = await withRuns({}, []);
+      const queued = await withRuns({}, ["queued"]);
+      const failed = await withRuns({}, ["failed"]);
+      const prOpen = await withRuns({ status: "pr_open" }, ["succeeded"]);
+      const prRunningAgain = await withRuns({ status: "pr_open" }, [
+        "succeeded",
+        "running",
+      ]);
+      const merged = await withRuns({ status: "merged" }, ["succeeded"]);
+      const otherProject = await withRuns({ status: "pr_open" }, [], other);
+      await withRuns({}, ["running"], await insertProject(db));
+
+      const ids = async (
+        filter: "running" | "pr" | "done",
+        projectId?: string,
+      ) =>
+        (
+          await findUserTasks(db, project.userId, {
+            filter,
+            projectId,
+            limit: 10,
+          })
+        ).map((t) => t.id);
+
+      expect(await ids("running")).toEqual([prRunningAgain, queued]);
+      expect(await ids("pr")).toEqual([otherProject, prOpen]);
+      expect(await ids("pr", project.id)).toEqual([prOpen]);
+      expect(await ids("done")).toEqual([merged, failed, noRuns]);
+      expect(await countUserTasks(db, project.userId)).toEqual({
+        all: 7,
+        running: 2,
+        pr: 2,
+        done: 3,
+      });
+      expect(
+        await countUserTasks(db, project.userId, { projectId: project.id }),
+      ).toEqual({ all: 6, running: 2, pr: 1, done: 3 });
+
+      const firstDone = await findUserTasks(db, project.userId, {
+        filter: "done",
+        limit: 1,
+      });
+      const nextDone = await findUserTasks(db, project.userId, {
+        filter: "done",
+        afterTaskId: firstDone[0]!.id,
+        limit: 10,
+      });
+      expect(nextDone.map((t) => t.id)).toEqual([failed, noRuns]);
     });
 
     it("gets a task with its messages and runs, newest run first, only for its owner", async () => {

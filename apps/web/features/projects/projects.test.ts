@@ -10,6 +10,7 @@ const project = (
   defaultBranch: "main",
   environment,
   installation: { accountLogin: "ada", suspended: false, uninstalled: false },
+  setup: null,
   createdAt: "2026-10-23T08:00:00.000Z",
 });
 

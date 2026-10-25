@@ -15,7 +15,7 @@ import { useStartOnboarding } from "@/features/setup/use-onboarding";
 import { useSetupProgress } from "@/features/setup/use-setup-progress";
 import { useNewTask } from "@/features/tasks/use-new-task";
 import { useTasks } from "@/features/tasks/use-tasks";
-import { APP_HOME, environmentPath, taskPath } from "@/lib/routes";
+import { environmentPath, taskPath, WELCOME } from "@/lib/routes";
 import { useNow } from "@/lib/use-now";
 import { useInstallOutcome } from "../use-install-outcome";
 
@@ -51,7 +51,7 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
   const firstTaskRunning =
     firstTaskStep?.state === "done" &&
     (firstTask?.label === "queued" || firstTask?.label === "working");
-  const outcome = useInstallOutcome(github, APP_HOME);
+  const outcome = useInstallOutcome(github, WELCOME);
   const firstName = account?.name.trim().split(/\s+/)[0];
   const checklistView =
     checklist.status === "ready"

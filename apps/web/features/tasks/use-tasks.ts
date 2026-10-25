@@ -23,6 +23,18 @@ export function useTasks(projectId?: string) {
   });
 }
 
+export function useTaskCounts() {
+  return useQuery({
+    queryKey: tasksKey(),
+    queryFn: () => fetchTaskPage(),
+    select: (page) => page.counts,
+    refetchInterval: (query) =>
+      query.state.data && query.state.data.counts.running > 0
+        ? REFRESH_MS
+        : false,
+  });
+}
+
 export function useHasTasks() {
   return useQuery({
     queryKey: tasksKey(),

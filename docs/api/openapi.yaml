@@ -591,7 +591,7 @@ paths:
     get:
       tags: [Projects]
       summary: The project's environment versions
-      description: Saved versions, newest (the active one) first.
+      description: Saved versions, newest first; `active` marks the one new tasks use.
       operationId: listEnvironments
       responses:
         "200":
@@ -615,6 +615,58 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/ProjectNotFound"
+
+  /api/projects/{projectId}/environments/{version}/restore:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    post:
+      tags: [Projects]
+      summary: Make an older environment version active again
+      description: New tasks use it from then on, with the health it had. The version that was active is kept; the next setup saves the next number.
+      operationId: restoreEnvironment
+      responses:
+        "200":
+          description: The restored version
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [environment]
+                        properties:
+                          environment:
+                            $ref: "#/components/schemas/Environment"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: The project (`PROJECT_NOT_FOUND`) or the version (`ENVIRONMENT_NOT_FOUND`) doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: A setup is queued, running or waiting for an answer (`SETUP_IN_PROGRESS`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/projects/{projectId}/branches:
     parameters:
@@ -741,7 +793,7 @@ paths:
     get:
       tags: [Tasks]
       summary: The signed-in user's tasks
-      description: Newest first, 50 per page.
+      description: Newest first, 50 per page, with how many tasks each filter holds.
       operationId: listTasks
       parameters:
         - name: projectId
@@ -749,6 +801,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: filter
+          in: query
+          description: "running: the latest run is queued or running. pr: otherwise, a pull request is open (or draft). done: everything else."
+          schema:
+            type: string
+            enum: [running, pr, done]
         - name: cursor
           in: query
           description: "`nextCursor` from the previous page"
@@ -767,7 +825,7 @@ paths:
                     properties:
                       data:
                         type: object
-                        required: [tasks, nextCursor]
+                        required: [tasks, nextCursor, counts]
                         properties:
                           tasks:
                             type: array
@@ -777,6 +835,19 @@ paths:
                             type: string
                             format: uuid
                             nullable: true
+                          counts:
+                            description: Across all pages (one project's, with projectId), whatever the filter
+                            type: object
+                            required: [all, running, pr, done]
+                            properties:
+                              all:
+                                type: integer
+                              running:
+                                type: integer
+                              pr:
+                                type: integer
+                              done:
+                                type: integer
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
@@ -1324,7 +1395,7 @@ components:
                 type: boolean
     Project:
       type: object
-      required: [id, repo, defaultBranch, environment, installation, createdAt]
+      required: [id, repo, defaultBranch, environment, installation, setup, createdAt]
       properties:
         id:
           type: string
@@ -1372,6 +1443,18 @@ components:
               type: boolean
             uninstalled:
               type: boolean
+        setup:
+          type: object
+          nullable: true
+          description: The latest setup; null before the first
+          required: [id, status]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [queued, running, waiting, succeeded, failed, cancelled]
         createdAt:
           type: string
           format: date-time
@@ -1454,7 +1537,7 @@ components:
         latestRun:
           type: object
           nullable: true
-          required: [id, status, stage, error]
+          required: [id, status, stage, error, checksPassed, filesChanged, summaryLine]
           properties:
             id:
               type: string
@@ -1465,6 +1548,17 @@ components:
               $ref: "#/components/schemas/RunStage"
             error:
               $ref: "#/components/schemas/RunError"
+            checksPassed:
+              type: boolean
+              nullable: true
+            filesChanged:
+              type: integer
+              nullable: true
+              description: Files in the run's diff; null without one
+            summaryLine:
+              type: string
+              nullable: true
+              description: The summary's first line that isn't a heading, at most 200 characters
         runCount:
           type: integer
         durationMs:
