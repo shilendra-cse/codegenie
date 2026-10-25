@@ -1,15 +1,5 @@
 import type { TaskLabel } from "@codegenie/shared";
-import {
-  CircleCheck,
-  CircleDot,
-  CircleX,
-  GitMerge,
-  GitPullRequest,
-  GitPullRequestDraft,
-  Inbox,
-  type LucideIcon,
-  Plus,
-} from "lucide-react";
+import { Inbox, Plus } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
@@ -21,8 +11,11 @@ import {
 import { Icon } from "@/components/atoms/icon";
 import { Logo } from "@/components/atoms/logo";
 import { Skeleton } from "@/components/atoms/skeleton";
-import { Spinner } from "@/components/atoms/spinner";
 import { NavItem } from "@/components/molecules/nav-item";
+import {
+  TASK_STATUS_TEXT,
+  TaskStatusIcon,
+} from "@/components/molecules/task-status-icon";
 import {
   ADD_REPOSITORY,
   APP_HOME,
@@ -106,42 +99,6 @@ function ProjectList({
   );
 }
 
-const TASK_STATUS: Record<TaskLabel, string> = {
-  queued: "queued",
-  working: "working",
-  pr_open: "PR open",
-  pr_draft: "draft PR",
-  merged: "merged",
-  closed: "PR closed",
-  no_changes: "no changes",
-  failed: "failed",
-  cancelled: "cancelled",
-};
-
-const TASK_ICONS: Record<
-  Exclude<TaskLabel, "queued" | "working">,
-  { icon: LucideIcon; className: string }
-> = {
-  pr_open: { icon: GitPullRequest, className: "text-ok" },
-  pr_draft: {
-    icon: GitPullRequestDraft,
-    className: "text-warn",
-  },
-  merged: { icon: GitMerge, className: "text-merged" },
-  closed: { icon: GitPullRequest, className: "text-faint" },
-  no_changes: { icon: CircleCheck, className: "text-faint" },
-  failed: { icon: CircleX, className: "text-err" },
-  cancelled: { icon: CircleDot, className: "text-faint" },
-};
-
-function TaskIcon({ label }: { label: TaskLabel }) {
-  if (label === "queued" || label === "working") {
-    return <Spinner size={14} className="text-primary-text" />;
-  }
-  const { icon, className } = TASK_ICONS[label];
-  return <Icon icon={icon} size={14} className={className} />;
-}
-
 const RECENT = 10;
 
 export function Sidebar({
@@ -206,8 +163,8 @@ export function Sidebar({
                   <NavItem
                     key={task.id}
                     href={href}
-                    label={`${task.title}, ${TASK_STATUS[task.label]}`}
-                    leading={<TaskIcon label={task.label} />}
+                    label={`${task.title}, ${TASK_STATUS_TEXT[task.label]}`}
+                    leading={<TaskStatusIcon status={task.label} />}
                     active={projects.pathname === href}
                   >
                     {task.title}
