@@ -1,13 +1,13 @@
 # Agent
 
-> Status: **Accepted** · Last updated: 2026-10-18 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
+> Status: **Accepted** · Last updated: 2026-10-25 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
 
-The agent is the part of CodeGenie that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@codegenie/agent`); the CLI and the worker call `runAgent()`. A second agent, the setup agent (section 9), shares the same loop.
+The agent is the part of CodeGenie that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@codegenie/agent`); the runner's `runTask()` calls `runAgent()`, and the CLI, the worker and the evals all go through `runTask()`. The worker also calls `titleTask()` directly (section 10). A second agent, the setup agent (section 9), shares the same loop.
 
 ## 1. How it fits
 
 ```
-caller (CLI / worker)
+runTask (runner; called by CLI / worker / evals)
   └─ runAgent({ task, ctx, model, setup, limits, emit, signal })
        ├─ prompt:  system rules + repository context (built once per run)
        ├─ loop:    streamText ⇄ tools, until finish_task / limit / cancel / failure
@@ -33,6 +33,7 @@ packages/agent/src/
 │   ├── compaction.ts         cache-friendly context compaction
 │   ├── events.ts             AI SDK stream parts → RunEvent
 │   ├── limits.ts             default limits and the messages the model sees
+│   ├── deadline.ts           createDeadline: a time limit that can pause
 │   └── errors.ts             infrastructure-error detection
 ├── tools/
 │   ├── core/                 context, run-tool, tool-error, workspace-path, output-log
@@ -44,7 +45,7 @@ packages/agent/src/
 │   ├── resolve-model.ts      "openai:<id>" → AI SDK model via the provider registry
 │   └── usage.ts              tokens (input / cached / output) → cost
 ├── lib/                      truncate, shell-quote, lines
-├── testing/                  scripted fake model
+├── testing/mock-model.ts     scripted fake model
 │
 │   one folder per agent: its run function, prompt and own tools
 ├── task-agent/
@@ -145,7 +146,7 @@ To add a model: add a catalog entry with values from the provider's model and pr
 ## 8. Testing
 
 - **Fake model** (`testing/mock-model.ts`): a scripted LLM that replays tool calls and text per call, with configurable usage, delays and errors. No network, no cost.
-- **Fake sandbox** (`testing/fake-sandbox.ts`): in-memory files and scripted `exec`.
+- **Fake sandbox** (`packages/sandbox/src/testing/fake-sandbox.ts`, imported from `@codegenie/sandbox/testing`): in-memory files and scripted `exec`.
 - **Loop tests** cover finishing, real tool execution, event order, the prompt sent, nudges, all three limits with forced wrap-up, cancellation, sandbox loss before and during the run, provider errors, and recovery from tool errors.
 - **Integration tests** run tools against a real `DockerSandbox`.
 
@@ -179,7 +180,7 @@ packages/agent/src/setup-agent/
 - Failing checks: the agent decides whether the failure is in the code (kept as already failing) or in the environment (fixed, or the user is asked).
 - Installing packages the repository doesn't declare (e.g. a linter missing from `package.json`) is the user's decision: the agent asks, recommends leaving the check out, and pins exact versions if the user wants the install.
 - Try results list every status first and the output of failed steps and checks after, so the overview survives truncation; steps reused from an earlier try show "already done".
-- Limits: 40 steps, 20 minutes (installs alone can take minutes), $0.20.
+- Limits: 40 steps, 20 minutes (installs alone can take minutes), $0.20. The 20 minutes pause while a question waits for an answer.
 - The package doesn't depend on the runner: `tryEnvironment` and the channel are passed in.
 
 ## 10. Task titles
@@ -188,7 +189,6 @@ packages/agent/src/setup-agent/
 
 ## 11. Known limitations / TODO
 
-- [ ] Not yet run against a real model end to end (first real runs come with the CLI).
 - [ ] Cost limit is checked between steps, so a run can slightly exceed it.
 - [ ] Token estimate for compaction is a character heuristic.
 - [ ] Utility model for cheap side tasks (PR titles/descriptions), tiers, bring-your-own-key and fallback models are post-MVP.

@@ -32,6 +32,8 @@ pnpm dev:worker
 | `DAYTONA_API_URL`, `DAYTONA_TARGET` | Daytona's defaults | endpoint and region |
 | `SANDBOX_RETENTION_HOURS` | `4` | how long a lost run's stopped Daytona sandbox is kept |
 | `REAPER_INTERVAL_MINUTES` | `5` | how often the reaper runs |
+| `ONBOARDING_ANSWER_TIMEOUT_MINUTES` | `30` | how long setup waits for an answer to its question |
+| `FRONTEND_URL` | optional | the web app's address, for the task link in the pull request |
 | `DATABASE_URL` | built from `DB_*`, same defaults as the server | |
 | `REDIS_URL` | `redis://localhost:6380` | |
 | `LOG_LEVEL` | `info` | |
@@ -53,7 +55,7 @@ Only the server queues work ([api.md](../../docs/knowledge/api.md)). Signed in, 
 | Start a task | `POST /api/projects/:id/tasks` `{ prompt }` |
 | Cancel a run | `POST /api/runs/:id/cancel` (queued: cancelled; running: stopped) |
 
-Until the web app has these screens, send them from the API docs at http://localhost:3001/api/docs, which use your session cookie.
+The web app does each of these (add a repository, environment setup, New task, Cancel on the task page). You can also send them from the API docs at http://localhost:3001/api/docs, which use your session cookie.
 
 Watching a run:
 
@@ -77,13 +79,17 @@ Redis tests use a key prefix of their own (`testRedisOrSkip`), so they never tou
 
 ```
 src/
-├── index.ts          the process: config, connections, consumer, shutdown
+├── index.ts          the process: config, logger, startWorker, shutdown
+├── start-worker.ts   startWorker: connections, consumer, reaper (the @codegenie/worker export, used by the e2e)
 ├── config.ts         apps/worker/.env, validated
 ├── consumer.ts       BullMQ worker: work kind → handler, cancel messages, close()
 ├── handlers/         run-task, onboard-project
+├── delivery/         commit, branch name, pull request
+├── github/           repo-scoped tokens
+├── onboardings/      onboarding record, its events, routing answers
 ├── reaper/           lost runs, keeping their work, the schedule
 ├── runs/             run record: the runs row from queued to its final status
 ├── events/           event sink: run_events (numbered) + run:{id}
 ├── lib/              logger, serial queue
-└── testing/          testRedisOrSkip
+└── testing/          testRedisOrSkip, fakeGithubApp
 ```

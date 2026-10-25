@@ -1,6 +1,6 @@
 # Runner
 
-> Status: **Built** · Last updated: 2026-10-18 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
+> Status: **Built** · Last updated: 2026-10-25 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
 The runner executes a coding task end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
 
@@ -34,10 +34,13 @@ packages/runner/src/
 ├── run/                  runTask(), RunResult (+ unit and integration tests)
 ├── stages/               each stage: index.ts, its files and tests
 │   ├── checkout/         clone or local copy; local-files picks what to copy
-│   ├── setup/            detectors, install
+│   ├── setup/            run-setup.ts: replay or draft, baseline checks, health
 │   ├── changes/          baseline commit, diff
-│   └── verify/           re-run checks
-└── lib/                  run-logged (command + full log), shell-quote
+│   ├── verify/           re-run checks; compare with the baseline
+│   └── deliver/          change-set.ts: the changes handed to the deliver callback
+├── environment/          config, build-config, apply, checks, health; draft/ (detectors)
+├── onboarding/           runOnboarding() (section 3)
+└── lib/                  run-logged (command + full log), shell-quote, git-auth (token for one git command)
 ```
 
 ## 2. CLI: `pnpm agent:setup` and `pnpm agent:run`
@@ -106,7 +109,8 @@ packages/runner/src/
 │   ├── checkout/
 │   ├── setup/           run-setup.ts: apply steps, baseline checks, then the baseline commit
 │   ├── verify/          rerun checks; compare.ts: passing / fixed / regressed / still failing
-│   └── changes/         baseline commit + diff (taken before verify reruns the checks)
+│   ├── changes/         baseline commit + diff (taken before verify reruns the checks)
+│   └── deliver/         change-set.ts: the agent's changes, handed to the delivery callback
 └── environment/         config building blocks, independent of runs (reused by onboarding)
     ├── config.ts        schema: parseEnvironmentConfig()
     ├── build-config.ts  draft + results → EnvironmentConfig
@@ -168,7 +172,7 @@ sandbox + checkout → draft → try (install + checks)
 - When the agent doesn't finish, the drafted setup is used and a note says so.
 - Checks that are broken or time out in the final check are left out, and checks that behave differently there than in the agent's last try get a note.
 - `source` is `detected` when the agent didn't run, `ai` when it did; answers go into `meta.decisions`.
-- Saving is the caller's job (the CLI writes the file; the store comes with part D).
+- Saving is the caller's job: the CLI writes its file store; the worker runs with `autoApprove` and saves to `DbEnvironmentStore` (`packages/db/src/queries/projects/environments-queries.ts`).
 
 ## 4. Deferred (not in the MVP)
 

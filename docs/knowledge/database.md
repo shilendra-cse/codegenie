@@ -1,6 +1,6 @@
 # Database Design
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-17 · Engine: PostgreSQL · ORM: Drizzle
+> Status: **Accepted** (MVP) · Last updated: 2026-10-25 · Engine: PostgreSQL · ORM: Drizzle
 
 See [architecture.md](./architecture.md) for how these tables are used by the server and worker.
 
@@ -65,12 +65,12 @@ A repository connected by a user.
 |---|---|---|
 | `id` | uuid PK | |
 | `user_id` | text FK → `user.id` | owner; cascade |
-| `installation_id` | uuid FK → `github_installations.id` | |
+| `installation_id` | uuid FK → `github_installations.id` | cascade |
 | `repo_github_id` | bigint | stable across renames |
 | `repo_owner` | text | |
 | `repo_name` | text | |
 | `default_branch` | text | |
-| `archived_at` | timestamptz null | soft delete |
+| `archived_at` | timestamptz null | unused; projects are hard-deleted |
 | `created_at`, `updated_at` | timestamptz | |
 
 Constraints: **unique (`user_id`, `repo_github_id`)**. Index: (`user_id`, `created_at`).
@@ -120,6 +120,7 @@ A unit of work on a project.
 | `branch_name` | text null | set when the first delivery creates the branch |
 | `pr_number` | integer null | set on delivery |
 | `pr_url` | text null | |
+| `pr_draft` | boolean null | set on delivery from the PR GitHub created (false when the repo can't have drafts); null until then; webhooks don't change it |
 | `status` | enum `task_status` (`open`, `pr_open`, `merged`, `closed`) | PR states updated by webhooks |
 | `created_at`, `updated_at` | timestamptz | |
 
@@ -200,7 +201,9 @@ One environment setup of a project, started from the website ([environment.md](.
 | `queued_at` | timestamptz, default now | |
 | `started_at`, `finished_at` | timestamptz null | |
 
-At most one active (`queued`, `running`, `waiting`) per project: a partial unique index, so starting setup twice returns the one already active.
+Indexes:
+- (`project_id`, `queued_at`).
+- **Partial unique** on (`project_id`) `WHERE status IN ('queued','running','waiting')`: at most one active setup per project, so starting setup twice returns the one already active.
 
 ### `onboarding_events`
 Everything a setup does, in order: the setup's live stream and its record. Same shape and rules as `run_events` (one writer, the worker; `seq` gap-free; resume with `seq > $lastEventId`).
@@ -246,13 +249,13 @@ Insert first; on conflict, skip processing. If processing fails, the row is dele
 - **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
 - **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
-- **Deletion:** cascade `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`, `projects → onboardings → onboarding_events`; projects are archived (`archived_at`), not hard-deleted.
+- **Deletion:** cascade `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`, `projects → onboardings → onboarding_events`, and `github_installations → projects`. Projects are hard-deleted (`deleteProjectUnlessBusy`, refused while a run is queued or running); `archived_at` exists but is unused.
 - **Naming:** snake_case tables/columns; one kebab-case schema file per table, grouped by domain in `packages/db/src/schema/` (`auth/`, `github/`, `projects/`, `tasks/`, `runs/`; e.g. `runs/run-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
-- **Shared types:** `packages/shared/src/types/api.ts` mirrors these tables for the API and web app; change both together.
+- **Shared types:** `packages/shared/src/api/*.ts` mirror these tables for the API and web app; change both together.
 
 ## 5. Migrations
 
-Nothing is deployed yet, so the existing `0000`/`0001` migrations are **replaced by one clean initial migration** generated from the new schema. Local databases must be reset (`pnpm --filter @codegenie/server docker:reset`, then `pnpm migrate`). From then on, migrations are additive and generated with `drizzle-kit generate`.
+Migrations live in `packages/db/drizzle`, are additive, and are generated with `drizzle-kit generate`.
 
 The schema, client, migrations and every query live in `packages/db` (queries in `src/queries/`, one folder per domain like the schema; apps never build queries themselves), shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @codegenie/db generate`; apply migrations with `pnpm migrate`.
 
@@ -263,5 +266,4 @@ The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `
 ## 6. Post-MVP
 
 - `integration_connections` — `user_id`, `provider` (`jira`, `notion`), encrypted tokens, external workspace id, for ticket intake.
-- Onboarding conversations on the website: modeled as a run of kind `environment_setup`, with questions and answers as `run_events` (`question_asked`, `question_answered`).
 - Team access to projects (org members) — projects are single-owner in the MVP; nothing in this schema blocks adding a membership table later.

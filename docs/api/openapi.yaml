@@ -214,6 +214,114 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /api/github/webhooks:
+    post:
+      tags: [GitHub]
+      summary: GitHub App webhook receiver
+      description: Called by GitHub, not the web app. The body is checked against `X-Hub-Signature-256` with the webhook secret. Each delivery is processed once (`X-GitHub-Delivery`); a failed one is forgotten so GitHub's redelivery is processed. Answers are plain JSON, not the envelope. See github.md §6.
+      operationId: receiveGitHubWebhook
+      security: []
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-GitHub-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            example: pull_request
+        - name: X-GitHub-Delivery
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: GitHub's event payload
+      responses:
+        "200":
+          description: Processed, or a duplicate delivery skipped
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [ok]
+                    properties:
+                      ok:
+                        type: boolean
+                        enum: [true]
+                  - type: object
+                    required: [duplicate]
+                    properties:
+                      duplicate:
+                        type: boolean
+                        enum: [true]
+        "400":
+          description: Missing `X-GitHub-Event` or `X-GitHub-Delivery`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookMessage"
+        "401":
+          description: Missing or invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookMessage"
+        "500":
+          description: Processing failed; GitHub may redeliver
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookMessage"
+
+  /api/github/installations/callback:
+    get:
+      tags: [GitHub]
+      summary: Where GitHub returns after installing the App
+      description: >-
+        GitHub redirects the browser here. With a session, the installation is checked against the user's own GitHub
+        installations and recorded, then the browser goes back to the website: `/projects/new` when `state` is
+        `add-repo`, else `/welcome`, with `?github=installed`, `not-found`, `requested` (an org owner must approve) or
+        `cancelled`. Without a session or a GitHub token it goes to `/signin?next=<that page>`. See github.md §6.
+      operationId: gitHubInstallationCallback
+      security: []
+      parameters:
+        - name: installation_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: setup_action
+          in: query
+          required: false
+          schema:
+            type: string
+            example: install
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [add-repo]
+      responses:
+        "302":
+          description: Redirect to the website
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+                example: http://localhost:3000/welcome?github=installed
+
   /api/projects:
     get:
       tags: [Projects]
@@ -1112,6 +1220,14 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
 
   schemas:
+    WebhookMessage:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Invalid signature
+
     SuccessEnvelope:
       type: object
       required: [status, message, type, data]

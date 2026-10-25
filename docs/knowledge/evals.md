@@ -1,6 +1,6 @@
 # Evals
 
-> Status: **In progress** (harness and 10 tasks on 4 repositories built; baseline run: 10 of 10) · Last updated: 2026-10-19 · Code: `apps/evals` · Related: [runner.md](./runner.md), [environment.md](./environment.md), [development-plan.md](./development-plan.md)
+> Status: **In progress** (harness and 10 tasks on 4 repositories built; baseline run: 10 of 10) · Last updated: 2026-10-25 · Code: `apps/evals` · Related: [runner.md](./runner.md), [environment.md](./environment.md), [development-plan.md](./development-plan.md)
 
 Evals are a fixed set of tasks the agent is given, graded automatically. They answer "does the agent actually complete real tasks, and did a change make it better or worse?". Every change to the agent (prompt, tools, model) can be measured by running them again.
 
@@ -103,13 +103,15 @@ Fixtures: `ts-lib` is TypeScript run directly by Node 24 (`node --test`, `tsc --
 apps/evals/src/
 ├── main.ts                 arguments → model → tasks → runEvals → report files
 ├── args.ts · config.ts · report.ts           the command line
+├── paths.ts                the evals folder, repos/ and results/
 ├── suite/                  what to run
 │   ├── repos.ts            repo.json, checkout source, commit pinning
 │   ├── tasks.ts            task.json, hidden files, --task / --repo selection
 │   └── environments.ts     saved environment, or onboarding (also when the commit changed)
 ├── run/                    how it runs
 │   ├── run-evals.ts        onboarding per repository, then tasks with a concurrency limit
-│   └── run-task.ts         one attempt: runTask (sandbox kept) → grade → diff saved
+│   ├── run-eval-task.ts    one attempt: runTask (sandbox kept) → grade → diff saved
+│   └── progress.ts         live progress: a line per running task, or periodic lines outside a terminal
 └── graders/                how it's graded
     ├── grade.ts            picks the grader
     ├── hidden-tests.ts

@@ -30,14 +30,14 @@ The browser only ever calls `/api/...` on the web app's own address; Next forwar
 
 **Security.** Nothing new is exposed: only `/api/*` is forwarded, and the API still checks the session on every request. The cookie stays on one site (`httpOnly`, `SameSite=Lax`), and Better Auth trusts only the web app's origin (`FRONTEND_URL`). The forwarding target comes from `API_URL` (server-side only).
 
-**The client** (`lib/api/`):
-- `client.ts`: one axios instance, `baseURL: "/api"`. Responses: the `{ status, message, type, data }` envelope is unwrapped, callers get `data`. Errors: a typed `ApiError` with the API's `status`, `code` (e.g. `PROJECT_NOT_SET_UP`) and `message`; a **401** sends you to `/signin`.
-- `<domain>.ts`: one small typed function per endpoint (`getProjects()`, `createTask(projectId, input)`, `cancelRun(id)`…).
+**The client** (`lib/api/client.ts`):
+- One axios instance, `baseURL: "/api"`. Responses: the `{ status, message, type, data }` envelope is unwrapped, callers get `data`. Errors: a typed `ApiError` with the API's `status`, `code` (e.g. `PROJECT_NOT_SET_UP`) and `message`; a **401** sends you to `/signin`.
+- The endpoint functions live with their domain, in `features/<domain>/api.ts`: one small typed function per endpoint (`startTask(projectId, input)`, `cancelRun(runId)`…).
 - Live run events don't go through axios (§5).
 
 ## 3. Loading and caching data
 
-TanStack Query wraps the axios functions in hooks per domain (`useProjects()`, `useTasks(filter)`, `useTask(id)`, `useCreateTask()`…), in `features/<domain>/`. Pages use the hooks, never axios directly. It avoids fetching the same thing twice, refreshes when you come back to the tab, polls while a run is in progress (Inbox, project tasks), and refreshes lists after a change (a task created → the Inbox refreshes).
+TanStack Query wraps the axios functions in hooks per domain (`useProjects()`, `useTasks(projectId)`, `useTask(id)`, `useStartTask(projectId)`…), in `features/<domain>/`. Pages use the hooks, never axios directly. It avoids fetching the same thing twice, refreshes when you come back to the tab, polls while a run is in progress (Inbox, project tasks), and refreshes lists after a change (a task created → the Inbox refreshes).
 
 ## 4. The API contract (`@codegenie/shared`)
 
@@ -49,6 +49,7 @@ packages/shared/src/api/
   github.ts        GitHubInstallation, GitHubRepo
   projects.ts      createProjectSchema, projectParamsSchema · ProjectResponse
   tasks.ts         createTaskSchema, listTasksQuerySchema, taskParamsSchema · TaskListItem, TaskDetail, TaskLabel, CreatedTask
+  onboarding.ts    answerOnboardingSchema · OnboardingResponse, OnboardingEvent, OnboardingAnswer
   runs.ts          runParamsSchema, afterSeqSchema · RunResponse, RunDiff, CancelOutcome
   events.ts        RunEvent and its variants
 ```
@@ -81,11 +82,11 @@ apps/web/
   components/
     factory/                library components as generated (shadcn/Radix); never edited, only used by atoms
     atoms/                  our wrappers: our names, props and styling (Button, Input, Badge, Icon, Spinner, Logo…)
-    molecules/              a few atoms doing one job (StatusBadge, ActivityRow, FileRow, NavItem…)
-    organisms/              complete sections (Sidebar, RunCard, QuestionCard, PrCard, TaskTable, DiffViewer…)
-    templates/              page layouts with slots (AppShell, ConversationLayout, TabbedPage, MarketingLayout)
-  features/<domain>/        data only: query hooks, the run-events translator (projects, tasks, runs, onboarding)
-  lib/                      api/ (axios), query client, auth client
+    molecules/              a few atoms doing one job (TaskStatusBadge, SetupStatusBadge, PullRequestCard, DiffView, NavItem…)
+    organisms/              complete sections (Sidebar, RunCard, QuestionCard, ProjectTaskTable, InboxList…)
+    templates/              page layouts with slots (AppShell, CenteredLayout, MarketingLayout, ProjectTabs)
+  features/<domain>/        data only: endpoint functions, query hooks, the run-events translator (account, github, projects, onboarding, setup, tasks, runs)
+  lib/                      api/client.ts (axios), query client, auth client, routes
   middleware.ts             the sign-in guard
 ```
 
@@ -104,9 +105,10 @@ apps/web/
 
 ## 8. Sign-in and routing
 
-- `middleware.ts`: without a session cookie, any `(app)` route redirects to `/signin`; signed in, `/` and `/signin` redirect into the app. Any 401 from the API also sends you to `/signin`.
-- After signing in you land on `/welcome` until you have a task, then `/inbox` (from step 8).
-- GitHub's App install callback returns to `/welcome?github=…` (signing in first returns there too); once Add a repository exists, returning users go to `/projects/new`.
+- `middleware.ts`: without a session cookie, any `(app)` route redirects to `/signin?next=…`. Any 401 from the API also sends you to `/signin`.
+- Signed in, `/` stays the landing page, with **Open CodeGenie** in place of Sign in. `/signin` sends you on to `next`, else `/inbox`.
+- After signing in you go to `/inbox`; the Inbox sends you to `/welcome` until you have a task.
+- GitHub's App install callback returns to `/projects/new` when the install link carried `state=add-repo`, else `/welcome?github=…` (signing in first returns there too).
 
 ## 9. Testing
 
@@ -118,25 +120,25 @@ apps/web/
 
 Each step: **requirements first** (written here, approved) → built bottom-up within the step (only the atoms and molecules it needs) → checked against the canvas → committed in small batches.
 
-| Step | At the end you can | Branch |
-|---|---|---|
-| 1. Sign in | open the landing page, sign in with GitHub, arrive in the app | `feat/web-sign-in` |
-| 2. Connect GitHub | see the welcome checklist, install the App, come back | `feat/web-connect` |
-| 3. Add a repository | pick a repo; it becomes a project in the sidebar | `feat/web-add-repo` |
-| 4. Set up the environment | watch setup, answer its question, save; onboarding events stored server-side | `feat/web-onboarding` |
-| 5. Start a task | describe a task and start it | `feat/web-new-task` |
-| 6. Watch it work | the live run view: stages, activity, diff, terminal | `feat/web-run-view` |
-| 7. Get the PR | the finished run, PR card, cancel, every outcome | `feat/web-outcomes` |
-| 8. Find your work | Inbox, project page, history | `feat/web-inbox` |
-| 9. End to end | the whole journey in Playwright, on demand (`pnpm e2e`, not in CI) | `feat/e2e` |
+| Step | At the end you can | Branch | Status |
+|---|---|---|---|
+| 1. Sign in | open the landing page, sign in with GitHub, arrive in the app | `feat/web-sign-in` | merged |
+| 2. Connect GitHub | see the welcome checklist, install the App, come back | `feat/web-connect` | merged |
+| 3. Add a repository | pick a repo; it becomes a project in the sidebar | `feat/web-add-repo` | merged |
+| 4. Set up the environment | watch setup, answer its question, save; onboarding events stored server-side | `feat/web-onboarding` | merged |
+| 5. Start a task | describe a task and start it | `feat/web-new-task` | merged |
+| 6. Watch it work | the live run view: stages, activity, diff, terminal | `feat/web-run-view` | merged |
+| 7. Get the PR | the finished run, PR card, cancel, every outcome | `feat/web-outcomes` | merged |
+| 8. Find your work | Inbox, project page, history | `feat/web-inbox` | merged |
+| 9. End to end | the whole journey in Playwright, on demand (`pnpm e2e`, not in CI) | `feat/e2e` | merged |
 
 ## 11. Step 1: Sign in (requirements)
 
 **Goal:** a visitor opens the landing page, signs in with GitHub and arrives in the app shell; everything underneath (contract, tokens, client, guard) is in place for the steps after.
 
 **Screens** (canvas: Landing, Sign in; the shell from any app screen):
-- **Landing `/`:** as drawn: header (logo, How it works, Security, Sign in, Get started), hero with "Sign in with GitHub", product preview, how it works, security points, closing call to action, footer. Signed in → redirected into the app.
-- **Sign in `/signin`:** the card as drawn; "Continue with GitHub" starts Better Auth's GitHub sign-in and returns to `/welcome`. States: default, signing in (button busy), failed (`?error=…` → the error box).
+- **Landing `/`:** as drawn: header (logo, How it works, Security, Sign in, Get started), hero with "Sign in with GitHub", product preview, how it works, security points, closing call to action, footer. Signed in, it stays: **Open CodeGenie** goes into the app.
+- **Sign in `/signin`:** the card as drawn; "Continue with GitHub" starts Better Auth's GitHub sign-in and returns to `/welcome` (since the Inbox: to `next`, else `/inbox`, §8). States: default, signing in (button busy), failed (`?error=…` → the error box).
 - **App shell `(app)/layout`:** sidebar (logo, New task, Inbox, Projects with "No projects yet", account menu with avatar, name, theme switch and Sign out) and the content area. Pages behind it in this step: `/welcome` with only its greeting ("Welcome, <name>"); step 2 fills it in.
 
 **Underneath:**
@@ -185,7 +187,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 - **Touches** ([ui.md](./ui.md) §2): the backdrop goes into the AppShell once, below any top bar, so every app page has it; on `/welcome` the greeting and checklist rise in, and the current step's button has the glow.
 - The sidebar's Projects list stays "No projects yet." here; it lists projects once Add a repository exists.
 
-**Steps in place** (added after trying the first version, [ui.md](./ui.md) Welcome): the current step opens inside the checklist instead of linking away. Step 2 holds the repository picker (`useRepositoryPicker`, shared with `/projects/new`; on Welcome it loads repositories only while step 2 is open, and its install link returns to Welcome); once added, step 2 reads "<name> added." and step 3 opens. Step 3's "Start setup" and step 4's "New task" show as coming soon until environment setup and New task fill them in place (the live setup card, the task box).
+**Steps in place** (added after trying the first version, [ui.md](./ui.md) Welcome): the current step opens inside the checklist instead of linking away. Step 2 holds the repository picker (`useRepositoryPicker`, shared with `/projects/new`; on Welcome it loads repositories only while step 2 is open, and its install link returns to Welcome); once added, step 2 reads "<name> added." and step 3 opens. Steps 3 and 4 open in place too: the live setup card and the task box.
 
 **Getting started card:** in the sidebar until the four steps are done, from the same checklist data; "N of 4", a progress bar, "Next: …", linking to `/welcome`; hidden on `/welcome`.
 
@@ -416,8 +418,8 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 
 - **A setup waiting for your answer** is a row at the top: "Set up <repo>", "CodeGenie has a question", the badge Needs your answer, its duration and cost; it opens the project's Environment tab. (Tasks don't wait on you until follow-ups in Phase 5.)
 - **Load more** at the bottom, 50 at a time. The list refreshes every 3 s while anything is queued, working or waiting.
-- **States:** loading (placeholder rows); no tasks at all, "No tasks yet" with **New task**; a filter with nothing in it, "No tasks match this filter."; couldn't load, **Try again**.
-- **Elsewhere:** the sidebar's Inbox count is the tasks queued or working plus the setups waiting for you. The New task page's Recent tasks gets **View all**. Signed in, `/` and the end of sign-in go to `/inbox` once you have a task, else `/welcome` (§8).
+- **States:** loading (placeholder rows); no tasks at all sends you to `/welcome`; a filter with nothing in it, "No tasks match this filter."; couldn't load, **Try again**.
+- **Elsewhere:** the sidebar's Inbox count is the tasks queued or working plus the setups waiting for you. The New task page's Recent tasks gets **View all**. The end of sign-in goes to `/inbox`, which sends you to `/welcome` until you have a task; `/` stays the landing page (§8).
 
 **The project page `/projects/:id`** (canvas: Project, its `tab`, `tasks`, `health`, `lastSetup`, `restore` and `remove` switches):
 - **Top bar:** the repository's name, `owner/name` linking to GitHub, **New task** (`/new?project=`). **Tabs:** Tasks · Environment · Settings, each its own route (`/projects/:id`, `/environment`, `/settings`); Environment shows a dot when it needs attention.
@@ -437,7 +439,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 - Setups waiting for you: `GET /projects` gains each project's latest setup status (`setup: { id, status } | null`), so the sidebar and Inbox know without one request per project.
 
 **Underneath:**
-- `features/tasks/`: `useTaskInbox(filter)` (pages with `useInfiniteQuery`, the counts, refreshing while active), `useProjectTasks(projectId)`; `taskDetail(task)` and `groupByDay(tasks, now)`, pure and tested per state.
+- `features/tasks/`: `useTaskPages({ projectId, filter })` (pages with `useInfiniteQuery`, refreshing while active) for the Inbox and the project's Tasks tab, `useTaskCounts()`; `taskDetail(task)` and `groupByDay(tasks, now)`, pure and tested per state.
 - `features/projects/`: `useRestoreEnvironment(projectId)`, `useRemoveProject()`; the setups waiting for you, from the projects list.
 - Components: `FilterPills`, `TaskRow`, `VersionRow` (molecules); `InboxList`, `ProjectTaskTable`, `EnvironmentSummary`, `RemoveProjectDialog` (organisms); `ProjectTabs` (template).
 
@@ -448,7 +450,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 2. A setup waiting for an answer shows under Needs you, in the sidebar count, and opens the setup.
 3. The project page shows its tasks; its Environment tab shows the setup while one runs and the active environment otherwise; Restore makes an older version active.
 4. Remove project asks first, is refused while a task runs, and lands on the Inbox.
-5. `/` takes someone with tasks to the Inbox.
+5. Signing in takes someone with tasks to the Inbox, and someone without to `/welcome`.
 6. The pages match the canvas in light and dark and at phone width.
 7. Tests cover the filters, counts and restore on the server; `taskDetail`, `groupByDay`, the hooks, each page state, Restore and Remove project.
 

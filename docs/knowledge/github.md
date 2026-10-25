@@ -1,6 +1,6 @@
 # GitHub
 
-> Status: **In progress** (Phase 3) · Last updated: 2026-10-21 · Code: `packages/github` · Related: [architecture.md](./architecture.md) (D3), [development-plan.md](./development-plan.md) (Phase 3)
+> Status: **Built** · Last updated: 2026-10-25 · Code: `packages/github` · Related: [architecture.md](./architecture.md) (D3), [development-plan.md](./development-plan.md) (Phase 3)
 
 CodeGenie reaches GitHub through **one GitHub App**: users sign in with it, install it on the repositories CodeGenie may work on, and the worker gets short-lived tokens from it to clone, commit and open pull requests as `<app-slug>[bot]`. No user's own GitHub token is used to touch repositories.
 
@@ -44,11 +44,14 @@ Every token is scoped to **one repository** and expires within an hour. `repoTok
 | `findInstalledRepo(owner, repo)` | That installation plus the repository's id, default branch and visibility, or `null` |
 | `botIdentity()` | `{ name: "<slug>[bot]", email: "<id>+<slug>[bot]@users.noreply.github.com" }`: the commit author GitHub shows as the bot |
 | `commitToBranch(client, commit)` | One commit on a new branch through the API: blobs → tree on the parent's → commit → branch, each blob and the tree checked against git's hashes |
+| `CommitMismatchError` | What `commitToBranch` throws when GitHub's blob or tree hash differs from the expected one |
 | `draftPullRequestsUnavailable(error)` | Whether GitHub refused a draft pull request (GitHub Free, private repositories) |
 | `verifyWebhookSignature(secret, rawBody, signature)` | Checks `X-Hub-Signature-256` over the raw request body |
 | `parsePrivateKey(value)` | The PEM key as downloaded, or on one line with `\n` |
+| `listUserInstallations(userToken)` · `listInstallationRepos(userToken, installationId)` | Through the user's token: the installations they can access, and an installation's repositories (`null` when they can't access it) |
+| `listRepoBranches(userToken, owner, repo, { limit? })` | The repository's branch names (`{ names, truncated }`); `null` when the user can't see it |
 
-Tests answer with GitHub's response shapes and sign real JWTs; nothing calls GitHub. `@codegenie/github/testing` has the fake (`fakeGithub`, `fakeGithubClient`) for other packages' tests.
+Tests answer with GitHub's response shapes and sign real JWTs; nothing calls GitHub. `@codegenie/github/testing` has the fake (`fakeGithub`, `fakeGithubClient`) for other packages' tests, and the fake GitHub for the end-to-end test: `E2E_GITHUB` (one user, one installation, the public `octocat/Hello-World`) and `e2eGithubFetch`, a `fetch` that answers `github.com` and `api.github.com` itself. `apps/server/src/e2e.ts` installs it before starting the API; it requires `E2E_GITHUB_INSTALLED_FLAG` (a file whose existence means the App is installed) and generates a throwaway App private key.
 
 ## 4. Registering the dev App
 
@@ -81,11 +84,12 @@ After **Create GitHub App**:
 
 | Setting | Server | Worker |
 |---|---|---|
-| `GITHUB_APP_ID` | ✓ | ✓ (private clone) |
-| `GITHUB_APP_PRIVATE_KEY` (the `.pem` contents; one line with `\n` is fine) | ✓ | ✓ (private clone) |
+| `GITHUB_APP_ID` | ✓ | ✓ (clone and delivery; required) |
+| `GITHUB_APP_PRIVATE_KEY` (the `.pem` contents; one line with `\n` is fine) | ✓ | ✓ (clone and delivery; required) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (the App's, for sign-in) | ✓ | |
 | `GITHUB_WEBHOOK_SECRET` (the same value as in the App's webhook settings) | ✓ | |
 | `GITHUB_WEBHOOK_PROXY_URL` (development: the smee channel, for `pnpm dev:webhooks`) | ✓ | |
+| `FRONTEND_URL` (optional: links the task in the PR description) | | ✓ |
 
 Keep the private key and secrets in the git-ignored `.env` files only.
 
@@ -108,6 +112,7 @@ Webhooks:  GitHub → (smee in development) → POST /api/github/webhooks
 
 Picker:    GET /api/github/installations                     → the user's installations + installUrl
            GET /api/github/installations/:id/repositories    → repositories the user can access
+           GET /api/projects/:id/branches                    → the project repository's branches (listRepoBranches)
 ```
 
 - **Sign-in is GitHub only**, through the App's OAuth. The user's GitHub token is read through Better Auth's `getAccessToken`, which refreshes it when it has expired (the App's user tokens last 8 hours); without one, the user signs in again (`GITHUB_SIGN_IN_REQUIRED`).

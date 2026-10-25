@@ -49,7 +49,7 @@ Browser ──HTTPS──► apps/web (Next.js, Vercel)                         
                                                                        LLM API ◄── worker
 ```
 
-### Monorepo layout (target)
+### Monorepo layout
 
 ```
 apps/
@@ -57,6 +57,7 @@ apps/
   server/     Express API (auth, REST, SSE, webhooks) — never touches sandboxes
   worker/     BullMQ consumer: calls the runner for queued runs
   cli/        local dev harness: calls the runner, prints events
+  evals/      eval tasks for the agent and the harness that runs them
   e2e/        the end-to-end test: the whole journey in Playwright, run on demand (web.md §19)
 packages/
   runner/     runs a task end to end: checkout → setup → agent → verify → deliver (no AI logic)
@@ -71,7 +72,7 @@ docs/
   knowledge/  architecture, design and feature docs
 ```
 
-Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `db → shared`; apps → runner, db. Apps never import from other apps.
+Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `db → shared`; `terminal → shared`. Apps: `server → db, github, shared`; `worker → runner, agent, sandbox, db, github, shared`; `cli → runner, agent, terminal, shared`; `evals → runner, agent, sandbox, terminal, shared`; `web → shared`. Apps never import from other apps, except `e2e`, which drives the worker in-process.
 
 **`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates runs and writes events), so the schema lives in one shared package instead of inside one app:
 - **all data access lives here:** schema, client, migrations and every query (`src/queries/`, one folder per domain, mirroring `src/schema/`). Apps call query functions and never build queries; ESLint enforces it (`@codegenie/db/eslint`). Queries hold no business rules: they report what happened, and the app decides what it means;
@@ -89,8 +90,9 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/r
 ### apps/server
 - Better Auth (GitHub sign-in through the App, sessions).
 - GitHub App ([github.md](./github.md) §6): install callback, webhook receiver with signature verification and delivery dedupe (`installation`, `installation_repositories`, `pull_request` → task status; `pull_request_review_comment`, `issue_comment` later), repo picker API (installations and their repositories, through the user's token).
-- REST: projects, tasks, task messages (follow-ups), runs, cancel.
-- `GET /api/runs/:id/events` — SSE replay + live.
+- REST: projects, environments (and restore), branches, onboarding, tasks, runs (diff, cancel), GitHub. Full list: [api.md](./api.md) §4.
+- SSE, replay + live: `GET /api/runs/:id/events` and `GET /api/projects/:id/onboarding/events`.
+- Task follow-ups (`POST /api/tasks/:id/messages`) are planned (Phase 5).
 - Writes rows and enqueues; does no long-running work.
 
 ### apps/worker
@@ -112,13 +114,12 @@ Details: **[agent.md](./agent.md)**.
 ### packages/sandbox
 ```ts
 interface Sandbox {
-  id: string;
-  exec(cmd: string, opts?: { cwd?: string; timeoutMs?: number; env?: Record<string,string> }):
-    Promise<{ exitCode: number; stdout: string; stderr: string }>;
+  readonly id: string;
+  exec(command: string, options?: { cwd?: string; timeoutMs?: number; env?: Record<string, string> }):
+    Promise<{ exitCode: number; stdout: string; stderr: string; timedOut: boolean; truncated: boolean }>;
   readFile(path: string): Promise<string>;
   writeFile(path: string, content: string): Promise<void>;
-  listFiles(path: string): Promise<FileEntry[]>;
-  previewUrl?(port: number): Promise<string>;   // post-MVP
+  listFiles(path: string, options?: { maxDepth?: number }): Promise<FileEntry[]>;
   destroy(): Promise<void>;
 }
 ```
@@ -140,13 +141,16 @@ For any repo access, the server/worker signs a JWT with the App private key and 
 
 ### 4.2 Create a task
 ```
-POST /api/projects/:id/tasks { content, baseBranch? }
+POST /api/projects/:id/tasks { prompt, baseBranch? }
   authorize user owns project
+  409 if the GitHub App is uninstalled or suspended on the project's account
+  409 if the project has no environment, or its environment needs attention
   tx: insert task(source=prompt) + message(role=user) + run(trigger=initial, status=queued)
   queue.add("run-task", { runId }, { jobId: runId })     // idempotent
-  → 201 { runId, messageId }
+    queue down → run marked failed (queue_unavailable) → 503 QUEUE_UNAVAILABLE
+  → 201 { task, run }
 ```
-Client opens the SSE stream for `runId`.
+Client opens the SSE stream for `run.id`.
 
 ### 4.3 Live events
 ```
@@ -154,10 +158,10 @@ worker emit(e):   INSERT run_events  +  PUBLISH run:{runId}
 server SSE:       SUBSCRIBE first → replay run_events after Last-Event-ID → forward live (dedupe by id)
                   heartbeat 15s; close on done/error
 ```
-Events are keyed by (`run_id`, `seq`); `seq` is the SSE event id. High-frequency `text_delta` events are published live but persisted batched (or only the final assistant message).
+Events are keyed by (`run_id`, `seq`); `seq` is the SSE event id. High-frequency `text_delta` and `agent_step` events are published live only, never stored.
 
 ### 4.4 Follow-ups
-- **UI follow-up message** (`POST /api/tasks/:id/messages`) → new run on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous run's summary + new instruction, pushes to the same PR.
+- **UI follow-up message** (planned, Phase 5: `POST /api/tasks/:id/messages`) → new run on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous run's summary + new instruction, pushes to the same PR.
 - **PR review comment / `@codegenie` mention** (webhook, deduped via `webhook_deliveries`) → new run on the task with `trigger=pr_comment`; context includes comment, file and line.
 - **Jira (post-MVP)** → webhook on assignment/label → Task → run; PR link posted back to the ticket.
 
@@ -173,7 +177,7 @@ Every entry point reduces to **task → new run**.
 | **Checkout** | shallow clone of the base branch into `/workspace` (later runs will check out `task.branch_name`) | |
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
 | **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
-| **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `lint_completed`, `test_passed`/`test_failed` |
+| **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `checks_completed` |
 | **Deliver** | no diff → finish with explanation, no PR. Else the runner lists the changes and the worker commits them through GitHub's API as the App on `codegenie/<title slug>-<taskId prefix>` and opens the PR (draft if checks failed or incomplete) with summary + checks + changed files ([github.md](./github.md) §8) | `branch_created`, `git_push`, `pr_opened` |
 | **Finally** | persist summary & usage; `status=succeeded/failed/cancelled`; **always** destroy sandbox | `done` / `error` |
 
@@ -213,10 +217,10 @@ The clone token is passed to git through that command's environment rather than 
 Full design: **[database.md](./database.md)**. Summary:
 
 - **Task** = unit of work (conversation, branch, PR). **Run** = one agent execution on a task. Follow-ups and PR-comment responses are new runs on the same task.
-- Tables: Better Auth (`user`, `session`, `account`, `verification`), `github_installations`, `projects`, `tasks`, `runs`, `messages`, `run_events`, `webhook_deliveries`.
+- Tables: Better Auth (`user`, `session`, `account`, `verification`), `github_installations`, `webhook_deliveries`, `projects`, `project_environments`, `onboardings`, `onboarding_events`, `tasks`, `messages`, `runs`, `run_events`, `run_diffs`.
 - A partial unique index allows at most one queued/running run per task.
 - `run_events` keyed by (`run_id`, `seq`) for gap-free SSE replay.
-- Existing migrations are replaced by one clean initial migration.
+- Migrations live in `packages/db/drizzle`.
 
 Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub service (replaced by App tokens), unused JWT/bcrypt config.
 
@@ -253,7 +257,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 - Webhook signatures verified; production refuses to boot with default secrets.
 - Agent never pushes to the default branch; one active run per task (enforced by a DB index).
-- Per-user limits on concurrent runs and daily spend, enforced at task creation.
+- Per-user limits on concurrent runs and daily spend, enforced at task creation, are planned (Phase 5).
 - Full audit trail in `run_events`.
 
 ---
@@ -276,13 +280,12 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 ## 11. Roadmap
 
-| Phase | Scope | Outcome |
-|---|---|---|
-| 0. Foundations | CI (lint, type-check, Vitest), cleanup, package skeletons, **new DB schema + clean initial migration**, shared types updated | Repo in final shape, schema in place |
-| 1. Agent core | `packages/sandbox` (interface + Docker), `packages/agent` with sandbox-backed tools, fixed history, configurable model, limits | Agent works locally against any repo |
-| 2. Worker + Daytona | `DaytonaSandbox`, base snapshot, `apps/worker`, BullMQ, events → Redis + `run_events` | Runs execute in the cloud |
-| 3. GitHub App | install flow, token minting, clone → commit → PR | Real PRs |
-| 4. API + UI | tasks/runs endpoints, SSE, repo picker, `/build`, live run view | **MVP: prompt → PR** |
-| 5. Iteration | follow-ups, PR-comment webhooks, cancellation | Collaborative loop |
-| 6. Integrations | Jira, then Notion | Ticket → PR |
-| Later | plan approval, sandbox pause/resume, live previews, code index, billing, orgs | |
+| Phase | Scope | Outcome | Status |
+|---|---|---|---|
+| 0. Foundations | CI (lint, type-check, Vitest), cleanup, package skeletons, **new DB schema + clean initial migration**, shared types updated | Repo in final shape, schema in place | Done |
+| 1. Agent core | `packages/sandbox` (interface + Docker), `packages/agent` with sandbox-backed tools, fixed history, configurable model, limits | Agent works locally against any repo | Done |
+| 2. Worker + Daytona | `DaytonaSandbox`, base snapshot, `apps/worker`, BullMQ, events → Redis + `run_events` | Runs execute in the cloud | Done |
+| 3. GitHub App | install flow, token minting, clone → commit → PR | Real PRs | Done |
+| 4. API + UI | projects/tasks/runs/onboarding endpoints, SSE, the web app (repo picker, environment setup, new task, live run view, Inbox, project page), Playwright end-to-end test | Prompt → PR from the browser | Done |
+| 5. MVP launch | follow-ups, quotas, hardening, production builds, deploy | **MVP: live, open for signup** | Next |
+| 6+. Post-MVP | PR-comment / `@codegenie` triggers, Jira then Notion, plan approval, sandbox pause/resume, live previews, code index, billing, orgs | | |

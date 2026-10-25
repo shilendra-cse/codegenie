@@ -54,8 +54,8 @@ src/
 │   ├── auth/  github/  projects/  tasks/  runs/
 ├── queries/          every query, the same folders as schema/
 │   ├── auth/         accounts-queries.ts, users-queries.ts
-│   ├── github/       installations-queries.ts
-│   ├── projects/     projects-queries.ts, environments-queries.ts (DbEnvironmentStore)
+│   ├── github/       installations-queries.ts, webhook-deliveries-queries.ts
+│   ├── projects/     projects-queries.ts, environments-queries.ts (DbEnvironmentStore), onboardings-queries.ts
 │   ├── tasks/        tasks-queries.ts, messages-queries.ts
 │   └── runs/         runs-queries.ts, run-events-queries.ts, run-diffs-queries.ts
 ├── testing/          testDatabaseOrSkip, fixtures (the @codegenie/db/testing export)

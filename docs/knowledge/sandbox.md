@@ -1,6 +1,6 @@
 # Sandbox
 
-> Status: **Accepted** · Last updated: 2026-10-20 · Code: `packages/sandbox` · Related: [architecture.md](./architecture.md)
+> Status: **Accepted** · Last updated: 2026-10-25 · Code: `packages/sandbox` · Related: [architecture.md](./architecture.md)
 
 The sandbox is the isolated environment where the agent's work happens: the repository is cloned into it, dependencies are installed, files are edited and checks are run. Nothing the agent does runs on our machines or servers.
 
@@ -79,8 +79,11 @@ packages/sandbox/
     │       ├── daytona-sandbox.ts  DaytonaSandbox
     │       ├── exec-script.ts      the exec wrapper and its output parser
     │       └── constants.ts        snapshot, labels, auto-stop, timeouts
-    └── scripts/
-        └── build-snapshot.ts       pnpm sandbox:build-snapshot
+    ├── scripts/
+    │   └── build-snapshot.ts       pnpm sandbox:build-snapshot
+    └── testing/                    @codegenie/sandbox/testing
+        ├── fake-sandbox.ts         FakeSandbox: in-memory files, scripted exec
+        └── docker.ts               dockerSandboxOrSkip(): a DockerSandbox, or null to skip without Docker (fails in CI)
 ```
 
 Tests sit next to the code: `*.test.ts` are fast unit tests, `*.integration.test.ts` need Docker.

@@ -1,6 +1,6 @@
 # MVP Requirements
 
-> Status: **Accepted** · Last updated: 2026-10-13 · Related: [architecture.md](./architecture.md), [database.md](./database.md)
+> Status: **Accepted** · Last updated: 2026-10-25 · Related: [architecture.md](./architecture.md), [database.md](./database.md)
 
 ## 1. Product
 
@@ -107,7 +107,7 @@ On hitting a per-run limit the agent stops gracefully and delivers a draft PR ma
 |---|---|---|
 | Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each run records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
 | Environment setup | **In the MVP:** a per-repository environment config created once by guided onboarding (rules → try → AI setup agent → multiple-choice questions → verify → approve) and replayed by every task run. | Setup is the foundation of every run; deterministic replay keeps runs fast and predictable, and questions solve the cases rules and AI can't. |
-| Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files until the worker exists. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-run audit need the database. |
+| Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-run audit need the database. |
 | Future model choice | Introduced together with whoever pays: **tiers** (fast / balanced / best, mapped server-side) with paid plans, and **free choice from the model catalog** with bring-your-own API key. | User choice is low-risk once users carry the cost. The agent already takes the model as a parameter, so no rework is needed. |
 
 ## 8. Open questions

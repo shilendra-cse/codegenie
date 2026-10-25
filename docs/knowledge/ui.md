@@ -1,6 +1,6 @@
 # Web UI
 
-> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
+> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-25 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
 
 The screens, what they show in every state, and what each needs from the API. The canvas is the visual source of truth; this file is the written one. Phase 4 builds what's drawn.
 
@@ -63,7 +63,7 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 
 | Route | Screen | Signed in? |
 |---|---|---|
-| `/` | Landing (signed in → `/inbox`) | no |
+| `/` | Landing (signed in: Open CodeGenie, no redirect) | no |
 | `/signin` | Sign in | no |
 | `/welcome` | First-run checklist | yes |
 | `/new` | New task | yes |
@@ -74,7 +74,7 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 | `/projects/:id/settings` | Project: Settings | yes |
 | `/tasks/:id` | Task | yes |
 
-The install callback returns to `/welcome?github=…`; once Add a repository exists, returning users go to `/projects/new` instead.
+The install callback returns to `/projects/new` when the install started there (`state=add-repo`), else `/welcome?github=…`.
 
 ## 4. Screens
 
@@ -98,12 +98,12 @@ On the project's Environment tab while setup runs or before there's an environme
 2. The timeline: sandbox ready (commit), detected shape (projects as chips), install, checks run (each as a status badge), "looked into" steps (collapsible).
 3. **Question card** (≤ 5 per setup): the question, 2–4 options with the recommended one marked and a detail line each, "Something else" with free text, Answer. After answering, your answer shows under it.
 4. Progress after the answer, then **Final check in a fresh sandbox**.
-5. **Config card:** setup steps and checks (folder, command, duration, ✓ ran), decisions (yours and detected), **Save environment · Edit · Start over**; once saved, "Describe your first task".
+5. **Result:** the environment is saved automatically ("Saved as vN"): setup steps and checks (folder, command, duration, ✓ ran), decisions (yours and detected), and "Describe your first task". Editing it by hand comes later.
 
-**States:** running, waiting for your answer (topbar badge, sidebar "Needs you", Inbox row), ready to review, saved, failed (with the step and log), stopped. **Data:** onboarding events, replayable (see §6), the pending question, the proposed config, answer/save/restart actions.
+**States:** running, waiting for your answer (topbar badge, sidebar "Needs you", Inbox row), saved, failed (with the step and log), stopped. **Data:** onboarding events, replayable (see §6), the pending question, answer/stop/restart actions.
 
 ### New task (home)
-"What should CodeGenie do?", a large composer, a project picker (projects that need attention are shown but can't be picked), a base-branch picker (default branch), Start (enabled once there's text; ⌘↵). A one-line hint on writing good tasks. Recent tasks below. **Data:** projects with health and default branch; branches (later); create task.
+"What should CodeGenie do?", a large composer, a project picker (projects that need attention are shown but can't be picked), a base-branch picker (default branch), Start (enabled once there's text; ⌘↵). A one-line hint on writing good tasks. Recent tasks below. **Data:** projects with health and default branch; branches; create task.
 
 ### Inbox
 All tasks across projects, newest first, grouped by day. Filters: All · Needs you · Running · PR open · Done. A row: status icon, title, a detail line (what it's doing now, why it failed, checks), project, status badge, duration and cost, updated time. **States:** empty (per filter), loading. **Data:** task list with project, derived status (§5), PR, latest run (status, stage, current step, detail line), totals, updated time.
@@ -115,16 +115,16 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
   - stages: Prepare · Set up · Working · Checks · Pull request, each ✓ / spinner / pending / failed with a one-line summary and duration;
   - Working shows the agent's activity, grouped: consecutive reads and searches collapse into "Explored the code · read 6 files, searched 2 times"; each edit is a row with its path and +/−; each command is a row with its result; the one in progress has a spinner; the agent's reasoning streams underneath in a quieter style;
   - when finished: the summary, a before/after checks table, the **PR card** (title, number, ready / draft / merged / closed, verified commit, Open on GitHub). "Show steps" re-opens the timeline.
-- **Side panel**, tabs: **Changes** (files with +/−, the diff), **Terminal** (every command, its full output), **Checks** (before and after). Clicking an edit or command in the story opens it here. Later: **Preview**.
-- **Composer:** disabled while running (with Stop); after a run, "Ask for a change to this pull request" (follow-ups, Phase 5); when there's nothing to follow up (merged, closed, no changes, failed, cancelled) it says why and offers Start a new task.
+- **Side panel**, tabs: **Changes** (files with +/−, the diff), **Terminal** (every command, its output up to 2,000 characters; full logs later), **Checks** (before and after). Clicking an edit or command in the story opens it here. Later: **Preview**.
+- **Composer** (Phase 5): disabled while running (with Stop); after a run, "Ask for a change to this pull request" (follow-ups, Phase 5); when there's nothing to follow up (merged, closed, no changes, failed, cancelled) it says why and offers Start a new task.
 
-**Outcome states** (all drawn): PR ready, draft (checks failing or incomplete, with the reason), merged, no changes (the agent's explanation, no PR), failed (which stage, the error, nothing pushed; Run again / Show log / Re-run setup), cancelled.
+**Outcome states** (all drawn): PR ready, draft (checks failing or incomplete, with the reason), merged, no changes (the agent's explanation, no PR), failed (which stage, the error, nothing pushed; Re-run setup; Run again and Show log in Phase 5), cancelled.
 
 **Data:** task, messages, runs; live run events (§6); the diff; command output; check results.
 
 ### Project
 - **Tasks:** table of the project's tasks: title, status, PR, runs, duration, cost, updated.
-- **Environment:** the active version (verified when), steps and checks, versions with Restore, Edit, Re-run setup.
+- **Environment:** the active version (verified when), steps and checks, versions with Restore, Re-run setup; Edit later.
 - **Settings:** repository, default branch (follows GitHub), GitHub access (Manage on GitHub), Remove project (CodeGenie data only; GitHub untouched).
 - **Needs attention** banner (with the reason and Re-run setup) on every tab when the environment's health says so.
 
@@ -167,7 +167,7 @@ The run view replays stored events and then follows live ones (`GET /runs/:id/ev
 | `branch_created`, `git_push`, `pr_opened` | the Pull request stage and PR card |
 | `error`, `done` | the outcome |
 
-**Onboarding needs the same:** today its progress is published live and not stored ([architecture.md](./architecture.md) §3), so a reload loses it and nothing can show "Needs you" later. For the setup conversation, onboarding gets stored, replayable events and a pending-question record, like runs. That's designed in `feat/web-onboarding`.
+**Onboarding works the same way:** its events are stored (`onboarding_events`) and replayed then followed live (`GET /projects/:id/onboarding/events`), and the setup records the question it's waiting on, so a reload loses nothing and the sidebar and Inbox can show "Needs you".
 
 ## 7. What the API must provide
 

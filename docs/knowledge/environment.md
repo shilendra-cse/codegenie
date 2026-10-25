@@ -1,6 +1,6 @@
 # Environment
 
-> Status: **Built** (parts A–D) · Last updated: 2026-10-18 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
+> Status: **Built**, including the worker and the website (Phase 2 and 4) · Last updated: 2026-10-25 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
 
 Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task run.
 
@@ -19,7 +19,7 @@ connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONF
 | How a config is created | **Onboarding**: rules draft → try it → AI setup agent fixes gaps → **asks the user** multiple-choice questions when it can't decide → final check in a fresh sandbox → user approves | Common repos need no AI; hard cases get solved with a click instead of a failed setup. Everything kept is verified. |
 | Verification | A step or check is kept only if it actually ran; the final config is re-run in a **fresh** sandbox | Unverified AI setup works poorly (EnvBench ~7% on Python); validate-and-keep-only-what-worked reaches 86% (Repo2Run). |
 | AI in task runs | **None.** Runs only replay the config | Speed, cost and predictability. All figuring-out happens in onboarding. |
-| Storage | **Database** (`project_environments`, versioned) for the product; a local file store for the CLI until the worker exists | Shared with the team, versioned, health-tracked, audit trail per run. |
+| Storage | **Database** (`project_environments`, versioned) for the product; a local file store for the CLI | Shared with the team, versioned, health-tracked, audit trail per run. |
 | Config committed in the user's repo | **Post-MVP**, optional | Adds friction to onboarding; only teams that want setup reviewed in PRs need it. |
 | Writing into the user's repo | **Never**, except the agent's task changes | Nothing CodeGenie-specific can end up in a PR. |
 
@@ -78,7 +78,7 @@ Example (DoDesk):
 ## 3. Onboarding
 
 ```
-runOnboarding({ source, model, channel, store })
+runOnboarding({ runId, source, model, channel, autoApprove, agentLimits, createSandbox, emit, signal })
  1. sandbox + checkout
  2. DRAFT        rules detect the repository shape → draft config (free, instant)
  3. TRY          run every step and every check → statuses
@@ -86,8 +86,8 @@ runOnboarding({ source, model, channel, store })
                    none → 6
  5. SETUP AGENT  explores, tries fixes, asks the user when it can't decide → final config
  6. FINAL CHECK  run the final config in a FRESH sandbox (proves it replays from scratch)
- 7. APPROVE      show the config and results → Save / Edit / Start over
- 8. SAVE         store a new active version
+ 7. APPROVE      show the config and results → Save / Discard (`approved` / `discarded`; skipped with `autoApprove`)
+ 8. SAVE         the caller stores a new active version
 ```
 
 Gaps that remain after the agent (e.g. tests that genuinely need a database) are saved with their status or removed, and recorded in `meta.decisions`. They are never hidden.
@@ -120,7 +120,7 @@ Every step and check is run and classified:
 
 ### 3.3 Setup agent
 
-`runSetupAgent({ sandbox, model, draft, report, validate, channel, limits }) → { config, decisions, usage }`
+`runSetupAgent({ runId, sandbox, model, initial: { proposal, result, notes }, tryEnvironment, channel, limits, emit, signal }) → { status, proposal, notes, decisions, usage, … }`
 
 - Lives in `@codegenie/agent` (`setup-agent/`), reusing the agent loop, with its own prompt: make the repository installable and checkable, prefer recommended choices, ask only when it can't decide.
 - Tools:
@@ -128,24 +128,23 @@ Every step and check is run and classified:
 | Tool | Purpose |
 |---|---|
 | `list_files`, `read_file`, `search`, `bash` | explore and try commands (existing tools) |
-| `try_environment(config)` | validates a candidate config (the runner's `validate`, passed in) and returns statuses with output tails |
-| `ask_user(question)` | asks the user through the channel; returns the chosen option or free text |
-| `finish_setup(config, notes)` | structured final answer; ends the agent |
+| `try_environment({ steps, checks })` | tries a candidate setup (the runner's `tryEnvironment`, passed in) and returns statuses with output tails |
+| `ask_user({ question, why?, options })` | asks the user through the channel; returns the chosen option or free text |
+| `finish_setup({ steps, checks, notes })` | structured final answer; ends the agent |
 
 - Limits: 40 steps, 20 minutes (one DoDesk install already takes ~1.5 minutes), $0.20, at most 5 questions. The 20 minutes are the agent's working time: its clock pauses while a question waits for the user (`createDeadline` in `packages/agent`), so a slow answer doesn't eat into it. Its cost is reported with the onboarding result.
-- The agent package does not depend on the runner: `validate` and `channel` are passed in.
+- The agent package does not depend on the runner: `tryEnvironment` and `channel` are passed in.
 
 ### 3.4 Questions
 
 ```ts
 type SetupQuestion = {
-  id: string;
   question: string;                                   // "Backend tests need PostgreSQL. What should I do?"
   why?: string;
   options: { label: string; detail?: string }[];      // 2–4; the first is the recommended one
-  allowOther: true;                                   // "Something else…" free text
+  allowOther?: boolean;                               // "Something else…" free text; false for e.g. Save / Discard
 };
-type SetupAnswer = { option: number } | { other: string };
+type SetupAnswer = { option: number; auto?: boolean } | { other: string };   // auto: picked without asking
 
 interface UserChannel {
   ask(question: SetupQuestion): Promise<SetupAnswer>;
@@ -158,9 +157,10 @@ interface UserChannel {
 
 | Channel | Where | Behavior |
 |---|---|---|
-| `TerminalChannel` | CLI | numbered options in the terminal |
-| `AutoChannel` | evals, `--yes` | always the recommended option; recorded as `auto: true` |
-| `EventChannel` | website (`apps/worker/src/onboardings/`) | stores `question_asked`, waits for the answer over Redis (`onboarding-answer`), stores `question_answered`; stops setup after 30 minutes without one (§3.5) |
+| `promptChannel` | CLI (`apps/cli/src/channel/prompt.ts`) | arrow-key options (`@clack/prompts`), the recommended one preselected |
+| `terminalChannel` | CLI without a terminal for input | numbered options |
+| `autoChannel` | evals, `--yes` | always the recommended option; recorded as `auto: true` |
+| `createEventChannel` | website (`apps/worker/src/onboardings/event-channel.ts`) | stores `question_asked`, waits for the answer over Redis (`onboarding-answer`), stores `question_answered`; stops setup after 30 minutes without one (§3.5) |
 
 Example conversation (DoDesk):
 
@@ -265,31 +265,38 @@ pnpm agent:run   --repo ../DoDesk --task "…"  # uses the saved environment
 ## 7. Code layout
 
 ```
-packages/shared/src/types/environment.ts   EnvironmentConfig, statuses, SetupQuestion/Answer, events
+packages/shared/src/types/environment.ts   EnvironmentConfig, statuses, SetupQuestion/Answer, UserChannel, EnvironmentStore
 
 packages/agent/src/setup-agent/
-├── run-setup-agent.ts · prompt.ts
-└── tools/  try-environment.ts · ask-user.ts · finish-setup.ts
+├── run-setup-agent.ts · prompt.ts · schema.ts · format.ts · context.ts
+└── tools/  try-environment/ · ask-user/ · finish-setup/
 
 packages/runner/src/
-├── onboarding/       runOnboarding(), AutoChannel
+├── onboarding/          run-onboarding.ts · try-environment.ts · problems.ts · summary.ts · auto-channel.ts
 ├── environment/
-│   ├── config.ts     zod schema
-│   ├── draft/        rules → draft (multi-project detectors)
-│   ├── apply.ts      replay steps (onboarding and runs)
-│   ├── validate.ts   statuses + classifier
-│   ├── health.ts     uncovered project folder hint
-│   └── store.ts      EnvironmentStore interface
-├── run/              load → replay → baseline → agent → verify (before/after)
-└── stages/           checkout · changes · verify
+│   ├── config.ts        zod schema
+│   ├── draft/           rules → draft (multi-project detectors)
+│   ├── apply.ts         replay steps (onboarding and runs)
+│   ├── checks.ts        run checks + classifier
+│   ├── build-config.ts  draft + results → EnvironmentConfig
+│   └── health.ts        uncovered project folder hint
+├── run/                 runTask()
+└── stages/              checkout · setup (replay, baseline, health) · changes · verify · deliver
 
 apps/cli/src/
 ├── commands/         run.ts · setup.ts
-├── channel/          terminal.ts
-└── store/            file-store.ts
-```
+├── args/             common.ts · run-args.ts · setup-args.ts
+├── channel/          prompt.ts · terminal.ts
+└── store/            file-store.ts · repo-key.ts · saved-environment.ts
 
-The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced: its detectors become the draft rules, its install code becomes `apply`.
+packages/db/src/queries/projects/environments-queries.ts   DbEnvironmentStore
+
+apps/worker/src/
+├── handlers/         onboard-project.ts
+└── onboardings/      event-channel.ts · answer-router.ts · onboarding-record.ts
+
+apps/server/src/resources/onboarding/   setup API (§3.5)
+```
 
 ## 8. Build order
 
@@ -299,8 +306,8 @@ The existing setup stage (`stages/setup`, `runSetup` with overrides) is replaced
 | B ✅ | multi-project draft rules | correct drafts for DoDesk and BuyerBook |
 | C ✅ | C1 setup agent (`try_environment`, `ask_user`, `finish_setup`) on a shared loop · C2 onboarding pipeline; fresh-sandbox final check; terminal and auto channels; basic `pnpm agent:setup --save <file>` | the guided conversation works |
 | D ✅ | `EnvironmentStore` + CLI file store (versions); `agent:setup` saves and `--show`s, `agent:run` loads; health signals | complete onboarding in the CLI |
-| Phase 2 | DB migration + `DbEnvironmentStore` | product storage |
-| Phase 4 | `EventChannel`, stored setups and events, the setup API (§3.5); then question cards, config panel, needs-attention banner | onboarding on the website |
+| Phase 2 ✅ | DB migration + `DbEnvironmentStore` | product storage |
+| Phase 4 ✅ | `EventChannel`, stored setups and events, the setup API (§3.5); then question cards, config panel, needs-attention banner | onboarding on the website |
 
 ## 9. Not in the MVP
 

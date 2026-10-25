@@ -151,15 +151,15 @@ Branches, each built in small batches (see Ways of working):
 - [x] **1. `feat/projects-api`**: list, get, add (checked against the installation and the user's GitHub access) and remove projects; `projectId` on the repo picker; ownership rule; OpenAPI; api.md.
 - [x] **2. `feat/tasks-api`**: create tasks (the server queues work), get tasks and runs, cancel, start onboarding; the worker's dev enqueue script goes.
 - [x] **3. `feat/run-events`**: `GET /runs/:id/events`, SSE with replay and `Last-Event-ID` ([api.md](./api.md) §6).
-- [ ] **`feat/onboarding-api`**: setups stored with their events, questions answered from the browser (30-minute wait), stop, versions ([environment.md](./environment.md) §3.5). Before the web app's environment setup step.
-- [ ] **4–12. The web app, step by step through the user's journey** ([web.md](./web.md) §10): sign in → connect GitHub → add a repository → set up the environment (with onboarding events stored server-side) → start a task → watch it work → get the PR → find your work → end-to-end test. Each step's requirements are written in web.md and approved before it's built.
+- [x] **`feat/onboarding-api`**: setups stored with their events, questions answered from the browser (30-minute wait), stop, versions ([environment.md](./environment.md) §3.5). Before the web app's environment setup step.
+- [x] **4–12. The web app, step by step through the user's journey** ([web.md](./web.md) §10, steps 1–9): sign in → connect GitHub → add a repository → set up the environment (with onboarding events stored server-side) → start a task → watch it work → get the PR → find your work → end-to-end test. Each step's requirements are written in web.md and approved before it's built. Along the way: task titles, and the PR description links to the task.
 
 Checklist:
-- [ ] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /runs/:id`, `GET /runs/:id/events` (SSE + replay), `POST /runs/:id/cancel`; OpenAPI updated.
-- [ ] Authorization: users only access their own resources.
-- [ ] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live run view (stage, tool calls, summary, PR link, cancel), task page (conversation + runs).
-- [ ] API base URL via env; `/api/*` rewrite in Next.js.
-- [ ] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` run events); question cards; config panel with versions and rollback; "needs attention" banner.
+- [x] API: `POST /projects`, `GET /projects`, `GET /projects/:id`, `POST /projects/:id/tasks`, `GET /tasks/:id`, `GET /runs/:id`, `GET /runs/:id/events` (SSE + replay), `POST /runs/:id/cancel`; OpenAPI updated.
+- [x] Authorization: users only access their own resources (someone else's project, task or run is a 404).
+- [x] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live run view (stage, tool calls, summary, PR link, cancel), task page (conversation + runs).
+- [x] API base URL via env (`API_URL`); `/api/*` rewrite in Next.js.
+- [x] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` onboarding events, stored in `onboarding_events`); question cards; config panel with versions and rollback (Restore); "needs attention" banner. Editing the environment by hand is not built.
 - [x] Playwright end-to-end test of the whole journey (sign in → setup → task → events → PR link → Inbox), GitHub faked, scripted model; run on demand with `pnpm e2e`, not in CI ([web.md](./web.md) §19).
 
 **Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally.

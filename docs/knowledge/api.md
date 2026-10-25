@@ -1,6 +1,6 @@
 # API
 
-> Status: **In progress** (Phase 4) · Last updated: 2026-10-22 · Code: `apps/server` · Reference: `docs/api/openapi.yaml` (served at `/api/docs`) · Related: [ui.md](./ui.md) (what each screen needs), [github.md](./github.md) §6
+> Status: **Built** · Last updated: 2026-10-25 · Code: `apps/server` · Reference: `docs/api/openapi.yaml` (served at `/api/docs`) · Related: [ui.md](./ui.md) (what each screen needs), [github.md](./github.md) §6
 
 The HTTP API behind the web app. The OpenAPI file has every request and response; this page has the rules they share.
 
@@ -33,10 +33,12 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | `TASK_NOT_FOUND` | 404 | Not one of the user's tasks, or doesn't exist |
 | `RUN_NOT_FOUND` | 404 | Not a run on one of the user's tasks, or doesn't exist |
 | `RUN_ENDED` | 409 | The run has already ended, so it can't be cancelled |
+| `ENVIRONMENT_NOT_FOUND` | 404 | The project has no environment version with that number |
+| `SETUP_IN_PROGRESS` | 409 | A setup is queued, running or waiting, so a version can't be restored |
 | `ONBOARDING_NOT_FOUND` | 404 | The project has never been set up, so there's no setup to answer or stop |
 | `ONBOARDING_ENDED` | 409 | The setup has already ended, so it can't be stopped |
 | `QUESTION_NOT_OPEN` | 409 | The setup isn't waiting on that question (answered, timed out, stopped, or a different one) |
-| `QUEUE_UNAVAILABLE` | 503 | Work couldn't be queued (Redis unreachable); a task's run is marked failed (`queue_unavailable`) |
+| `QUEUE_UNAVAILABLE` | 503 | Work couldn't be queued (Redis unreachable); the task's run or the setup is marked failed (`queue_unavailable`) |
 
 ## 4. Resources
 
@@ -63,6 +65,8 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | GET | `/runs/:id/diff` | The run's patch and files, or `null` |
 | POST | `/runs/:id/cancel` | 202 `{ outcome: "cancelled" }` for a queued run, `"stopping"` for a running one |
 | GET | `/runs/:id/events` | The run's events as a stream (server-sent events), replayed then live (§6) |
+| POST | `/github/webhooks` | Public; GitHub's webhook receiver, checked by signature ([github.md](./github.md) §6) |
+| GET | `/github/installations/callback` | Public; where GitHub returns after installing the App, redirects to the website ([github.md](./github.md) §6) |
 
 A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) installation (`id`, `accountLogin`, `accountType`, `suspended`, `uninstalled`) and latest setup (`id`, `status`, or `null` before the first).
 
