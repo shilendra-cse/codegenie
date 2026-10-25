@@ -1,52 +1,16 @@
 import type { EnvironmentResponse } from "@codegenie/shared";
 import { Check } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
+import { CommandTable } from "@/components/molecules/command-table";
 
 export type EnvironmentCardProps = {
   projectName: string;
   environment: EnvironmentResponse;
   newTaskHref: string;
 };
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <>
-      <div className="px-[18px] pt-3.5 pb-1 text-xs font-medium text-faint">
-        {title}
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[13px]">
-          <tbody>{children}</tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-function Row({
-  name,
-  cwd,
-  command,
-}: {
-  name: string;
-  cwd: string;
-  command: string;
-}) {
-  return (
-    <tr className="border-b border-border last:border-b-0">
-      <td className="w-7 py-2 pl-[18px]">
-        <Icon icon={Check} className="text-ok" />
-      </td>
-      <td className="px-3 py-2">{name}</td>
-      <td className="px-3 py-2 font-mono text-faint">{cwd}</td>
-      <td className="py-2 pr-[18px] pl-3 font-mono">{command}</td>
-    </tr>
-  );
-}
 
 export function EnvironmentCard({
   projectName,
@@ -68,16 +32,12 @@ export function EnvironmentCard({
           {environment.active && " · active"}
         </Badge>
       </div>
-      <Section title="Setup steps">
-        {environment.steps.map((step) => (
-          <Row key={`${step.cwd}:${step.name}`} {...step} />
-        ))}
-      </Section>
-      <Section title="Checks, run before and after every task">
-        {environment.checks.map((check) => (
-          <Row key={`${check.cwd}:${check.name}`} {...check} />
-        ))}
-      </Section>
+      <CommandTable title="Setup steps" commands={environment.steps} ticked />
+      <CommandTable
+        title="Checks, run before and after every task"
+        commands={environment.checks}
+        ticked
+      />
       {environment.decisions.length > 0 && (
         <div className="flex flex-col gap-1.5 border-t border-border px-[18px] py-3.5">
           <span className="text-xs font-medium text-faint">Decisions</span>

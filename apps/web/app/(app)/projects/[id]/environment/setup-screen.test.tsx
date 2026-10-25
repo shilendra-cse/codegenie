@@ -218,12 +218,4 @@ describe("SetupScreen", () => {
     expect(screen.getByText("7m 05s · $0.06")).toBeInTheDocument();
     expect(screen.getByText("Saved. dodesk is ready.")).toBeInTheDocument();
   });
-
-  it("says when the project isn't yours", () => {
-    state.error = new ApiError(404, "Not found.", "PROJECT_NOT_FOUND");
-    show();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "doesn't exist or isn't yours",
-    );
-  });
 });

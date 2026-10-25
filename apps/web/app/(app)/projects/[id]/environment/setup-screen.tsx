@@ -82,19 +82,6 @@ export function SetupScreen({ projectId }: SetupScreenProps) {
     .filter(Boolean)
     .join(" · ");
 
-  if (
-    latest.error instanceof ApiError &&
-    latest.error.code === "PROJECT_NOT_FOUND"
-  ) {
-    return (
-      <div className="mx-auto w-full max-w-[780px] px-6 py-10">
-        <Alert tone="error">
-          This project doesn&apos;t exist or isn&apos;t yours.
-        </Alert>
-      </div>
-    );
-  }
-
   const outcomeProps = {
     projectName,
     onStart: () => start.mutate(),
