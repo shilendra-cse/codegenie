@@ -22,7 +22,7 @@ import {
 } from "@/features/setup/use-onboarding";
 import { useSetupProgress } from "@/features/setup/use-setup-progress";
 import { ApiError } from "@/lib/api/client";
-import { formatDuration } from "@/lib/format";
+import { formatCost, formatDuration } from "@/lib/format";
 import { newTaskPath } from "@/lib/routes";
 import { useNow } from "@/lib/use-now";
 import { toSetupBlocks } from "./setup-blocks";
@@ -77,7 +77,7 @@ export function SetupScreen({ projectId }: SetupScreenProps) {
     onboarding?.durationMs ?? (startedAt !== null ? now - startedAt : null);
   const meta = [
     elapsed !== null && formatDuration(elapsed),
-    onboarding && onboarding.costUsd > 0 && `$${onboarding.costUsd.toFixed(2)}`,
+    onboarding && onboarding.costUsd > 0 && formatCost(onboarding.costUsd),
   ]
     .filter(Boolean)
     .join(" · ");
