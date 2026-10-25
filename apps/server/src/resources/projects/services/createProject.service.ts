@@ -70,5 +70,6 @@ export async function createProject(
     defaultBranch: repo.defaultBranch,
   });
   const project = await findUserProject(db, userId, id);
-  return { project: toProjectResponse(project!), created: !existing };
+  if (!project) throw new Error(`Project ${id} not found after saving it.`);
+  return { project: toProjectResponse(project), created: !existing };
 }

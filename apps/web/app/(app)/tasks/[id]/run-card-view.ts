@@ -6,7 +6,7 @@ import { splitPatch } from "@/features/runs/diff";
 import type { RunOutcome } from "@/features/runs/outcome";
 import type { RunLive } from "@/features/runs/use-run-events";
 import type { RunView, StageId, StageView } from "@/features/runs/run-view";
-import { formatDuration, timeAgo } from "@/lib/format";
+import { formatCost, formatDuration, timeAgo } from "@/lib/format";
 
 const NAMES: Record<StageId, string> = {
   prepare: "Prepare",
@@ -124,7 +124,7 @@ export function toRunCard({
       : [
           !active && run.durationMs !== null && formatDuration(run.durationMs),
           steps !== null && (active ? `step ${steps}` : plural(steps, "step")),
-          cost !== null && `$${cost.toFixed(2)}`,
+          cost !== null && formatCost(cost),
         ]
           .filter(Boolean)
           .join(" · ") || null,
@@ -190,7 +190,7 @@ export function runTotals(run: RunResponse, live: RunLive, now: number) {
   const cost = live.costUsd ?? run.costUsd;
   return [
     elapsed !== null && formatDuration(elapsed),
-    cost > 0 && `$${cost.toFixed(2)}`,
+    cost > 0 && formatCost(cost),
   ]
     .filter(Boolean)
     .join(" · ");
