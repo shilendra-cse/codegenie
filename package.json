@@ -28,7 +28,8 @@
     "typecheck:shared": "pnpm --filter @codegenie/shared type-check",
     "format:check": "pnpm -r --if-present run format:check",
     "build": "pnpm -r build",
-    "test": "pnpm -r --if-present run test"
+    "test": "pnpm -r --if-present run test",
+    "e2e": "pnpm --filter @codegenie/e2e e2e"
   },
   "license": "ISC",
   "packageManager": "pnpm@10.18.1",
