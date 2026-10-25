@@ -84,6 +84,15 @@ describe("ProjectFrame", () => {
     expect(screen.getByText("Tab content")).toBeVisible();
   });
 
+  it("links to Settings and marks it while it's open", async () => {
+    pathname = "/projects/p1/settings";
+    renderFrame();
+
+    expect(
+      await screen.findByRole("link", { name: "Settings" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
   it("re-runs setup from the banner and opens the Environment tab", async () => {
     api.post.mockResolvedValue({
       data: {

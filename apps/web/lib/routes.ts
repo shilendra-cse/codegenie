@@ -8,6 +8,8 @@ export const NEW_TASK = "/new";
 export const projectPath = (id: string) => `/projects/${id}`;
 export const environmentPath = (projectId: string) =>
   `${projectPath(projectId)}/environment`;
+export const projectSettingsPath = (projectId: string) =>
+  `${projectPath(projectId)}/settings`;
 export const taskPath = (id: string) => `/tasks/${id}`;
 export const newTaskPath = (projectId: string) =>
   `${NEW_TASK}?project=${encodeURIComponent(projectId)}`;

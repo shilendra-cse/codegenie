@@ -10,7 +10,13 @@ import { ProjectTabs } from "@/components/templates/project-tabs";
 import { repositoryUrl } from "@/features/github/links";
 import { isSettingUp, useProject } from "@/features/projects/projects";
 import { useStartOnboarding } from "@/features/setup/use-onboarding";
-import { environmentPath, INBOX, newTaskPath, projectPath } from "@/lib/routes";
+import {
+  environmentPath,
+  INBOX,
+  newTaskPath,
+  projectPath,
+  projectSettingsPath,
+} from "@/lib/routes";
 
 export type ProjectFrameProps = { projectId: string; children: ReactNode };
 
@@ -80,6 +86,11 @@ export function ProjectFrame({ projectId, children }: ProjectFrameProps) {
           href: environment,
           active: pathname === environment,
           attention,
+        },
+        {
+          label: "Settings",
+          href: projectSettingsPath(projectId),
+          active: pathname === projectSettingsPath(projectId),
         },
       ]}
       banner={
