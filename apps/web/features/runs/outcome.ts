@@ -49,44 +49,39 @@ const LIMITS: Record<string, string> = {
   cost_limit: "Stopped at the cost limit.",
 };
 
-function failure(
-  run: RunResponse,
+const FAILURE_TITLES: Record<string, string> = {
+  prepare_failed: "Couldn't prepare the sandbox",
+  checkout_failed: "Couldn't prepare the sandbox",
+  setup_failed: "Failed during setup",
+  no_environment: "This project isn't set up",
+  agent_failed: "Failed while working",
+  verify_failed: "Failed while running the checks",
+  deliver_failed: "Couldn't open the pull request",
+  github_access: "Couldn't reach the repository on GitHub",
+  worker_lost: "CodeGenie stopped unexpectedly",
+  lost_in_queue: "CodeGenie stopped unexpectedly",
+  worker_error: "CodeGenie stopped unexpectedly",
+};
+
+export const failureTitle = (code: string | undefined) =>
+  (code && FAILURE_TITLES[code]) || "The run failed";
+
+function failureAction(
+  code: string | undefined,
   projectId: string,
-): Omit<OutcomeNotice, "tone" | "text" | "note"> {
-  switch (run.error?.code) {
-    case "prepare_failed":
-    case "checkout_failed":
-      return { title: "Couldn't prepare the sandbox", action: null };
+): OutcomeNotice["action"] {
+  switch (code) {
     case "setup_failed":
       return {
-        title: "Failed during setup",
-        action: {
-          label: "Re-run environment setup",
-          href: environmentPath(projectId),
-        },
+        label: "Re-run environment setup",
+        href: environmentPath(projectId),
       };
     case "no_environment":
-      return {
-        title: "This project isn't set up",
-        action: { label: "Set it up", href: environmentPath(projectId) },
-      };
-    case "agent_failed":
-      return { title: "Failed while working", action: null };
-    case "verify_failed":
-      return { title: "Failed while running the checks", action: null };
-    case "deliver_failed":
-      return { title: "Couldn't open the pull request", action: null };
+      return { label: "Set it up", href: environmentPath(projectId) };
     case "github_access":
-      return {
-        title: "Couldn't reach the repository on GitHub",
-        action: { label: "Check the project", href: projectPath(projectId) },
-      };
-    case "worker_lost":
-    case "lost_in_queue":
-    case "worker_error":
-      return { title: "CodeGenie stopped unexpectedly", action: null };
+      return { label: "Check the project", href: projectPath(projectId) };
     default:
-      return { title: "The run failed", action: null };
+      return null;
   }
 }
 
@@ -184,7 +179,8 @@ export function runOutcome({
       summary: null,
       notice: {
         tone: "err",
-        ...failure(run, task.project.id),
+        title: failureTitle(run.error?.code),
+        action: failureAction(run.error?.code, task.project.id),
         text: run.error?.message ?? null,
         note:
           run.error?.code === "deliver_failed"
