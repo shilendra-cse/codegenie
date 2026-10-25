@@ -1,6 +1,6 @@
 # CodeGenie Architecture
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-13
+> Status: **Accepted** (MVP) · Last updated: 2026-10-25
 
 CodeGenie is a web-based autonomous coding agent. A user connects their GitHub repositories, assigns a task (a prompt for the MVP; Jira and Notion later), and the agent completes it inside an isolated cloud sandbox and delivers the result as a pull request.
 
@@ -57,6 +57,7 @@ apps/
   server/     Express API (auth, REST, SSE, webhooks) — never touches sandboxes
   worker/     BullMQ consumer: calls the runner for queued runs
   cli/        local dev harness: calls the runner, prints events
+  e2e/        the end-to-end test: the whole journey in Playwright, run on demand (web.md §19)
 packages/
   runner/     runs a task end to end: checkout → setup → agent → verify → deliver (no AI logic)
   agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools

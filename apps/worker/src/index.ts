@@ -1,86 +1,14 @@
-import { resolveModel } from "@codegenie/agent";
-import { createDb } from "@codegenie/db";
-import { createGithubApp } from "@codegenie/github";
-import {
-  connectSandbox,
-  createSandbox,
-  type SandboxLabels,
-} from "@codegenie/sandbox";
-import { WORK_QUEUE } from "@codegenie/shared";
-import { Queue } from "bullmq";
 import { config as loadDotenv } from "dotenv";
-import { Redis } from "ioredis";
 import { ConfigError, ENV_FILE, parseConfig } from "./config.js";
-import { startConsumer } from "./consumer.js";
-import { handleOnboardProject } from "./handlers/onboard-project.js";
-import { createAnswerRouter } from "./onboardings/answer-router.js";
-import { handleRunTask } from "./handlers/run-task.js";
 import { createLog } from "./lib/logger.js";
-import { handleReap } from "./reaper/reap.js";
-import { scheduleReaper } from "./reaper/schedule.js";
+import { startWorker } from "./start-worker.js";
 
 async function main() {
   loadDotenv({ path: ENV_FILE, quiet: true });
   const config = parseConfig(process.env);
   const log = createLog({ level: config.logLevel, pretty: config.prettyLogs });
 
-  const { db, pool } = createDb(config.databaseUrl);
-  // Without a listener, an idle connection dropping (e.g. Postgres restarting) crashes the process.
-  pool.on("error", (error) =>
-    log("error", "Database connection error", { error: error.message }),
-  );
-
-  const connect = (name: string) => {
-    const redis = new Redis(config.redisUrl, {
-      maxRetriesPerRequest: null,
-      connectionName: `codegenie-worker-${name}`,
-    });
-    redis.on("error", (error) =>
-      log("error", "Redis connection error", { name, error: error.message }),
-    );
-    return redis;
-  };
-  const redis = {
-    queue: connect("queue"),
-    publisher: connect("publisher"),
-    subscriber: connect("subscriber"),
-    scheduler: connect("scheduler"),
-  };
-  const queue = new Queue(WORK_QUEUE, { connection: redis.scheduler });
-
-  const model = resolveModel(config.model);
-  const deps = {
-    db,
-    publisher: redis.publisher,
-    log,
-    model,
-    titleModel: model,
-    createSandbox: (labels: SandboxLabels) =>
-      createSandbox({ ...config.sandbox, labels }),
-    github: createGithubApp(config.github),
-    answers: createAnswerRouter(),
-    answerTimeoutMs: config.answerTimeoutMs,
-    frontendUrl: config.frontendUrl,
-  };
-  const consumer = await startConsumer({
-    connection: redis.queue,
-    subscriber: redis.subscriber,
-    answers: deps.answers,
-    concurrency: config.concurrency,
-    log,
-    handlers: {
-      "run-task": (data, signal) => handleRunTask(deps, data, signal),
-      "onboard-project": (data, signal) =>
-        handleOnboardProject(deps, data, signal),
-      reap: () =>
-        handleReap({
-          ...deps,
-          queue,
-          connectSandbox: (id) => connectSandbox({ ...config.sandbox, id }),
-        }),
-    },
-  });
-  await scheduleReaper(queue, config.reaperIntervalMs);
+  const worker = await startWorker(config, log);
   log("info", "Worker started", {
     model: config.model,
     concurrency: config.concurrency,
@@ -101,10 +29,7 @@ async function main() {
     log("info", "Stopping after the work in progress (again to stop now)", {
       signal,
     });
-    await consumer.close();
-    await queue.close();
-    await Promise.all(Object.values(redis).map((r) => r.quit()));
-    await pool.end();
+    await worker.stop();
     log("info", "Worker stopped");
   };
   process.on("SIGINT", stop);

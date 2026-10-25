@@ -1,6 +1,6 @@
 # Development Plan
 
-> Status: **Accepted** · Last updated: 2026-10-13 · Related: [requirements.md](./requirements.md), [architecture.md](./architecture.md), [database.md](./database.md)
+> Status: **Accepted** · Last updated: 2026-10-25 · Related: [requirements.md](./requirements.md), [architecture.md](./architecture.md), [database.md](./database.md)
 
 ## 1. Approach
 
@@ -160,7 +160,7 @@ Checklist:
 - [ ] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live run view (stage, tool calls, summary, PR link, cancel), task page (conversation + runs).
 - [ ] API base URL via env; `/api/*` rewrite in Next.js.
 - [ ] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` run events); question cards; config panel with versions and rollback; "needs attention" banner.
-- [ ] Playwright smoke test (sign in → task → events → PR link) with a mocked model.
+- [x] Playwright end-to-end test of the whole journey (sign in → setup → task → events → PR link → Inbox), GitHub faked, scripted model; run on demand with `pnpm e2e`, not in CI ([web.md](./web.md) §19).
 
 **Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally.
 
@@ -196,7 +196,7 @@ PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan ap
 |---|---|---|
 | Unit | tools, setup detection, limits, token minting, webhook verification | Vitest |
 | Integration | agent tools against real `DockerSandbox`; API routes against a test Postgres | Vitest + docker-compose |
-| End-to-end | sign in → task → live events → PR link | Playwright (mocked model) |
+| End-to-end | sign in → setup → task → live events → PR → Inbox | Playwright (GitHub faked, scripted model), on demand with `pnpm e2e`, not in CI |
 | Agent quality | eval set: PR mergeability, checks pass rate, time, cost | `pnpm eval` (real model, run manually/nightly, not on every PR) |
 
 ## 5. Accounts needed
