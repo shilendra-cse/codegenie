@@ -80,3 +80,26 @@ export async function testDatabaseOrSkip(
     },
   };
 }
+
+/** Drops the database `url` names, creates it again and applies every migration. */
+export async function recreateDatabase(url: string): Promise<void> {
+  const target = new URL(url);
+  const name = target.pathname.slice(1);
+  if (!/^\w+$/.test(name)) throw new Error(`Not a database name: ${name}`);
+  const server = new URL(url);
+  server.pathname = "/postgres";
+  const admin = new pg.Client({ connectionString: server.toString() });
+  await admin.connect();
+  try {
+    await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+    await admin.query(`CREATE DATABASE ${name}`);
+  } finally {
+    await admin.end();
+  }
+  const { db, pool } = createDb(url, { max: 1 });
+  try {
+    await migrate(db, { migrationsFolder: MIGRATIONS });
+  } finally {
+    await pool.end();
+  }
+}

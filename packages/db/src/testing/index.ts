@@ -1,2 +1,6 @@
 export { insertRun, insertProject, insertTask } from "./fixtures.js";
-export { testDatabaseOrSkip, type TestDatabase } from "./test-database.js";
+export {
+  recreateDatabase,
+  testDatabaseOrSkip,
+  type TestDatabase,
+} from "./test-database.js";
