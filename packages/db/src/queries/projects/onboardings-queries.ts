@@ -8,7 +8,7 @@ import { projects } from "../../schema/projects/projects-schema.js";
 export type Onboarding = typeof onboardings.$inferSelect;
 type Status = Onboarding["status"];
 
-const ACTIVE: Status[] = ["queued", "running", "waiting"];
+export const ACTIVE_ONBOARDING: Status[] = ["queued", "running", "waiting"];
 
 export type OnboardingOutcome = Pick<Onboarding, "status"> &
   Partial<
@@ -30,7 +30,7 @@ async function findActiveOnboarding(db: Db, projectId: string) {
     .where(
       and(
         eq(onboardings.projectId, projectId),
-        inArray(onboardings.status, ACTIVE),
+        inArray(onboardings.status, ACTIVE_ONBOARDING),
       ),
     );
   return row ?? null;
@@ -168,7 +168,7 @@ export async function markOnboardingEnded(
     .where(
       and(
         eq(onboardings.id, onboardingId),
-        inArray(onboardings.status, ACTIVE),
+        inArray(onboardings.status, ACTIVE_ONBOARDING),
       ),
     )
     .returning({ id: onboardings.id });
@@ -196,7 +196,7 @@ export async function listUnfinishedOnboardings(db: Db) {
       queuedAt: onboardings.queuedAt,
     })
     .from(onboardings)
-    .where(inArray(onboardings.status, ACTIVE));
+    .where(inArray(onboardings.status, ACTIVE_ONBOARDING));
 }
 
 export type NewOnboardingEvent = typeof onboardingEvents.$inferInsert;

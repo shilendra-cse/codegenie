@@ -188,7 +188,7 @@ The website starts setup, shows it live and asks its questions in the browser.
 - **Stop:** a queued setup is cancelled directly; a running or waiting one is told to stop and ends `cancelled`.
 - **Saving:** a setup that succeeds is saved straight away as the project's next active version (`runOnboarding({ autoApprove: true })` skips "Save this environment?"; the CLI still asks); re-running setup makes a newer one.
 - **The wait** is `ONBOARDING_ANSWER_TIMEOUT_MINUTES` in the worker (default 30). If the worker itself dies while waiting, the reaper ends the setup (`worker_lost`).
-- **API:** `POST /onboarding` (start), `GET /onboarding` (latest), `GET /onboarding/events` (stream), `POST /onboarding/answer`, `POST /onboarding/cancel`, `GET /environments` (versions), all under `/projects/:id`. Rollback comes with the project page.
+- **API:** `POST /onboarding` (start), `GET /onboarding` (latest), `GET /onboarding/events` (stream), `POST /onboarding/answer`, `POST /onboarding/cancel`, `GET /environments` (versions), `POST /environments/:version/restore`, all under `/projects/:id`.
 
 ## 4. Task runs
 
@@ -246,7 +246,7 @@ interface EnvironmentStore {
 
 **Repo key** (`repo-key.ts`): git URLs become host/path, lowercased, without protocol, user or `.git` (`github.com/acme/app`), so every URL form of a repository matches. A local folder uses its `origin` remote when it is the repository's top level, so a clone and its URL share one environment; otherwise (no remote, or a folder inside another repository) it is `local:<absolute path>`.
 
-Lifecycle: onboarding saves a new active version (health ok); a run marks the active version as needing attention; rollback to an older version comes with the website (phase 4).
+Lifecycle: onboarding saves a new active version (health ok); a run marks the active version as needing attention; restoring an older version makes it active again with the health it had ([api.md](./api.md) §4).
 
 ## 6. CLI
 

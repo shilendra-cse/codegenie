@@ -591,7 +591,7 @@ paths:
     get:
       tags: [Projects]
       summary: The project's environment versions
-      description: Saved versions, newest (the active one) first.
+      description: Saved versions, newest first; `active` marks the one new tasks use.
       operationId: listEnvironments
       responses:
         "200":
@@ -615,6 +615,58 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/ProjectNotFound"
+
+  /api/projects/{projectId}/environments/{version}/restore:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    post:
+      tags: [Projects]
+      summary: Make an older environment version active again
+      description: New tasks use it from then on, with the health it had. The version that was active is kept; the next setup saves the next number.
+      operationId: restoreEnvironment
+      responses:
+        "200":
+          description: The restored version
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [environment]
+                        properties:
+                          environment:
+                            $ref: "#/components/schemas/Environment"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: The project (`PROJECT_NOT_FOUND`) or the version (`ENVIRONMENT_NOT_FOUND`) doesn't exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: A setup is queued, running or waiting for an answer (`SETUP_IN_PROGRESS`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/projects/{projectId}/branches:
     parameters:
@@ -1343,7 +1395,7 @@ components:
                 type: boolean
     Project:
       type: object
-      required: [id, repo, defaultBranch, environment, installation, createdAt]
+      required: [id, repo, defaultBranch, environment, installation, setup, createdAt]
       properties:
         id:
           type: string
@@ -1391,6 +1443,18 @@ components:
               type: boolean
             uninstalled:
               type: boolean
+        setup:
+          type: object
+          nullable: true
+          description: The latest setup; null before the first
+          required: [id, status]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [queued, running, waiting, succeeded, failed, cancelled]
         createdAt:
           type: string
           format: date-time

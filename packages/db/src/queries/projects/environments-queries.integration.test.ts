@@ -5,7 +5,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { Db } from "../../client.js";
 import { projectEnvironments } from "../../schema/index.js";
 import { insertProject, testDatabaseOrSkip } from "../../testing/index.js";
-import { DbEnvironmentStore } from "./environments-queries.js";
+import {
+  DbEnvironmentStore,
+  restoreEnvironmentUnlessSettingUp,
+} from "./environments-queries.js";
+import { createOnboarding } from "./onboardings-queries.js";
 
 const database = await testDatabaseOrSkip("DbEnvironmentStore");
 
@@ -119,5 +123,67 @@ describe.skipIf(!database)("DbEnvironmentStore against Postgres", () => {
     await expect(
       store.save(randomUUID(), config("npm ci"), "detected"),
     ).rejects.toThrow(/doesn't exist/);
+  });
+
+  describe("restoring a version", () => {
+    const db = database?.db as Db;
+    const versions = async (projectId: string) =>
+      (await store.list(projectId)).map((v) => [v.version, v.active]);
+
+    it("makes it active with the health it had; the next save comes after the newest", async () => {
+      const projectId = await newProject();
+      await store.save(projectId, config("npm ci"), "detected");
+      await store.markHealth(projectId, "needs_attention", ["install failed"]);
+      await store.save(projectId, config("npm install"), "ai");
+
+      expect(
+        await restoreEnvironmentUnlessSettingUp(db, projectId, 1),
+      ).toMatchObject({
+        status: "restored",
+        environment: {
+          version: 1,
+          active: true,
+          health: { status: "needs_attention", reasons: ["install failed"] },
+        },
+      });
+      expect(await store.load(projectId)).toMatchObject({ version: 1 });
+      expect(await versions(projectId)).toEqual([
+        [2, false],
+        [1, true],
+      ]);
+
+      expect(
+        await restoreEnvironmentUnlessSettingUp(db, projectId, 1),
+      ).toMatchObject({ status: "restored", environment: { version: 1 } });
+
+      await store.save(projectId, config("pnpm install"), "ai");
+      expect(await versions(projectId)).toEqual([
+        [3, true],
+        [2, false],
+        [1, false],
+      ]);
+    });
+
+    it("refuses an unknown version, and any while a setup is in progress", async () => {
+      const project = await insertProject(db);
+      await store.save(project.id, config("npm ci"), "detected");
+      await store.save(project.id, config("npm install"), "ai");
+
+      expect(
+        await restoreEnvironmentUnlessSettingUp(db, project.id, 9),
+      ).toEqual({ status: "not_found" });
+
+      await createOnboarding(db, {
+        projectId: project.id,
+        userId: project.userId,
+      });
+      expect(
+        await restoreEnvironmentUnlessSettingUp(db, project.id, 1),
+      ).toEqual({ status: "setup_in_progress" });
+      expect(await versions(project.id)).toEqual([
+        [2, true],
+        [1, false],
+      ]);
+    });
   });
 });

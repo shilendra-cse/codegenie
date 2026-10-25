@@ -1,6 +1,10 @@
 import { ok } from "@/lib/api-response";
 import type { AuthenticatedController } from "@/types/base.types";
-import { createProjectSchema, projectParamsSchema } from "@codegenie/shared";
+import {
+  createProjectSchema,
+  environmentParamsSchema,
+  projectParamsSchema,
+} from "@codegenie/shared";
 import {
   createProject,
   type CreateProjectDeps,
@@ -10,6 +14,7 @@ import { listUserProjects } from "./services/listUserProjects.service";
 import { removeProject } from "./services/removeProject.service";
 import { listEnvironments } from "./services/listEnvironments.service";
 import { listProjectBranches } from "./services/listProjectBranches.service";
+import { restoreEnvironment } from "./services/restoreEnvironment.service";
 
 export type ProjectControllerDeps = CreateProjectDeps;
 
@@ -47,6 +52,12 @@ export function createProjectControllers(deps: ProjectControllerDeps) {
     return ok(200, "OK", { environments });
   };
 
+  const restoreVersion: AuthenticatedController = async (req) => {
+    const { id, version } = environmentParamsSchema.parse(req.params);
+    const environment = await restoreEnvironment(db, req.user.id, id, version);
+    return ok(200, "Restored", { environment });
+  };
+
   const getBranches: AuthenticatedController = async (req) => {
     const { id } = projectParamsSchema.parse(req.params);
     return ok(200, "OK", await listProjectBranches(deps, req.user.id, id));
@@ -58,6 +69,7 @@ export function createProjectControllers(deps: ProjectControllerDeps) {
     addProject,
     deleteProject,
     getEnvironments,
+    restoreVersion,
     getBranches,
   };
 }
