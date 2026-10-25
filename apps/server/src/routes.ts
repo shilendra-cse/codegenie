@@ -2,7 +2,6 @@
  * Side-effect imports register routes on the shared ApiRouter instance.
  * Add one import per resource module.
  */
-import "./resources/example/example.routes";
 import "./resources/github/github.routes";
 import "./resources/projects/projects.routes";
 import "./resources/tasks/tasks.routes";

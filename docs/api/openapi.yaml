@@ -9,7 +9,6 @@ servers:
 
 tags:
   - name: Health
-  - name: Example
   - name: GitHub
   - name: Projects
   - name: Onboarding
@@ -30,117 +29,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProcessHealth"
-
-  /api/example/health:
-    get:
-      tags: [Example]
-      summary: Example resource health check
-      operationId: getExampleHealth
-      security: []
-      responses:
-        "200":
-          description: Example resource is up
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/SuccessEnvelope"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        required: [health]
-                        properties:
-                          health:
-                            $ref: "#/components/schemas/ExampleHealth"
-
-  /api/example/items:
-    get:
-      tags: [Example]
-      summary: List example items for the signed-in user
-      operationId: listExampleItems
-      responses:
-        "200":
-          description: Items for the current user
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/SuccessEnvelope"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        required: [items]
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: "#/components/schemas/ExampleItem"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-    post:
-      tags: [Example]
-      summary: Create an example item
-      operationId: createExampleItem
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateExampleItem"
-      responses:
-        "201":
-          description: Item created
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/SuccessEnvelope"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        required: [item]
-                        properties:
-                          item:
-                            $ref: "#/components/schemas/ExampleItem"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /api/example/items/{itemId}:
-    get:
-      tags: [Example]
-      summary: Get one example item
-      operationId: getExampleItem
-      parameters:
-        - name: itemId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: The requested item
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/SuccessEnvelope"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        required: [item]
-                        properties:
-                          item:
-                            $ref: "#/components/schemas/ExampleItem"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
 
   /api/github/installations:
     get:
@@ -1271,40 +1159,6 @@ components:
         environment:
           type: string
           example: development
-
-    ExampleHealth:
-      type: object
-      required: [status, timestamp]
-      properties:
-        status:
-          type: string
-          enum: [up]
-        timestamp:
-          type: string
-          format: date-time
-
-    ExampleItem:
-      type: object
-      required: [id, userId, name, createdAt]
-      properties:
-        id:
-          type: string
-        userId:
-          type: string
-        name:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-
-    CreateExampleItem:
-      type: object
-      required: [name]
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
 
     GitHubInstallation:
       type: object
