@@ -1,6 +1,6 @@
 # Web app
 
-> Status: **Accepted** (Phase 4) · Last updated: 2026-10-23 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
+> Status: **Accepted** (Phase 4) · Last updated: 2026-10-25 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
 
 How the web app is built: the stack, how it talks to the API, how the code is organized, and the order we build it in. **What** each screen shows is in ui.md; this file is **how**.
 
@@ -392,3 +392,64 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 6. Tests cover `runOutcome` for every state and code, the merged edit rows, `useCancelRun`, the ended and folded run card, the result message and the page; the worker's PR description with and without `FRONTEND_URL`.
 
 **Batches:** 1. these requirements and the canvas; 2. Cancel (`useCancelRun`, the top bar button, stopping); 3. merged edit rows; 4. `runOutcome`; 5a. the checks table as its own component; 5b. the result message (summary, checks table, PR card, notices); 5c. the run card's ended and folded states, and scrolling to the result; 6. the task link in the PR description. (A composer saying follow-ups aren't available was dropped: it comes with follow-ups.)
+
+## 18. Find your work (requirements)
+
+**Goal:** you can find every task you started, across projects or within one, and see at a glance what needs you, what's running and what has a PR. A project's page shows its tasks, its environment with the versions you can go back to, and its settings.
+
+**The Inbox `/inbox`** (canvas: Inbox, its `state` switch):
+- **Top bar:** "Inbox" and **New task**.
+- **Filters**, each with a count: All · Needs you · Running · PR open · Done, kept in the URL (`?filter=`). Needs you: setups waiting for your answer. Running: queued and working. PR open: open and draft PRs. Done: merged, closed, no changes, failed, cancelled.
+- **Rows**, newest first, grouped by day: Today · Yesterday · Earlier this week · Earlier. A row: the status icon, the title, a detail line, the project, the status badge, duration · cost, when it was last updated; the whole row opens the task.
+- **The detail line:**
+
+  | State | Detail |
+  |---|---|
+  | Queued | "Waiting for a sandbox" |
+  | Working | the stage: "Preparing the sandbox", "Setting up", "Working", "Running the checks", "Opening the pull request" |
+  | PR open | "Checks passing · 4 files changed" or "Checks failing · …"; "No checks · …" when the repository has none |
+  | Draft PR | "Draft: checks still failing" or "Draft: stopped before finishing" |
+  | Merged / Closed | "Merged into `main`" / "Closed without merging" |
+  | No changes | the summary's first line |
+  | Failed | where it failed, as on the task page (`runOutcome`), e.g. "Failed during setup" |
+  | Cancelled | "You cancelled this task" |
+
+- **A setup waiting for your answer** is a row at the top: "Set up <repo>", "CodeGenie has a question", the badge Needs your answer, its duration and cost; it opens the project's Environment tab. (Tasks don't wait on you until follow-ups in Phase 5.)
+- **Load more** at the bottom, 50 at a time. The list refreshes every 3 s while anything is queued, working or waiting.
+- **States:** loading (placeholder rows); no tasks at all, "No tasks yet" with **New task**; a filter with nothing in it, "No tasks match this filter."; couldn't load, **Try again**.
+- **Elsewhere:** the sidebar's Inbox count is the tasks queued or working plus the setups waiting for you. The New task page's Recent tasks gets **View all**. Signed in, `/` and the end of sign-in go to `/inbox` once you have a task, else `/welcome` (§8).
+
+**The project page `/projects/:id`** (canvas: Project, its `tab`, `tasks`, `health`, `lastSetup`, `restore` and `remove` switches):
+- **Top bar:** the repository's name, `owner/name` linking to GitHub, **New task** (`/new?project=`). **Tabs:** Tasks · Environment · Settings, each its own route (`/projects/:id`, `/environment`, `/settings`); Environment shows a dot when it needs attention.
+- **Needs attention**, on every tab when the environment's health says so: the reasons and **Re-run setup**.
+- **Tasks:** Task · Status · Pull request (#N, opening it on GitHub) · Runs · Duration · Cost · Updated; a row opens the task; Load more and refreshing as in the Inbox. States: loading, "No tasks in this project yet" with **New task**, couldn't load with **Try again**.
+- **Environment:**
+  - while a setup is queued, running or waiting, or before any environment is saved: the setup conversation, as today;
+  - otherwise the active environment: its version and health, when it was saved, the setup steps (name, folder, command) and the checks (name, folder, command), and **Re-run setup**;
+  - if the latest setup failed or was stopped, a note above it: "The last setup didn't finish: <why>. New tasks still use vN." with **View it** (the conversation);
+  - **Versions:** each saved version, newest first: vN, active or replaced, how it was made and when. A replaced one has **Restore**, which asks first ("Make v1 active again? New tasks will use its steps and checks. v2 is kept.") and then makes it the active version, with the health it had. Refused while a setup is in progress ("Finish or stop the setup first."); anything else shows "Couldn't restore v1. Try again."
+- **Settings:** Repository (`owner/name`); Default branch ("new tasks start from it; follows GitHub"); GitHub access (through the App installed on <account>, **Manage on GitHub**); **Remove project**, which asks first in a dialog saying what's deleted and that GitHub isn't touched. While a run is queued or running it can't (409): "A task is still running in this project. Wait for it to finish, or cancel it, then remove the project." Once removed you go to `/inbox`.
+- **The sidebar:** a project opens its Tasks tab (today it opens setup).
+
+**Server:**
+- `GET /tasks` gains `filter` (`needs_you` is setups, so the task filters are `running`, `pr`, `done`): the label's rules move into the query, so filters and pages stay right past 50 tasks. Each page carries `counts` per filter. The list's `latestRun` gains `checksPassed` and `filesChanged`, and `summary`'s first line for No changes.
+- `POST /projects/:id/environments/:version/restore` → 200 with the restored version: 404 for an unknown version, 409 `SETUP_IN_PROGRESS` while a setup is queued, running or waiting. Reactivating and superseding the active one is one transaction ([database.md](./database.md)).
+- Setups waiting for you: `GET /projects` gains each project's latest setup status (`setup: { id, status } | null`), so the sidebar and Inbox know without one request per project.
+
+**Underneath:**
+- `features/tasks/`: `useTaskInbox(filter)` (pages with `useInfiniteQuery`, the counts, refreshing while active), `useProjectTasks(projectId)`; `taskDetail(task)` and `groupByDay(tasks, now)`, pure and tested per state.
+- `features/projects/`: `useRestoreEnvironment(projectId)`, `useRemoveProject()`; the setups waiting for you, from the projects list.
+- Components: `FilterPills`, `TaskRow`, `VersionRow` (molecules); `InboxList`, `ProjectTaskTable`, `EnvironmentSummary`, `RemoveProjectDialog` (organisms); `ProjectTabs` (template).
+
+**Not here:** editing the environment by hand; searching tasks; full command logs; the end-to-end test (step 9).
+
+**Done when:**
+1. The Inbox lists every task by day; each filter and count is right, also past 50 tasks; running ones update in place.
+2. A setup waiting for an answer shows under Needs you, in the sidebar count, and opens the setup.
+3. The project page shows its tasks; its Environment tab shows the setup while one runs and the active environment otherwise; Restore makes an older version active.
+4. Remove project asks first, is refused while a task runs, and lands on the Inbox.
+5. `/` takes someone with tasks to the Inbox.
+6. The pages match the canvas in light and dark and at phone width.
+7. Tests cover the filters, counts and restore on the server; `taskDetail`, `groupByDay`, the hooks, each page state, Restore and Remove project.
+
+**Batches:** 1. these requirements and the canvas; 2. the task list's filter, counts and new fields; 3. restoring an environment version, and each project's latest setup in the list; 4. the tasks data layer (`useTaskInbox`, `taskDetail`, `groupByDay`); 5. the Inbox page, the sidebar count, the home redirect and View all; 6. the project page's tabs and Tasks tab, the sidebar link; 7. the Environment tab (summary, versions, Restore); 8. Settings and Remove project.
