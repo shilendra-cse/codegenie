@@ -111,7 +111,7 @@ apps/web/
 ## 9. Testing
 
 - **Vitest + Testing Library:** atoms through organisms, query hooks against a faked API, and above all the run-events translator.
-- **Playwright** (step 9): sign in → task → live events → PR link, with a mocked model.
+- **Playwright** (step 9, §19): the whole journey, sign in → setup → task → live events → PR → Inbox, with GitHub faked and a scripted model. Run on demand with `pnpm e2e`, not in CI.
 - Every step is also checked by running the app: screenshots against the canvas, light and dark, and at phone width.
 
 ## 10. How we build: step by step through the user's journey
@@ -128,7 +128,7 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 | 6. Watch it work | the live run view: stages, activity, diff, terminal | `feat/web-run-view` |
 | 7. Get the PR | the finished run, PR card, cancel, every outcome | `feat/web-outcomes` |
 | 8. Find your work | Inbox, project page, history | `feat/web-inbox` |
-| 9. End to end | the whole journey in Playwright | `feat/e2e` |
+| 9. End to end | the whole journey in Playwright, on demand (`pnpm e2e`, not in CI) | `feat/e2e` |
 
 ## 11. Step 1: Sign in (requirements)
 
@@ -453,3 +453,39 @@ Each step: **requirements first** (written here, approved) → built bottom-up w
 7. Tests cover the filters, counts and restore on the server; `taskDetail`, `groupByDay`, the hooks, each page state, Restore and Remove project.
 
 **Batches:** 1. these requirements and the canvas; 2. the task list's filter, counts and new fields; 3. restoring an environment version, and each project's latest setup in the list; 4. the tasks data layer (`useTaskInbox`, `taskDetail`, `groupByDay`); 5. the Inbox page, the sidebar count, the home redirect and View all; 6. the project page's tabs and Tasks tab, the sidebar link; 7. the Environment tab (summary, versions, Restore); 8. Settings and Remove project.
+
+## 19. End to end (requirements)
+
+**Goal:** one Playwright test walks the whole journey in a real browser against the real web app, server, worker, Postgres, Redis and a Docker sandbox, and fails if any piece stops fitting the next. It costs nothing to run: no model, no Daytona, GitHub faked. It runs **on demand** (`pnpm e2e`), not in CI, so pull requests never wait for it; run it before merging a change that crosses apps.
+
+**The journey** (one spec, its steps in order):
+1. **Sign in:** the landing page, **Sign in with GitHub**, you arrive on `/welcome`.
+2. **Connect GitHub:** install the App, come back to `/welcome` with the checklist ticked.
+3. **Add a repository:** pick `octocat/Hello-World`; the project appears in the sidebar.
+4. **Set up the environment:** the setup asks one question, you answer it in the browser, it saves; the Environment tab shows v1.
+5. **Start a task:** describe it, start it, land on the run view.
+6. **Watch it work:** the stages move live, the edit shows in the activity, the Changes tab shows the diff.
+7. **Get the PR:** the PR card links to `github.com/octocat/Hello-World/pull/7`.
+8. **Find your work:** the Inbox shows the task under PR open with its detail line; the project's Tasks tab lists it with #7.
+9. **Merged:** a signed `pull_request` webhook saying it was merged reaches the server; the Inbox shows Merged.
+
+Each step checks what you see on the screen, not rows in the database.
+
+**What's faked, and where:**
+- **GitHub's pages:** Playwright catches the browser's trips to GitHub's sign-in and App install pages and sends it straight back to our callbacks, as if you had approved there. Better Auth and our install callback still do their real work.
+- **GitHub's API:** test-only entry points for the server and the worker replace `fetch` with a fake GitHub before the app loads: the sign-in token exchange, the user and their emails, the App, installations, repositories, branches, installation tokens and the pull request. Anything else goes to the real network. The fake lives in `@codegenie/github/testing`, next to `fakeGithub`; the App's private key is a throwaway one made for each run.
+- **The model:** the worker's entry point uses `scriptedModel` (`@codegenie/agent/testing`): the setup asks with `ask_user`, then `finish_setup`; the task edits the README, then `finish_task`; a scripted title.
+- **Real:** the web app, the API, the worker, the queue, Postgres, Redis, and a `DockerSandbox` cloning the public `octocat/Hello-World`, as the worker's end-to-end test does.
+- **Kept apart from dev:** its own database (`codegenie_e2e`, recreated and migrated each run), its own Redis prefix, its own ports (web 3100, API 3101). No secrets needed.
+- Production code paths don't change: the fakes enter only through the test entry points.
+
+**Running it:** `pnpm e2e` (package `apps/e2e`) builds the web app and starts the three servers through Playwright's `webServer`, waiting until each is ready. Needs Docker, Postgres and Redis running, as for dev, and the sandbox image (`pnpm sandbox:build-image`). Chromium only, desktop width. On failure it keeps a screenshot, a trace and the servers' logs.
+
+**Not here:** running it in CI; real GitHub or a real model; other browsers; screenshot comparison against the canvas (still checked by hand); every failure outcome (unit and integration tests cover those); Daytona.
+
+**Done when:**
+1. `pnpm e2e` passes from a clean checkout with Docker, Postgres and Redis running, without secrets, in a few minutes.
+2. Breaking any step of the journey (a wrong endpoint, a missing event, a broken redirect) makes it fail at that step, with the screenshot and logs to see why.
+3. Dev data and dev servers are untouched by a run.
+
+**Batches:** 1. these requirements; 2. the worker's start moved into an exported function, no behaviour change; 3. the fake GitHub, with its tests; 4. test entry points for the server and the worker; 5. `apps/e2e`: Playwright, the servers, the database reset, `pnpm e2e`, journey steps 1–3; 6. steps 4–8; 7. step 9 and the docs.
