@@ -159,15 +159,26 @@ Checklist:
 - [x] Authorization: users only access their own resources (someone else's project, task or run is a 404).
 - [x] Web: connect-GitHub flow, repo picker (JS/TS warning), project page (task list: status, PR, duration, cost), new-task form, live run view (stage, tool calls, summary, PR link, cancel), task page (conversation + runs).
 - [x] API base URL via env (`API_URL`); `/api/*` rewrite in Next.js.
-- [x] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` onboarding events, stored in `onboarding_events`); question cards; config panel with versions and rollback (Restore); "needs attention" banner. Editing the environment by hand is not built.
+- [x] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` onboarding events, stored in `onboarding_events`); question cards; config panel with versions and rollback (Restore); "needs attention" banner. Shaping the environment by hand moves to Phase 6+.
 - [x] Playwright end-to-end test of the whole journey (sign in → setup → task → events → PR link → Inbox), GitHub faked, scripted model; run on demand with `pnpm e2e`, not in CI ([web.md](./web.md) §19).
 
 **Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally.
+
+Walkthrough, by hand on real GitHub and Daytona (`SANDBOX_PROVIDER=daytona`, all four `pnpm dev:*` running), on a small private JS/TS repository with the dev App installed:
+
+- [ ] **U3:** the picker lists only the repos the installation can reach; adding one creates the project; a non-JS/TS repository shows the warning.
+- [ ] **U10:** setup detects install and checks (try a repository with `frontend/` + `backend/` once), asks at most 5 questions, each with 2–4 options and free text; every kept step shows ✓ ran; the result is saved as v1. Restore an older version and re-run setup from the Environment tab. Break setup (e.g. a check that now fails) and the project shows "needs attention" with Re-run setup.
+- [ ] **U4:** a task with a prompt, and once with another base branch, appears at once as queued.
+- [ ] **U5:** the run view shows the stage, reads, edits, commands and streamed reasoning; reloading mid-run loses nothing.
+- [ ] **U6:** a task whose checks pass opens a **ready** PR on `hobai/…` with a title, summary, check results and a link back to the task; one whose checks fail opens a **draft**; one needing no change opens no PR and the agent says why. The PR link shows in the UI.
+- [ ] **U7:** Cancel mid-run stops it within ~10 s, the status is cancelled, nothing is pushed, and the sandbox is gone (or parked, then deleted, per Phase 2) in the Daytona dashboard.
+- [ ] **U9:** the project's Tasks tab lists every task with status, PR, duration and cost; the task page shows the conversation and all runs; the Inbox filters (running, PR, done) and counts match.
 
 ### Phase 5 — MVP launch
 **Goal:** live, protected, open for signup. *(U8 + non-functional requirements)*
 
 - [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same branch/PR. *(U8)*
+- [ ] Run outcomes: **Run again** and **Show log** on a failed run; full command logs (not capped at 2,000 characters); the setup agent knows the sandbox's network limits, so it never offers options it can't carry out ([sandbox.md](./sandbox.md) §7).
 - [ ] Quotas, the free tier ([billing.md](./billing.md)): 1 concurrent run/user, 10 runs/user/month, global daily spend cap, each with a clear rejection message; runs used this month shown in the web app. Lands before the deploy, since signup is open.
 - [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with run id.
 - [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
@@ -178,7 +189,7 @@ Checklist:
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · paid plans: Pro tiers with included credits and top-ups ([billing.md](./billing.md)) · team projects · more languages.
+PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · paid plans: Pro tiers with included credits and top-ups ([billing.md](./billing.md)) · users shape their environment without editing the config directly (not designed yet) · team projects · more languages.
 
 ## 3. Ways of working
 

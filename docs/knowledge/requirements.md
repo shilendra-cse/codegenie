@@ -36,7 +36,7 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 | U1 | As a visitor, I sign up / sign in with GitHub. | One-click GitHub sign-in creates an account; session persists across reloads; sign-out works. |
 | U2 | As a user, I grant hobai access to specific repos. | Install the GitHub App choosing all or selected repos; return to hobai with installation recorded; can change selection later on GitHub and hobai reflects it. |
 | U3 | As a user, I connect a repo as a project. | Repo picker lists only repos the installation can access; choosing one creates a project; JS/TS check warns if the repo doesn't look like JS/TS. |
-| U10 | As a user, I set up my project's environment once through a guided conversation. | hobai detects how to install and check the repo (including repos with several projects, e.g. `frontend/` + `backend/`), tries it, and asks at most 5 multiple-choice questions (2–4 options + free text) only when it can't decide. Every kept step and check has actually run; the final config is re-verified from scratch. I see the result and can save, edit or start over. Tasks then reuse the saved config without asking anything. If setup breaks later, the project shows "needs attention" and I can rerun onboarding. ([environment.md](./environment.md)) |
+| U10 | As a user, I set up my project's environment once through a guided conversation. | hobai detects how to install and check the repo (including repos with several projects, e.g. `frontend/` + `backend/`), tries it, and asks at most 5 multiple-choice questions (2–4 options + free text) only when it can't decide. Every kept step and check has actually run; the final config is re-verified from scratch. I see the result and can save it, or re-run setup. Tasks then reuse the saved config without asking anything. If setup breaks later, the project shows "needs attention" and I can rerun onboarding. ([environment.md](./environment.md)) |
 
 ### Tasks
 | ID | Story | Acceptance criteria |
@@ -49,7 +49,7 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 | U9 | As a user, I see my history. | Project page lists tasks with status, PR link, duration and cost; task page shows conversation and all runs. |
 
 ### Post-MVP (not required for MVP)
-PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · paid plans and billing ([billing.md](./billing.md)).
+PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · shaping the environment by hand · paid plans and billing ([billing.md](./billing.md)).
 
 ## 5. Non-functional requirements
 

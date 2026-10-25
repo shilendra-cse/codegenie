@@ -98,7 +98,7 @@ On the project's Environment tab while setup runs or before there's an environme
 2. The timeline: sandbox ready (commit), detected shape (projects as chips), install, checks run (each as a status badge), "looked into" steps (collapsible).
 3. **Question card** (≤ 5 per setup): the question, 2–4 options with the recommended one marked and a detail line each, "Something else" with free text, Answer. After answering, your answer shows under it.
 4. Progress after the answer, then **Final check in a fresh sandbox**.
-5. **Result:** the environment is saved automatically ("Saved as vN"): setup steps and checks (folder, command, duration, ✓ ran), decisions (yours and detected), and "Describe your first task". Editing it by hand comes later.
+5. **Result:** the environment is saved automatically ("Saved as vN"): setup steps and checks (folder, command, duration, ✓ ran), decisions (yours and detected), and "Describe your first task". Shaping it by hand comes after the MVP.
 
 **States:** running, waiting for your answer (topbar badge, sidebar "Needs you", Inbox row), saved, failed (with the step and log), stopped. **Data:** onboarding events, replayable (see §6), the pending question, answer/stop/restart actions.
 
@@ -115,7 +115,7 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
   - stages: Prepare · Set up · Working · Checks · Pull request, each ✓ / spinner / pending / failed with a one-line summary and duration;
   - Working shows the agent's activity, grouped: consecutive reads and searches collapse into "Explored the code · read 6 files, searched 2 times"; each edit is a row with its path and +/−; each command is a row with its result; the one in progress has a spinner; the agent's reasoning streams underneath in a quieter style;
   - when finished: the summary, a before/after checks table, the **PR card** (title, number, ready / draft / merged / closed, verified commit, Open on GitHub). "Show steps" re-opens the timeline.
-- **Side panel**, tabs: **Changes** (files with +/−, the diff), **Terminal** (every command, its output up to 2,000 characters; full logs later), **Checks** (before and after). Clicking an edit or command in the story opens it here. Later: **Preview**.
+- **Side panel**, tabs: **Changes** (files with +/−, the diff), **Terminal** (every command, its output up to 2,000 characters; full logs in Phase 5), **Checks** (before and after). Clicking an edit or command in the story opens it here. Later: **Preview**.
 - **Composer** (Phase 5): disabled while running (with Stop); after a run, "Ask for a change to this pull request" (follow-ups, Phase 5); when there's nothing to follow up (merged, closed, no changes, failed, cancelled) it says why and offers Start a new task.
 
 **Outcome states** (all drawn): PR ready, draft (checks failing or incomplete, with the reason), merged, no changes (the agent's explanation, no PR), failed (which stage, the error, nothing pushed; Re-run setup; Run again and Show log in Phase 5), cancelled.
@@ -124,7 +124,7 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
 
 ### Project
 - **Tasks:** table of the project's tasks: title, status, PR, runs, duration, cost, updated.
-- **Environment:** the active version (verified when), steps and checks, versions with Restore, Re-run setup; Edit later.
+- **Environment:** the active version (verified when), steps and checks, versions with Restore, Re-run setup; shaping it by hand after the MVP.
 - **Settings:** repository, default branch (follows GitHub), GitHub access (Manage on GitHub), Remove project (hobai data only; GitHub untouched).
 - **Needs attention** banner (with the reason and Re-run setup) on every tab when the environment's health says so.
 
