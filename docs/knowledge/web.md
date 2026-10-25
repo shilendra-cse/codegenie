@@ -488,7 +488,7 @@ pnpm --filter @codegenie/e2e exec playwright install chromium   # once
 pnpm e2e
 ```
 
-Needs Docker and the dev Postgres and Redis running (`pnpm setup` starts them) and network access to clone from github.com. Playwright resets the database and Redis, starts the API, the worker and the web app (`next build` and `next start`) one after another, waits until each answers, then runs the steps: about 45 s plus the build. Chromium only, desktop width. On failure: a screenshot, a trace and a video in `apps/e2e/test-results/` (`pnpm --filter @codegenie/e2e exec playwright show-report`), and each server's output in `apps/e2e/.state/logs/`.
+Needs Docker and the dev Postgres and Redis running (`pnpm setup` starts them) and network access to clone from github.com. Playwright resets the database and Redis, starts the API, the worker and the web app (`next build` and `next start`) one after another, waits until each answers, then runs the steps: about 45 s plus the build. Chromium only, desktop width. To watch it: `pnpm e2e --headed` (a browser window; add `E2E_SLOW=500` to wait 500 ms before each action), `pnpm e2e --ui` (Playwright's UI: run it, then click any step to see the page at that moment) or `pnpm e2e --debug` (one action at a time). On failure: a screenshot, a trace and a video in `apps/e2e/test-results/`, the report with `pnpm e2e:report`, and each server's output in `apps/e2e/.state/logs/`.
 
 **Not here:** running it in CI; real GitHub or a real model; other browsers; screenshot comparison against the canvas (still checked by hand); every failure outcome (unit and integration tests cover those); Daytona.
 

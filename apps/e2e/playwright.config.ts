@@ -28,6 +28,8 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // E2E_SLOW=500 waits that many milliseconds before each action, to follow along with --headed.
+    launchOptions: { slowMo: Number(process.env.E2E_SLOW ?? 0) },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   // Started in order: the reset runs before the API, and the worker after the database is ready.
