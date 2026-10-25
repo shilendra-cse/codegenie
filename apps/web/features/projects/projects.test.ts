@@ -1,6 +1,6 @@
 import type { ProjectResponse } from "@codegenie/shared";
 import { describe, expect, it } from "vitest";
-import { toSidebarProject } from "./projects";
+import { isSettingUp, toSidebarProject } from "./projects";
 
 const project = (
   environment: ProjectResponse["environment"],
@@ -32,5 +32,24 @@ describe("toSidebarProject", () => {
       name: "dodesk",
       health,
     });
+  });
+});
+
+describe("isSettingUp", () => {
+  it.each([
+    ["queued", true],
+    ["running", true],
+    ["waiting", true],
+    ["succeeded", false],
+    ["failed", false],
+    ["cancelled", false],
+  ] as const)("treats a %s setup as in progress: %s", (status, expected) => {
+    expect(isSettingUp({ ...project(null), setup: { id: "s1", status } })).toBe(
+      expected,
+    );
+  });
+
+  it("is false before any setup", () => {
+    expect(isSettingUp(project(null))).toBe(false);
   });
 });

@@ -10,16 +10,15 @@ export async function fetchProjects() {
 const REFRESH_MS = 3_000;
 const SETTING_UP = new Set(["queued", "running", "waiting"]);
 
+export const isSettingUp = ({ setup }: ProjectResponse) =>
+  setup !== null && SETTING_UP.has(setup.status);
+
 export function useProjects() {
   return useQuery({
     queryKey: ["projects"],
     queryFn: fetchProjects,
     refetchInterval: (query) =>
-      query.state.data?.some(
-        (project) => project.setup && SETTING_UP.has(project.setup.status),
-      )
-        ? REFRESH_MS
-        : false,
+      query.state.data?.some(isSettingUp) ? REFRESH_MS : false,
   });
 }
 
@@ -30,4 +29,14 @@ export function toSidebarProject({ id, repo, environment }: ProjectResponse) {
       ? "ok"
       : "attention";
   return { id, name: repo.name, health } as const;
+}
+
+export function useProject(id: string) {
+  const projects = useProjects();
+  return {
+    project: projects.data?.find((project) => project.id === id),
+    isPending: projects.isPending,
+    isError: projects.isError,
+    refetch: projects.refetch,
+  };
 }
