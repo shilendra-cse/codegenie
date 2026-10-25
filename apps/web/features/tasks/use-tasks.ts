@@ -55,6 +55,9 @@ export function useStartTask(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateTaskInput) => startTask(projectId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    // Not awaited: the caller moves on (opens the task) without waiting for the list to refetch.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
   });
 }

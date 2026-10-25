@@ -85,7 +85,8 @@ export function useNewTask({
       onChange: setBranch,
     },
     canStart: Boolean(text.trim()) && Boolean(project),
-    starting: startTask.isPending,
+    // Still busy once started: the screen is about to change (the task opens, or Welcome moves on).
+    starting: startTask.isPending || startTask.isSuccess,
     error:
       startTask.error && projectId
         ? startTaskError(startTask.error, projectId)

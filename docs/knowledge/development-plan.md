@@ -162,17 +162,17 @@ Checklist:
 - [x] Environment onboarding on the website *(U10)*: "Set up environment" on the project page; `EventChannel` (questions as `question_asked` / `question_answered` onboarding events, stored in `onboarding_events`); question cards; config panel with versions and rollback (Restore); "needs attention" banner. Shaping the environment by hand moves to Phase 6+.
 - [x] Playwright end-to-end test of the whole journey (sign in → setup → task → events → PR link → Inbox), GitHub faked, scripted model; run on demand with `pnpm e2e`, not in CI ([web.md](./web.md) §19).
 
-**Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally.
+**Done when:** U3–U7, U9 and U10 pass their acceptance criteria locally. **Done (2026-10-25):** walked through by hand on real GitHub and a real model, mostly while each step was built; task runs used the Docker sandbox (Daytona was covered for runs in Phase 2). Found and fixed on the way: the Start button flickered back before the task opened.
 
-Walkthrough, by hand on real GitHub and Daytona (`SANDBOX_PROVIDER=daytona`, all four `pnpm dev:*` running), on a small private JS/TS repository with the dev App installed:
+Walkthrough, by hand on real GitHub (all four `pnpm dev:*` running), on a small private JS/TS repository with the dev App installed:
 
-- [ ] **U3:** the picker lists only the repos the installation can reach; adding one creates the project; a non-JS/TS repository shows the warning.
-- [ ] **U10:** setup detects install and checks (try a repository with `frontend/` + `backend/` once), asks at most 5 questions, each with 2–4 options and free text; every kept step shows ✓ ran; the result is saved as v1. Restore an older version and re-run setup from the Environment tab. Break setup (e.g. a check that now fails) and the project shows "needs attention" with Re-run setup.
-- [ ] **U4:** a task with a prompt, and once with another base branch, appears at once as queued.
-- [ ] **U5:** the run view shows the stage, reads, edits, commands and streamed reasoning; reloading mid-run loses nothing.
-- [ ] **U6:** a task whose checks pass opens a **ready** PR on `hobai/…` with a title, summary, check results and a link back to the task; one whose checks fail opens a **draft**; one needing no change opens no PR and the agent says why. The PR link shows in the UI.
-- [ ] **U7:** Cancel mid-run stops it within ~10 s, the status is cancelled, nothing is pushed, and the sandbox is gone (or parked, then deleted, per Phase 2) in the Daytona dashboard.
-- [ ] **U9:** the project's Tasks tab lists every task with status, PR, duration and cost; the task page shows the conversation and all runs; the Inbox filters (running, PR, done) and counts match.
+- [x] **U3:** the picker lists only the repos the installation can reach; adding one creates the project; a non-JS/TS repository shows the warning.
+- [x] **U10:** setup detects install and checks (try a repository with `frontend/` + `backend/` once), asks at most 5 questions, each with 2–4 options and free text; every kept step shows ✓ ran; the result is saved as v1. Restore an older version and re-run setup from the Environment tab. Break setup (e.g. a check that now fails) and the project shows "needs attention" with Re-run setup.
+- [x] **U4:** a task with a prompt, and once with another base branch, appears at once as queued.
+- [x] **U5:** the run view shows the stage, reads, edits, commands and streamed reasoning; reloading mid-run loses nothing.
+- [x] **U6:** a task whose checks pass opens a **ready** PR on `hobai/…` with a title, summary, check results and a link back to the task; one whose checks fail opens a **draft**; one needing no change opens no PR and the agent says why. The PR link shows in the UI.
+- [x] **U7:** Cancel mid-run stops it within ~10 s, the status is cancelled, nothing is pushed, and the sandbox is gone (or parked, then deleted, per Phase 2) in the Daytona dashboard.
+- [x] **U9:** the project's Tasks tab lists every task with status, PR, duration and cost; the task page shows the conversation and all runs; the Inbox filters (running, PR, done) and counts match.
 
 ### Phase 5 — MVP launch
 **Goal:** live, protected, open for signup. *(U8 + non-functional requirements)*
