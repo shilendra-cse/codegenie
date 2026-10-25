@@ -21,7 +21,7 @@ export async function listUserTasks(
   const page = rows.slice(0, PAGE_SIZE);
   return {
     tasks: page.map(toTaskListItem),
-    nextCursor: rows.length > PAGE_SIZE ? page.at(-1)!.id : null,
+    nextCursor: rows.length > PAGE_SIZE ? (page.at(-1)?.id ?? null) : null,
     counts,
   };
 }

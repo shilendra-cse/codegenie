@@ -61,6 +61,13 @@ export default tseslint.config(
     },
   },
   {
+    // A wrong `!` in a test just fails that test.
+    files: ["**/*.test.ts"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
+    },
+  },
+  {
     files: ["**/*.js"],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
