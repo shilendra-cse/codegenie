@@ -131,7 +131,7 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
 **Data:** project, its tasks, environment and its versions, health.
 
 ### Everywhere
-Banners for: the App suspended or uninstalled (tasks can't start), setup needs attention, daily limit reached (Phase 5). Empty states point to the next step.
+Banners for: the App suspended or uninstalled (tasks can't start), setup needs attention, monthly run limit reached (Phase 5). Empty states point to the next step.
 
 ## 5. Status vocabulary
 
@@ -181,4 +181,4 @@ Drawn from the screens above; the shapes are fixed in each Phase 4 branch.
 
 ## 8. Not in the MVP, already placed
 
-Follow-up messages (the composer after a run) · PR review comments in the thread · Preview tab · daily-limit banner · Jira tasks (a sidebar section and a task source) · team switcher (above the logo).
+Follow-up messages (the composer after a run) · PR review comments in the thread · Preview tab · run-limit banner · Jira tasks (a sidebar section and a task source) · team switcher (above the logo).

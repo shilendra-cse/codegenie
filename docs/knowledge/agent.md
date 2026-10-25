@@ -137,7 +137,7 @@ Model choice is **platform-controlled** for the MVP (see [requirements.md §7](.
 
 - **Catalog** (`model/catalog.ts`): the only models that can run. Each entry has an id (`openai:<model id>`), context window and prices (input, cached input, output per 1M tokens). Unknown ids are rejected, because the cost limit needs prices.
 - **Resolution:** `resolveModel(id)` creates the model through the AI SDK provider registry. API keys come from the environment (`OPENAI_API_KEY`).
-- **Who picks:** `runAgent` receives an already resolved model. The CLI and worker choose it (from `AGENT_MODEL`), so tiers or bring-your-own-key can be added later without changing the loop.
+- **Who picks:** `runAgent` receives an already resolved model. The CLI and worker choose it (from `AGENT_MODEL`), so per-run model choice on paid plans ([billing.md](./billing.md)) can be added later without changing the loop.
 - **Current catalog:** `openai:gpt-6-luna` ($0.10 input / $0.01 cached / $0.50 output per 1M tokens). Its `contextWindow` is set to 272K, not the real 1.05M, because prompts above 272K are billed at double rates; compaction then keeps prompts well under that threshold.
 - **Usage:** input, cached input and output tokens are tracked per step; cost is computed from catalog prices. Tokens are the source of truth if prices change.
 
@@ -191,5 +191,5 @@ packages/agent/src/setup-agent/
 
 - [ ] Cost limit is checked between steps, so a run can slightly exceed it.
 - [ ] Token estimate for compaction is a character heuristic.
-- [ ] Utility model for cheap side tasks (PR titles/descriptions), tiers, bring-your-own-key and fallback models are post-MVP.
+- [ ] Utility model for cheap side tasks (PR titles/descriptions), per-run model choice (paid plans) and fallback models are post-MVP.
 - [ ] LLM-based summarization of old context, if evals show the agent losing track on long tasks.

@@ -259,7 +259,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 - Webhook signatures verified; production refuses to boot with default secrets.
 - Agent never pushes to the default branch; one active run per task (enforced by a DB index).
-- Per-user limits on concurrent runs and daily spend, enforced at task creation, are planned (Phase 5).
+- Per-user limits (1 concurrent run, 10 runs a month) and a global daily spend cap, enforced at task creation, are planned (Phase 5, [billing.md](./billing.md)).
 - Full audit trail in `run_events`.
 
 ---

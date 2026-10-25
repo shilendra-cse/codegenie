@@ -168,7 +168,7 @@ Checklist:
 **Goal:** live, protected, open for signup. *(U8 + non-functional requirements)*
 
 - [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same branch/PR. *(U8)*
-- [ ] Quotas: 1 concurrent run/user, 10 runs/user/day, global daily spend cap with clear rejection message.
+- [ ] Quotas, the free tier ([billing.md](./billing.md)): 1 concurrent run/user, 10 runs/user/month, global daily spend cap, each with a clear rejection message; runs used this month shown in the web app. Lands before the deploy, since signup is open.
 - [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with run id.
 - [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
 - [ ] Deploy: Vercel (web), Railway (api, worker, Postgres, Redis), prod GitHub App, custom domain, per-service secrets, migrations as release step.
@@ -178,7 +178,7 @@ Checklist:
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
+PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · paid plans: Pro tiers with included credits and top-ups ([billing.md](./billing.md)) · team projects · more languages.
 
 ## 3. Ways of working
 

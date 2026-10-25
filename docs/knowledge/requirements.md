@@ -49,7 +49,7 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 | U9 | As a user, I see my history. | Project page lists tasks with status, PR link, duration and cost; task page shows conversation and all runs. |
 
 ### Post-MVP (not required for MVP)
-PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · BYO API key · billing.
+PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · paid plans and billing ([billing.md](./billing.md)).
 
 ## 5. Non-functional requirements
 
@@ -60,7 +60,7 @@ PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake
 | Max agent steps per run | 150 |
 | Max LLM cost per run | $2 |
 | Concurrent runs per user | 1 |
-| Runs per user per day | 10 (open-signup protection) |
+| Runs per user per month | 10 (free tier, [billing.md](./billing.md)) |
 | Global concurrent runs | set by worker capacity (start: 3) |
 
 On hitting a per-run limit the agent stops gracefully and delivers a draft PR marked incomplete.
@@ -74,7 +74,7 @@ On hitting a per-run limit the agent stops gracefully and delivers a draft PR ma
 
 ### Abuse & cost protection (open signup)
 - GitHub-only sign-in for MVP (email/password and Google disabled) — raises the bar for throwaway accounts and is required for the GitHub App anyway.
-- Per-user daily run quota and concurrency limit (above).
+- Per-user monthly run quota and concurrency limit (above).
 - Global daily spend cap; when reached, new tasks are rejected with a clear message.
 - Sandboxes always destroyed at run end; auto-stop as backstop.
 
@@ -108,9 +108,9 @@ On hitting a per-run limit the agent stops gracefully and delivers a draft PR ma
 | Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each run records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
 | Environment setup | **In the MVP:** a per-repository environment config created once by guided onboarding (rules → try → AI setup agent → multiple-choice questions → verify → approve) and replayed by every task run. | Setup is the foundation of every run; deterministic replay keeps runs fast and predictable, and questions solve the cases rules and AI can't. |
 | Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-run audit need the database. |
-| Future model choice | Introduced together with whoever pays: **tiers** (fast / balanced / best, mapped server-side) with paid plans, and **free choice from the model catalog** with bring-your-own API key. | User choice is low-risk once users carry the cost. The agent already takes the model as a parameter, so no rework is needed. |
+| Plans | **Free tier only in the MVP:** 10 runs per user per month on the platform model (GPT-6 Luna), 1 concurrent run, no payments. Paid plans come after launch ([billing.md](./billing.md)). | No payment setup before launch; real usage from free users prices the paid plans. |
+| Future model choice | **Per run, on paid plans** (post-MVP): users pick any model in the catalog for a run. Plans differ by price and included credits, not by which models they unlock. No bring-your-own API key. | Paid users carry the cost through credits, so an expensive model just uses credits faster. The agent already takes the model as a parameter, so no rework is needed. |
 
 ## 8. Open questions
 
-- **Who pays for LLM usage at scale?** MVP absorbs it within the quotas above; BYO API key or paid plans are post-MVP.
 - **Waitlist vs instant access?** Default: instant access with quotas; switch to a waitlist if costs spike.
