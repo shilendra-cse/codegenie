@@ -59,9 +59,9 @@ log "Starting Postgres"
 compose up -d postgres
 
 log "Waiting for Postgres"
-wait_for "Postgres" compose exec -T postgres pg_isready -U codegenie_user -d codegenie_db
+wait_for "Postgres" compose exec -T postgres pg_isready -U hobai_user -d hobai_db
 
 log "Applying database migrations"
-pnpm --filter @codegenie/db migrate
+pnpm --filter @hobai/db migrate
 
 printf '\nMigrations applied.\n'

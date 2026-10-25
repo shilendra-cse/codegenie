@@ -6,6 +6,7 @@ import {
   DaytonaProcessExecutionTimeoutError,
 } from "@daytonaio/sdk";
 import { describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import {
   SandboxCreateError,
   SandboxFileError,
@@ -98,15 +99,15 @@ async function sandboxWith(run?: Run) {
 }
 
 describe("DaytonaSandbox.create", () => {
-  it("creates a sandbox from the codegenie snapshot that stops when idle and is deleted after its retention", async () => {
+  it("creates a sandbox from the base snapshot that stops when idle and is deleted after its retention", async () => {
     const { sandbox, created } = await sandboxWith();
 
     expect(sandbox.id).toBe("dt-1");
     expect(created).toEqual([
       [
         {
-          snapshot: "codegenie-base",
-          labels: { codegenie: "1", runId: "r1" },
+          snapshot: `${SHORT_NAME}-base`,
+          labels: { [SHORT_NAME]: "1", runId: "r1" },
           autoStopInterval: 30,
           autoDeleteInterval: 4 * 60,
           ttlMinutes: 120 + 30 + 4 * 60,

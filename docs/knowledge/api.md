@@ -10,7 +10,7 @@ The HTTP API behind the web app. The OpenAPI file has every request and response
 - **Auth:** the Better Auth session cookie from signing in with GitHub. Every route needs it unless marked public; without it: **401**.
 - **Success:** `{ status, message, type: "success", data }`.
 - **Error:** `{ status, message, type: "error", code?, data? }`. `code` is stable and machine-readable; `message` is for people. A request that fails validation answers **400** with `data` holding zod's field errors.
-- **Ids:** CodeGenie's own ids are UUIDs; GitHub's ids (installations, repositories) are numbers and named as such (`installationId`, `repoId`, `githubId`).
+- **Ids:** hobai's own ids are UUIDs; GitHub's ids (installations, repositories) are numbers and named as such (`installationId`, `repoId`, `githubId`).
 - **Dates:** ISO 8601 strings.
 
 ## 2. Ownership
@@ -98,7 +98,7 @@ apps/server/src/resources/<name>/
 
 A route whose handler writes its own response (a stream) wraps it: `api.get(path).authSecure(stream(handler))`. `lib/sse.ts` opens the connection (`openSse`), formats frames, and ends the response; an error before streaming still becomes a normal JSON error.
 
-Services call queries from `@codegenie/db`; a query that returns a row or `null` is named `find…`, and the service that turns "not found" into a 404 is named `get…`. Controllers are created from their dependencies (`createProjectControllers({ db, githubToken })`), so tests pass fakes for GitHub and a real test database.
+Services call queries from `@hobai/db`; a query that returns a row or `null` is named `find…`, and the service that turns "not found" into a 404 is named `get…`. Controllers are created from their dependencies (`createProjectControllers({ db, githubToken })`), so tests pass fakes for GitHub and a real test database.
 
 ## 6. Run events stream
 

@@ -1,5 +1,5 @@
-import { type Db, markRunEnded } from "@codegenie/db";
-import { CANCEL_CHANNEL } from "@codegenie/shared";
+import { type Db, markRunEnded } from "@hobai/db";
+import { CANCEL_CHANNEL } from "@hobai/shared";
 import { HttpError } from "@/lib/http-error";
 import { getUserRun } from "./getUserRun.service";
 

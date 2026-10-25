@@ -1,11 +1,11 @@
-import type { Db } from "@codegenie/db";
+import type { Db } from "@hobai/db";
 import { ok } from "@/lib/api-response";
 import { openSse } from "@/lib/sse";
 import type {
   AuthenticatedController,
   AuthenticatedStream,
 } from "@/types/base.types";
-import { afterSeqSchema, runParamsSchema } from "@codegenie/shared";
+import { afterSeqSchema, runParamsSchema } from "@hobai/shared";
 import { cancelRun, type Publisher } from "./services/cancelRun.service";
 import { getUserRun } from "./services/getUserRun.service";
 import { getUserRunDiff } from "./services/getUserRunDiff.service";

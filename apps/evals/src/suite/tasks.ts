@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { REPOS_DIR } from "../paths.js";
 import { loadRepo, type EvalRepo } from "./repos.js";
 
@@ -9,7 +10,7 @@ const grader = z.discriminatedUnion("type", [
     .object({
       type: z.literal("hidden-tests"),
       /** Folder in the repository the hidden files are copied into. */
-      target: z.string().min(1).default("codegenie-hidden"),
+      target: z.string().min(1).default(`${SHORT_NAME}-hidden`),
       command: z.string().min(1),
       cwd: z.string().min(1).default("."),
     })

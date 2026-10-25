@@ -1,4 +1,4 @@
-import type { RunEvent } from "@codegenie/shared";
+import type { RunEvent } from "@hobai/shared";
 import {
   clock,
   cost,
@@ -7,7 +7,7 @@ import {
   plural,
   spinnerFrame,
   type Style,
-} from "@codegenie/terminal";
+} from "@hobai/terminal";
 
 const STAGE_LABEL: Record<string, string> = {
   prepare: "Starting a sandbox",

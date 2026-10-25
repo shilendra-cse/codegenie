@@ -1,6 +1,7 @@
-import type { OnboardingQuestion } from "@codegenie/shared";
+import type { OnboardingQuestion } from "@hobai/shared";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { QuestionCard } from "./question-card";
 
 const question: OnboardingQuestion = {
@@ -72,10 +73,10 @@ describe("QuestionCard", () => {
   });
 
   it("shows that it's sending, and why sending failed", () => {
-    open({}, { busy: true, error: "Couldn't reach CodeGenie." });
+    open({}, { busy: true, error: `Couldn't reach ${PRODUCT_NAME}.` });
     expect(screen.getByRole("button", { name: "Answer" })).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Couldn't reach CodeGenie.",
+      `Couldn't reach ${PRODUCT_NAME}.`,
     );
   });
 

@@ -1,12 +1,13 @@
-import type { CreatedTask, ProjectResponse } from "@codegenie/shared";
+import type { CreatedTask, ProjectResponse } from "@hobai/shared";
 import { useState } from "react";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { useBranches } from "@/features/projects/branches";
 import { toSidebarProject } from "@/features/projects/projects";
 import { ApiError } from "@/lib/api/client";
 import { defaultProjectId, startTaskError, taskReadiness } from "./start-task";
 import { useStartTask } from "./use-tasks";
 
-const LAST_PROJECT = "codegenie:last-project";
+const LAST_PROJECT = `${SHORT_NAME}:last-project`;
 
 // Only a convenience: storage can be unavailable (private windows, blocked site data).
 const lastProject = () => {

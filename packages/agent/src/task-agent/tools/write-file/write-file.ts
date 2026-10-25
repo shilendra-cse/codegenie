@@ -1,4 +1,4 @@
-import { SandboxFileError } from "@codegenie/sandbox";
+import { SandboxFileError } from "@hobai/sandbox";
 import { tool } from "ai";
 import { z } from "zod";
 import { ToolError } from "../../../tools/core/tool-error.js";

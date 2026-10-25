@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { githubDeliveryApi } from "@codegenie/worker/testing";
+import { githubDeliveryApi } from "@hobai/worker/testing";
 
 type TreeEntry = { path: string; mode: string; sha: string | null };
 

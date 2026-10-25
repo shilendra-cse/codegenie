@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { RepoSource } from "@codegenie/runner";
+import type { RepoSource } from "@hobai/runner";
 
 export class UsageError extends Error {}
 

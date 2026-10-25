@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Sandbox } from "@codegenie/sandbox";
+import type { Sandbox } from "@hobai/sandbox";
 import type { EvalTask, TaskGrader } from "../suite/tasks.js";
 import type { Grade } from "./grade.js";
 

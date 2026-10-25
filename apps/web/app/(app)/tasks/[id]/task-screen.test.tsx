@@ -1,4 +1,4 @@
-import type { RunResponse, TaskDetail } from "@codegenie/shared";
+import type { RunResponse, TaskDetail } from "@hobai/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,

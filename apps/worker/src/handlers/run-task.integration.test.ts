@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
+import { scriptedModel, type ScriptedStep } from "@hobai/agent/testing";
 import {
   DbEnvironmentStore,
   getInstallationById,
@@ -10,13 +10,14 @@ import {
   runs,
   messages,
   type Db,
-} from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import type { SandboxLabels } from "@codegenie/sandbox";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig, RunEvent } from "@codegenie/shared";
+} from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
+import type { SandboxLabels } from "@hobai/sandbox";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { EnvironmentConfig, RunEvent } from "@hobai/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import type { Publisher } from "../events/sink.js";
 import {
   FAKE_COMMIT_SHA,
@@ -285,7 +286,7 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
     );
 
     expect(result?.delivery).toEqual({
-      branchName: `codegenie/add-a-health-endpoint-${run.taskId.slice(0, 4)}`,
+      branchName: `${SHORT_NAME}/add-a-health-endpoint-${run.taskId.slice(0, 4)}`,
       sha: FAKE_COMMIT_SHA,
     });
     expect(githubRequests.at(-1)).toMatchObject({
@@ -355,10 +356,10 @@ describe.skipIf(!database)("run-task handler against Postgres", () => {
 
       expect(await taskRow(run.taskId)).toMatchObject({
         title: "Add a health check route",
-        branchName: `codegenie/add-a-health-check-route-${run.taskId.slice(0, 4)}`,
+        branchName: `${SHORT_NAME}/add-a-health-check-route-${run.taskId.slice(0, 4)}`,
       });
       expect(result?.delivery?.branchName).toBe(
-        `codegenie/add-a-health-check-route-${run.taskId.slice(0, 4)}`,
+        `${SHORT_NAME}/add-a-health-check-route-${run.taskId.slice(0, 4)}`,
       );
       expect(
         (await stored(run.id)).find((e) => e.type === "task_titled"),

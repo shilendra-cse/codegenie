@@ -1,5 +1,6 @@
-import type { RunResponse } from "@codegenie/shared";
+import type { RunResponse } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
+import { PRODUCT_NAME, SHORT_NAME } from "@hobai/shared/brand";
 import { runOutcome } from "./outcome";
 
 type Task = Parameters<typeof runOutcome>[0]["task"];
@@ -77,7 +78,7 @@ describe("runOutcome", () => {
         number: 41,
         url: "https://github.com/x/y/pull/41",
         title: "Add a /health endpoint",
-        line: "Ready for review · verified commit 51b0d7e by codegenie[bot] · into main",
+        line: `Ready for review · verified commit 51b0d7e by ${SHORT_NAME}[bot] · into main`,
         tone: "ok",
       },
       unfoldSteps: false,
@@ -104,7 +105,7 @@ describe("runOutcome", () => {
     const failing = outcome(draft, { checksPassed: false });
     expect(failing).toMatchObject({ state: "pr_draft", notice: null });
     expect(failing?.pullRequest).toMatchObject({
-      line: "Draft: checks still failing · verified commit 51b0d7e by codegenie[bot] · into main",
+      line: `Draft: checks still failing · verified commit 51b0d7e by ${SHORT_NAME}[bot] · into main`,
       tone: "warn",
     });
 
@@ -201,9 +202,9 @@ describe("runOutcome", () => {
         "Couldn't reach the repository on GitHub",
         "/projects/p1",
       ],
-      ["worker_lost", "CodeGenie stopped unexpectedly", null],
-      ["lost_in_queue", "CodeGenie stopped unexpectedly", null],
-      ["worker_error", "CodeGenie stopped unexpectedly", null],
+      ["worker_lost", `${PRODUCT_NAME} stopped unexpectedly`, null],
+      ["lost_in_queue", `${PRODUCT_NAME} stopped unexpectedly`, null],
+      ["worker_error", `${PRODUCT_NAME} stopped unexpectedly`, null],
       ["something_new", "The run failed", null],
     ];
     for (const [code, title, href] of headings) {

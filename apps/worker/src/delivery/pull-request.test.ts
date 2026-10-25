@@ -1,5 +1,6 @@
-import type { DeliverableRun } from "@codegenie/runner";
+import type { DeliverableRun } from "@hobai/runner";
 import { describe, expect, it } from "vitest";
+import { DOMAIN, PRODUCT_NAME } from "@hobai/shared/brand";
 import { commitMessage, isDraft, pullRequestBody } from "./pull-request.js";
 
 function run(overrides: {
@@ -80,7 +81,7 @@ describe("pullRequestBody", () => {
         "Added GET /health.",
         "### Checks\n\n| Check | Command | Result |\n|---|---|---|\n| lint | `npm run lint` | ✅ passing |\n| test (`api`) | `npm test` | ✅ fixed |",
         "### Changed files\n\n- `src/file-0.ts` (+3 −1)\n- `logo.png` (binary)",
-        "<sub>Opened by CodeGenie.</sub>",
+        `<sub>Opened by ${PRODUCT_NAME}.</sub>`,
       ].join("\n\n"),
     );
   });
@@ -99,12 +100,13 @@ describe("pullRequestBody", () => {
     expect(body).toContain("- …and 3 more");
   });
 
-  it("links to the task when CodeGenie's address is known", () => {
+  it(`links to the task when ${PRODUCT_NAME}'s address is known`, () => {
+    const taskUrl = `https://${DOMAIN}/tasks/t1`;
     expect(
-      pullRequestBody(run({}), { taskUrl: "https://codegenie.dev/tasks/t1" }),
-    ).toMatch(
-      /\n\n<sub>Opened by CodeGenie · \[View the task\]\(https:\/\/codegenie\.dev\/tasks\/t1\)<\/sub>$/,
-    );
+      pullRequestBody(run({}), { taskUrl }).endsWith(
+        `\n\n<sub>Opened by ${PRODUCT_NAME} · [View the task](${taskUrl})</sub>`,
+      ),
+    ).toBe(true);
   });
 
   it("says when there are no checks", () => {

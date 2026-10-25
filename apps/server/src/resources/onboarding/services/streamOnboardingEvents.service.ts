@@ -1,9 +1,5 @@
-import {
-  type Db,
-  findOnboarding,
-  findOnboardingEventsAfter,
-} from "@codegenie/db";
-import { onboardingChannel, type OnboardingEvent } from "@codegenie/shared";
+import { type Db, findOnboarding, findOnboardingEventsAfter } from "@hobai/db";
+import { onboardingChannel, type OnboardingEvent } from "@hobai/shared";
 import { type EventStreamDeps, streamEvents } from "@/lib/event-stream";
 import type { SseStream } from "@/lib/sse";
 import { getUserOnboarding } from "./getUserOnboarding.service";

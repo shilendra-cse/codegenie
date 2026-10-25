@@ -1,4 +1,4 @@
-import type { RunDiff, RunResponse } from "@codegenie/shared";
+import type { RunDiff, RunResponse } from "@hobai/shared";
 import type { RunCardProps } from "@/components/organisms/run-card";
 import type { RunResultProps } from "@/components/organisms/run-result";
 import type { PanelChanges } from "@/components/organisms/run-panel";
@@ -151,7 +151,7 @@ export function toRunCard({
   };
 }
 
-/** CodeGenie's reply once the run has ended. */
+/** hobai's reply once the run has ended. */
 export function toRunResult({
   outcome,
   run,

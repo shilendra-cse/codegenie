@@ -1,7 +1,8 @@
-import type { TaskLabel } from "@codegenie/shared";
+import type { TaskLabel } from "@hobai/shared";
 import { Inbox, Plus } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import {
   type Health,
@@ -114,7 +115,7 @@ export function Sidebar({
     <div className="flex min-h-0 flex-1 flex-col gap-0.5 p-3">
       <Link
         href={APP_HOME}
-        aria-label="CodeGenie home"
+        aria-label={`${PRODUCT_NAME} home`}
         className="self-start px-2.5 pt-1.5 pb-3.5"
       >
         <Logo />

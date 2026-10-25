@@ -2,8 +2,8 @@ import {
   getLastOnboardingEventSeq,
   listUnfinishedOnboardings,
   markOnboardingEnded,
-} from "@codegenie/db";
-import type { OnboardingEventBody } from "@codegenie/shared";
+} from "@hobai/db";
+import type { OnboardingEventBody } from "@hobai/shared";
 import { createEventSink, onboardingEventTarget } from "../events/sink.js";
 import { PENDING, QUEUED_GRACE_MS, type LostRunsDeps } from "./lost-runs.js";
 

@@ -1,5 +1,5 @@
-import type { RunResult } from "@codegenie/runner";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import type { RunResult } from "@hobai/runner";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { describe, expect, it } from "vitest";
 import { loadTasks } from "../suite/tasks.js";
 import { grade } from "./grade.js";
@@ -20,11 +20,11 @@ describe("grade", () => {
       passed: true,
       detail: "Hidden tests passed.",
     });
-    expect(
-      sandbox.files.has("/workspace/codegenie-hidden/health.test.js"),
-    ).toBe(true);
+    expect(sandbox.files.has("/workspace/hobai-hidden/health.test.js")).toBe(
+      true,
+    );
     expect(sandbox.execCalls[0]).toMatchObject({
-      command: "node --test 'codegenie-hidden/*.test.*' 2>&1",
+      command: "node --test 'hobai-hidden/*.test.*' 2>&1",
       options: { cwd: "." },
     });
   });

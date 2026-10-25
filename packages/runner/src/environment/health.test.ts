@@ -1,5 +1,5 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig } from "@codegenie/shared";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { EnvironmentConfig } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { uncoveredProjects } from "./health.js";
 

@@ -4,10 +4,10 @@ import {
   saveRunDiff,
   updateRunProgress,
   type Db,
-} from "@codegenie/db";
-import type { UsageSnapshot } from "@codegenie/agent";
-import type { Diff, RunResult } from "@codegenie/runner";
-import type { RunEvent } from "@codegenie/shared";
+} from "@hobai/db";
+import type { UsageSnapshot } from "@hobai/agent";
+import type { Diff, RunResult } from "@hobai/runner";
+import type { RunEvent } from "@hobai/shared";
 import { createSerialQueue } from "../lib/serial-queue.js";
 
 export class RunStateError extends Error {}

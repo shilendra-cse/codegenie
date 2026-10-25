@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
-import { type Db, ensureUser, getInstallation } from "@codegenie/db";
-import { testDatabaseOrSkip } from "@codegenie/db/testing";
+import { type Db, ensureUser, getInstallation } from "@hobai/db";
+import { testDatabaseOrSkip } from "@hobai/db/testing";
 import express from "express";
 import { afterAll, describe, expect, it } from "vitest";
 import { createInstallCallbackHandler } from "./github.install-callback";

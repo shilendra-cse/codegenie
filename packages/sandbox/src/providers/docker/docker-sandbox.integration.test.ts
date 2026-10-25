@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import {
   SandboxFileError,
   SandboxGoneError,
@@ -65,7 +66,7 @@ describe.skipIf(notReady)("DockerSandbox", () => {
       sandbox.id,
     ]);
     expect(JSON.parse(r.stdout)).toMatchObject({
-      codegenie: "1",
+      [SHORT_NAME]: "1",
       kind: "run",
       runId: "r-test",
     });
@@ -212,10 +213,10 @@ describe.skipIf(notReady)("DockerSandbox lifecycle", () => {
 
   it("reports a missing image with a build hint", async () => {
     await expect(
-      DockerSandbox.create({ image: "codegenie-image-that-does-not-exist" }),
+      DockerSandbox.create({ image: "hobai-image-that-does-not-exist" }),
     ).rejects.toThrow(SandboxUnavailableError);
     await expect(
-      DockerSandbox.create({ image: "codegenie-image-that-does-not-exist" }),
+      DockerSandbox.create({ image: "hobai-image-that-does-not-exist" }),
     ).rejects.toThrow(/pnpm sandbox:build-image/);
   });
 

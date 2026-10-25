@@ -1,5 +1,5 @@
 import path from "node:path";
-import { SANDBOX_LOG_DIR, WORKSPACE_DIR } from "@codegenie/sandbox";
+import { SANDBOX_LOG_DIR, WORKSPACE_DIR } from "@hobai/sandbox";
 import { ToolError } from "./tool-error.js";
 
 export const LOG_DIR = SANDBOX_LOG_DIR;

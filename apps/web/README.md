@@ -1,6 +1,6 @@
 # web
 
-The CodeGenie web app: Next.js (App Router), React 19, Tailwind, TanStack Query. Sign in with GitHub, add repositories, set up their environments, start tasks, watch them run and get the pull request. How it's built: [docs/knowledge/web.md](../../docs/knowledge/web.md). What each screen shows: [docs/knowledge/ui.md](../../docs/knowledge/ui.md).
+The hobai web app: Next.js (App Router), React 19, Tailwind, TanStack Query. Sign in with GitHub, add repositories, set up their environments, start tasks, watch them run and get the pull request. How it's built: [docs/knowledge/web.md](../../docs/knowledge/web.md). What each screen shows: [docs/knowledge/ui.md](../../docs/knowledge/ui.md).
 
 ## Running it
 

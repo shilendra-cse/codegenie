@@ -1,4 +1,4 @@
-import type { OnboardingState } from "@codegenie/shared";
+import type { OnboardingState } from "@hobai/shared";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Alert } from "@/components/atoms/alert";

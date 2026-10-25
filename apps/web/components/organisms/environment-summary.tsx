@@ -1,4 +1,4 @@
-import type { EnvironmentResponse } from "@codegenie/shared";
+import type { EnvironmentResponse } from "@hobai/shared";
 import type { ReactNode } from "react";
 import { Alert } from "@/components/atoms/alert";
 import { Badge } from "@/components/atoms/badge";

@@ -1,4 +1,4 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { describe, expect, it } from "vitest";
 import { collectDiff, parseNumstat } from "./diff.js";
 

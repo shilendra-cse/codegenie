@@ -1,4 +1,4 @@
-import type { Check, EcosystemId, PackageManager } from "@codegenie/shared";
+import type { Check, EcosystemId, PackageManager } from "@hobai/shared";
 import type { RepoReader } from "./repo-reader.js";
 
 export type InstallPlan = {

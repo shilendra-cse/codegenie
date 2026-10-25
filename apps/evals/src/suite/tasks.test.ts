@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { loadTasks } from "./tasks.js";
 
 const dirs: string[] = [];
@@ -80,7 +81,11 @@ describe("loadTasks", () => {
     const [task] = await loadTasks({}, dir);
     expect(task).toMatchObject({
       id: "app/fix",
-      grader: { type: "hidden-tests", target: "codegenie-hidden", cwd: "." },
+      grader: {
+        type: "hidden-tests",
+        target: `${SHORT_NAME}-hidden`,
+        cwd: ".",
+      },
       hiddenFiles: ["nested/two.test.ts", "one.test.ts"],
     });
   });

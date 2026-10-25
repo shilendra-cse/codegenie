@@ -1,5 +1,6 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { CheckResult } from "@codegenie/shared";
+import { SANDBOX_LOG_DIR } from "@hobai/sandbox";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { CheckResult } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { runVerify } from "./verify.js";
 
@@ -36,7 +37,7 @@ describe("runVerify", () => {
     ]);
     expect(result.checks[0]).toMatchObject({
       outputTail: "lint error",
-      logPath: "/tmp/codegenie/logs/verify-1-lint.log",
+      logPath: `${SANDBOX_LOG_DIR}/verify-1-lint.log`,
     });
   });
 

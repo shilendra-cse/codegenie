@@ -1,8 +1,9 @@
 import { stat, writeFile } from "node:fs/promises";
-import { autoChannel, runOnboarding } from "@codegenie/runner";
+import { autoChannel, runOnboarding } from "@hobai/runner";
 import { UsageError } from "../args/common.js";
 import { parseSetupArgs, SETUP_USAGE } from "../args/setup-args.js";
-import { intro, line, styleFor, type Style } from "@codegenie/terminal";
+import { intro, line, styleFor, type Style } from "@hobai/terminal";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { promptChannel } from "../channel/prompt.js";
 import { terminalChannel } from "../channel/terminal.js";
 import { loadModel } from "../config.js";
@@ -94,7 +95,7 @@ export async function setupCommand(
   live.print(
     intro(
       style,
-      `CodeGenie setup ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
+      `${PRODUCT_NAME} setup ${style.dim("·")} ${model.spec.id} ${style.dim("·")} ${where}`,
     ),
     line(style),
   );

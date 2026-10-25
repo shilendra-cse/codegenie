@@ -3,7 +3,7 @@ import type {
   EnvironmentProposal,
   TryResult,
   UserChannel,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 export type SetupToolContext = {
   tryEnvironment: (proposal: EnvironmentProposal) => Promise<TryResult>;

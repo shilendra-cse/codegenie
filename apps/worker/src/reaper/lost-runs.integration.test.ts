@@ -3,10 +3,10 @@ import {
   getRunWithProject,
   insertRunEvent,
   type Db,
-} from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import { WORK_QUEUE, type RunEvent } from "@codegenie/shared";
+} from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import { WORK_QUEUE, type RunEvent } from "@hobai/shared";
 import { Queue, Worker } from "bullmq";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";

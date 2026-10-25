@@ -1,6 +1,7 @@
-import type { GitHubRepo } from "@codegenie/shared";
+import type { GitHubRepo } from "@hobai/shared";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import {
   RepositoryPicker,
   type RepositoryPickerProps,
@@ -27,7 +28,7 @@ const props: RepositoryPickerProps = {
   failed: false,
   onRetry: vi.fn(),
   installUrl:
-    "https://github.com/apps/codegenie/installations/new?state=add-repo",
+    "https://github.com/apps/hobai/installations/new?state=add-repo",
   manageUrl: "https://github.com/settings/installations/1",
   adding: new Set(),
   errors: new Map(),
@@ -46,7 +47,7 @@ describe("RepositoryPicker", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: /Change which repositories CodeGenie can access/,
+        name: new RegExp(`Change which repositories ${PRODUCT_NAME} can access`),
       }),
     ).toHaveAttribute("href", "https://github.com/settings/installations/1");
   });
@@ -92,7 +93,7 @@ describe("RepositoryPicker", () => {
 
     expect(
       screen.getByText(
-        "No repositories are shared with CodeGenie on this account.",
+        `No repositories are shared with ${PRODUCT_NAME} on this account.`,
       ),
     ).toBeInTheDocument();
   });

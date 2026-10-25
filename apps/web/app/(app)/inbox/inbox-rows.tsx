@@ -2,7 +2,8 @@ import type {
   OnboardingResponse,
   ProjectResponse,
   TaskListItem,
-} from "@codegenie/shared";
+} from "@hobai/shared";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Badge } from "@/components/atoms/badge";
 import { TaskStatusBadge } from "@/components/molecules/task-status-badge";
 import type { InboxRow } from "@/components/organisms/inbox-list";
@@ -47,7 +48,7 @@ export function setupRow(
     href: environmentPath(project.id),
     status: "needs_you",
     title: `Set up ${project.repo.name}`,
-    detail: "CodeGenie has a question",
+    detail: `${PRODUCT_NAME} has a question`,
     project: project.repo.name,
     badge: <Badge tone="progress">Needs your answer</Badge>,
     durationAndCost:

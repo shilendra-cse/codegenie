@@ -1,4 +1,5 @@
-import { createOnboarding, type Db, markOnboardingEnded } from "@codegenie/db";
+import { createOnboarding, type Db, markOnboardingEnded } from "@hobai/db";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { HttpError } from "@/lib/http-error";
 import { getRunnableProject } from "../../projects/services/getRunnableProject.service";
 import type { WorkQueue } from "../../tasks/tasks.types";
@@ -30,7 +31,7 @@ export async function startOnboarding(
     });
     throw new HttpError(
       503,
-      "CodeGenie can't take new work right now. Try again in a moment.",
+      `${PRODUCT_NAME} can't take new work right now. Try again in a moment.`,
       "QUEUE_UNAVAILABLE",
     );
   }

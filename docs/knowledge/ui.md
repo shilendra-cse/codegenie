@@ -1,6 +1,6 @@
 # Web UI
 
-> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-25 · Code: `apps/web` · Design: [CodeGenie App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
+> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-25 · Code: `apps/web` · Design: [hobai App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
 
 The screens, what they show in every state, and what each needs from the API. The canvas is the visual source of truth; this file is the written one. Phase 4 builds what's drawn.
 
@@ -46,7 +46,7 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 
 ```
 ┌──────────────┬────────────────────────────────────────────┐
-│ CodeGenie    │ topbar: breadcrumb · status · meta · action│
+│ hobai    │ topbar: breadcrumb · status · meta · action│
 │ [+ New task] ├────────────────────────────────────────────┤
 │ Inbox     2  │                                            │
 │ PROJECTS  +  │   page                                     │
@@ -63,7 +63,7 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 
 | Route | Screen | Signed in? |
 |---|---|---|
-| `/` | Landing (signed in: Open CodeGenie, no redirect) | no |
+| `/` | Landing (signed in: Open hobai, no redirect) | no |
 | `/signin` | Sign in | no |
 | `/welcome` | First-run checklist | yes |
 | `/new` | New task | yes |
@@ -94,7 +94,7 @@ Installation picker (accounts and orgs), search, repository rows: name, private 
 
 ### Environment setup (conversation)
 On the project's Environment tab while setup runs or before there's an environment.
-1. CodeGenie's intro.
+1. hobai's intro.
 2. The timeline: sandbox ready (commit), detected shape (projects as chips), install, checks run (each as a status badge), "looked into" steps (collapsible).
 3. **Question card** (≤ 5 per setup): the question, 2–4 options with the recommended one marked and a detail line each, "Something else" with free text, Answer. After answering, your answer shows under it.
 4. Progress after the answer, then **Final check in a fresh sandbox**.
@@ -103,7 +103,7 @@ On the project's Environment tab while setup runs or before there's an environme
 **States:** running, waiting for your answer (topbar badge, sidebar "Needs you", Inbox row), saved, failed (with the step and log), stopped. **Data:** onboarding events, replayable (see §6), the pending question, answer/stop/restart actions.
 
 ### New task (home)
-"What should CodeGenie do?", a large composer, a project picker (projects that need attention are shown but can't be picked), a base-branch picker (default branch), Start (enabled once there's text; ⌘↵). A one-line hint on writing good tasks. Recent tasks below. **Data:** projects with health and default branch; branches; create task.
+"What should hobai do?", a large composer, a project picker (projects that need attention are shown but can't be picked), a base-branch picker (default branch), Start (enabled once there's text; ⌘↵). A one-line hint on writing good tasks. Recent tasks below. **Data:** projects with health and default branch; branches; create task.
 
 ### Inbox
 All tasks across projects, newest first, grouped by day. Filters: All · Needs you · Running · PR open · Done. A row: status icon, title, a detail line (what it's doing now, why it failed, checks), project, status badge, duration and cost, updated time. **States:** empty (per filter), loading. **Data:** task list with project, derived status (§5), PR, latest run (status, stage, current step, detail line), totals, updated time.
@@ -111,7 +111,7 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
 ### Task
 - **Topbar:** project › title, status badge, branch, duration and cost, Cancel while running.
 - **Conversation:** your message (author, time), then one **run card** per run:
-  - header: CodeGenie, run number, status, steps and cost;
+  - header: hobai, run number, status, steps and cost;
   - stages: Prepare · Set up · Working · Checks · Pull request, each ✓ / spinner / pending / failed with a one-line summary and duration;
   - Working shows the agent's activity, grouped: consecutive reads and searches collapse into "Explored the code · read 6 files, searched 2 times"; each edit is a row with its path and +/−; each command is a row with its result; the one in progress has a spinner; the agent's reasoning streams underneath in a quieter style;
   - when finished: the summary, a before/after checks table, the **PR card** (title, number, ready / draft / merged / closed, verified commit, Open on GitHub). "Show steps" re-opens the timeline.
@@ -125,7 +125,7 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
 ### Project
 - **Tasks:** table of the project's tasks: title, status, PR, runs, duration, cost, updated.
 - **Environment:** the active version (verified when), steps and checks, versions with Restore, Re-run setup; Edit later.
-- **Settings:** repository, default branch (follows GitHub), GitHub access (Manage on GitHub), Remove project (CodeGenie data only; GitHub untouched).
+- **Settings:** repository, default branch (follows GitHub), GitHub access (Manage on GitHub), Remove project (hobai data only; GitHub untouched).
 - **Needs attention** banner (with the reason and Re-run setup) on every tab when the environment's health says so.
 
 **Data:** project, its tasks, environment and its versions, health.

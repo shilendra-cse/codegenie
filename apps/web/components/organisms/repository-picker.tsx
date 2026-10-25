@@ -1,8 +1,9 @@
 "use client";
 
-import type { GitHubInstallation, GitHubRepo } from "@codegenie/shared";
+import type { GitHubInstallation, GitHubRepo } from "@hobai/shared";
 import { ExternalLink, Search } from "lucide-react";
 import { useState } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
@@ -69,7 +70,7 @@ export function RepositoryPicker(props: RepositoryPickerProps) {
           Install the GitHub App to see your repositories
         </span>
         <span className="text-muted-foreground">
-          Choose which repositories CodeGenie can see. You can change the
+          Choose which repositories {PRODUCT_NAME} can see. You can change the
           selection on GitHub at any time.
         </span>
         <Button asChild variant="primary" glow>
@@ -125,7 +126,7 @@ export function RepositoryPicker(props: RepositoryPickerProps) {
             <p className="px-4 py-10 text-center text-muted-foreground">
               {search
                 ? `No repositories match "${query.trim()}".`
-                : "No repositories are shared with CodeGenie on this account."}
+                : `No repositories are shared with ${PRODUCT_NAME} on this account.`}
             </p>
           )}
         </div>
@@ -140,7 +141,7 @@ export function RepositoryPicker(props: RepositoryPickerProps) {
             rel="noreferrer"
             className="inline-flex items-center gap-1 font-medium text-primary-text hover:underline"
           >
-            Change which repositories CodeGenie can access on GitHub
+            Change which repositories {PRODUCT_NAME} can access on GitHub
             <Icon icon={ExternalLink} size={14} />
           </a>
         </p>

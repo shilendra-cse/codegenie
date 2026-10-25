@@ -1,5 +1,5 @@
 {
-  "name": "@codegenie/shared",
+  "name": "@hobai/shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,6 +9,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./brand": {
+      "types": "./src/brand.ts",
+      "default": "./src/brand.ts"
     }
   },
   "scripts": {

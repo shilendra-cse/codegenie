@@ -1,5 +1,5 @@
-import type { Sandbox } from "@codegenie/sandbox";
-import type { Check } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { Check } from "@hobai/shared";
 import { OutputLog } from "./output-log.js";
 
 export type ToolContext = {

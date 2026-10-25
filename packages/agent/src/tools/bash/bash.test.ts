@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { SANDBOX_LOG_DIR } from "@hobai/sandbox";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { createToolContext } from "../core/context.js";
 import { LOG_DIR } from "../core/workspace-path.js";
 import { bash } from "./bash.js";
@@ -41,8 +42,8 @@ describe("bash", () => {
     const out = await bash(createToolContext(sandbox), { command: "seq" });
     expect(out.length).toBeLessThan(30_000);
     expect(out).toMatch(/lines omitted/);
-    expect(out).toMatch(
-      /Full output \(2\.3 MB\) saved to \/tmp\/codegenie\/logs\/0001-bash\.log/,
+    expect(out).toContain(
+      `Full output (2.3 MB) saved to ${SANDBOX_LOG_DIR}/0001-bash.log`,
     );
   });
 });

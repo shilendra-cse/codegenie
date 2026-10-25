@@ -1,13 +1,14 @@
 import Image from "next/image";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { cn } from "@/lib/utils";
 
 const FULL = {
-  light: "/brand/black/codegenie_logo_transparent.png",
-  dark: "/brand/white/codegenie_logo_white_transparent.png",
+  light: "/brand/black/hobai-black.png",
+  dark: "/brand/white/hobai-white.png",
 };
 const MARK = {
-  light: "/brand/black/codegenie_icon_black.png",
-  dark: "/brand/white/codegenie_icon_white.png",
+  light: "/brand/black/hobai_icon_black.png",
+  dark: "/brand/white/hobai_icon_white.png",
 };
 
 export type LogoProps = {
@@ -23,7 +24,7 @@ export function Logo({ variant = "full", size = 24, className }: LogoProps) {
     return (
       <span
         role="img"
-        aria-label="CodeGenie"
+        aria-label={PRODUCT_NAME}
         className={cn("inline-flex shrink-0", className)}
         style={{ width: size, height }}
       >
@@ -47,25 +48,22 @@ export function Logo({ variant = "full", size = 24, className }: LogoProps) {
   return (
     <span
       role="img"
-      aria-label="CodeGenie"
-      className={cn(
-        "block h-[18px] w-[116px] shrink-0 overflow-hidden",
-        className,
-      )}
+      aria-label={PRODUCT_NAME}
+      className={cn("block h-[25px] w-24 shrink-0", className)}
     >
       <Image
         src={FULL.light}
         alt=""
-        width={192}
-        height={64}
-        className="-mt-[22.5px] -ml-[38px] max-w-none dark:hidden"
+        width={96}
+        height={25}
+        className="size-full dark:hidden"
       />
       <Image
         src={FULL.dark}
         alt=""
-        width={192}
-        height={64}
-        className="-mt-[22.5px] -ml-[38px] hidden max-w-none dark:block"
+        width={96}
+        height={25}
+        className="hidden size-full dark:block"
       />
     </span>
   );

@@ -7,13 +7,13 @@ import {
   markInstallationUninstalled,
   recordInstallation,
   setInstallationSuspended,
-} from "@codegenie/db";
+} from "@hobai/db";
 import {
   insertProject,
   insertRun,
   testDatabaseOrSkip,
-} from "@codegenie/db/testing";
-import { fakeGithub } from "@codegenie/github/testing";
+} from "@hobai/db/testing";
+import { fakeGithub } from "@hobai/github/testing";
 import type { Response } from "express";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";

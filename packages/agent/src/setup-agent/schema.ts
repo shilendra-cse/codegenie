@@ -1,4 +1,4 @@
-import { CHECK_NAMES } from "@codegenie/shared";
+import { CHECK_NAMES } from "@hobai/shared";
 import { z } from "zod";
 
 const cwd = z

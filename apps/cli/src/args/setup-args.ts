@@ -1,6 +1,7 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
-import type { RepoSource } from "@codegenie/runner";
+import type { RepoSource } from "@hobai/runner";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { parseSource, UsageError, usageError } from "./common.js";
 
 export type SetupOptions = {
@@ -18,7 +19,7 @@ export const SETUP_USAGE = `Usage: pnpm agent:setup --repo <path|git url> [optio
 
 Works out how to install and check the repository, asks you when it can't
 decide, verifies the result in a fresh sandbox and saves it as the repository's
-environment, which agent:run then uses (~/.codegenie/environments, last 5 versions).
+environment, which agent:run then uses (~/.${SHORT_NAME}/environments, last 5 versions).
 
   --repo <path|url>   local folder or public git URL (required)
   --ref <branch|tag>  branch or tag to clone (git URLs)

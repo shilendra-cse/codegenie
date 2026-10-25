@@ -1,4 +1,4 @@
-import { SandboxFileError } from "@codegenie/sandbox";
+import { SandboxFileError } from "@hobai/sandbox";
 import { splitLines } from "../lib/lines.js";
 import type { ToolContext } from "../tools/core/context.js";
 import { listFiles } from "../tools/list-files/list-files.js";

@@ -2,8 +2,8 @@ import type {
   CheckComparison,
   OnboardingResult,
   RunResult,
-} from "@codegenie/runner";
-import type { FinalRunStatus, OnboardingStatus } from "@codegenie/shared";
+} from "@hobai/runner";
+import type { FinalRunStatus, OnboardingStatus } from "@hobai/shared";
 import {
   cost,
   duration,
@@ -12,7 +12,7 @@ import {
   plural,
   section,
   type Style,
-} from "@codegenie/terminal";
+} from "@hobai/terminal";
 
 const labelled = (item: { name: string; cwd: string }) =>
   item.cwd === "." ? item.name : `${item.name} (${item.cwd})`;

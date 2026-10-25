@@ -1,8 +1,8 @@
 {
-  "name": "@codegenie/agent",
+  "name": "@hobai/agent",
   "version": "0.0.0",
   "private": true,
-  "description": "CodeGenie agent loop and sandbox-backed tools",
+  "description": "hobai agent loop and sandbox-backed tools",
   "type": "module",
   "exports": {
     ".": {
@@ -33,8 +33,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.44",
-    "@codegenie/sandbox": "workspace:*",
-    "@codegenie/shared": "workspace:*",
+    "@hobai/sandbox": "workspace:*",
+    "@hobai/shared": "workspace:*",
     "ai": "^5.0.60",
     "zod": "^4.4.3"
   }

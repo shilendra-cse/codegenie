@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { RepoSource } from "@codegenie/runner";
-import type { Sandbox } from "@codegenie/sandbox";
+import type { RepoSource } from "@hobai/runner";
+import type { Sandbox } from "@hobai/sandbox";
 import { z } from "zod";
 
 const repoFile = z.union([

@@ -1,6 +1,6 @@
 // Real Docker sandbox with network access: runs actual npm and pnpm installs.
-import { DockerSandbox } from "@codegenie/sandbox";
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { DockerSandbox } from "@hobai/sandbox";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { applySteps } from "./apply.js";
 import { runChecks } from "./checks.js";

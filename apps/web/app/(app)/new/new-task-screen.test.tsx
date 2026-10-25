@@ -1,7 +1,8 @@
-import type { ProjectResponse } from "@codegenie/shared";
+import type { ProjectResponse } from "@hobai/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { ApiError } from "@/lib/api/client";
 import { NewTaskScreen } from "./new-task-screen";
 
@@ -102,11 +103,11 @@ describe("NewTaskScreen", () => {
       prompt: "Add a /health endpoint",
       baseBranch: "main",
     });
-    expect(localStorage.getItem("codegenie:last-project")).toBe("p2");
+    expect(localStorage.getItem(`${SHORT_NAME}:last-project`)).toBe("p2");
   });
 
   it("starts on the project you used last", async () => {
-    localStorage.setItem("codegenie:last-project", "p2");
+    localStorage.setItem(`${SHORT_NAME}:last-project`, "p2");
     renderScreen();
     expect(
       await screen.findByRole("button", { name: /^Project:/ }),

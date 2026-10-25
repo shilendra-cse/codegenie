@@ -1,5 +1,5 @@
 {
-  "name": "@codegenie/server",
+  "name": "@hobai/server",
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -41,9 +41,9 @@
     "typescript-eslint": "^8.59.3"
   },
   "dependencies": {
-    "@codegenie/db": "workspace:*",
-    "@codegenie/github": "workspace:*",
-    "@codegenie/shared": "workspace:*",
+    "@hobai/db": "workspace:*",
+    "@hobai/github": "workspace:*",
+    "@hobai/shared": "workspace:*",
     "@types/swagger-ui-express": "^4.1.8",
     "better-auth": "^1.6.11",
     "bullmq": "^6.3.17",

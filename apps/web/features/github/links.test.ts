@@ -5,22 +5,22 @@ describe("installUrlFor", () => {
   it("asks GitHub to come back to the page the install started from", () => {
     expect(
       installUrlFor(
-        "https://github.com/apps/codegenie/installations/new",
+        "https://github.com/apps/hobai/installations/new",
         "add-repo",
       ),
     ).toBe(
-      "https://github.com/apps/codegenie/installations/new?state=add-repo",
+      "https://github.com/apps/hobai/installations/new?state=add-repo",
     );
   });
 
   it("keeps a query the link already has", () => {
     expect(
       installUrlFor(
-        "https://github.com/apps/codegenie/installations/new?x=1",
+        "https://github.com/apps/hobai/installations/new?x=1",
         "add-repo",
       ),
     ).toBe(
-      "https://github.com/apps/codegenie/installations/new?x=1&state=add-repo",
+      "https://github.com/apps/hobai/installations/new?x=1&state=add-repo",
     );
   });
 });

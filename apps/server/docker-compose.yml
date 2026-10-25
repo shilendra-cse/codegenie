@@ -1,18 +1,18 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: codegenie-postgres
+    container_name: hobai-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: codegenie_db
-      POSTGRES_USER: codegenie_user
-      POSTGRES_PASSWORD: codegenie_password
+      POSTGRES_DB: hobai_db
+      POSTGRES_USER: hobai_user
+      POSTGRES_PASSWORD: hobai_password
     ports:
       - "5439:5432" # Match the port in your .env file
     volumes:
-      - codegenie_postgres_data:/var/lib/postgresql/data
+      - hobai_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U codegenie_user -d codegenie_db"]
+      test: ["CMD-SHELL", "pg_isready -U hobai_user -d hobai_db"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -20,12 +20,12 @@ services:
   
   redis:
     image: redis:7-alpine
-    container_name: codegenie-redis
+    container_name: hobai-redis
     restart: unless-stopped
     ports:
       - "6380:6379"
     volumes:
-      - codegenie_redis_data:/data
+      - hobai_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -33,8 +33,8 @@ services:
       retries: 3
 
 volumes:
-  codegenie_postgres_data:
+  hobai_postgres_data:
     driver: local
 
-  codegenie_redis_data:
+  hobai_redis_data:
     driver: local

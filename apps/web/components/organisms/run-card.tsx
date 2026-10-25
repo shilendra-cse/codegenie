@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Badge, type BadgeProps } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Logo } from "@/components/atoms/logo";
@@ -50,10 +51,10 @@ export function RunCard(props: RunCardProps) {
             !props.folded && "border-b border-border",
           )}
         >
-          <span className="flex size-7 items-center justify-center rounded-md border border-border bg-card">
+          <span className="flex size-7 items-center justify-center">
             <Logo variant="mark" />
           </span>
-          <span className="font-semibold">CodeGenie</span>
+          <span className="font-semibold">{PRODUCT_NAME}</span>
           <span className="text-[13px] text-faint">Run {props.number}</span>
           {props.status && (
             <Badge tone={props.status.tone}>{props.status.label}</Badge>

@@ -4,10 +4,11 @@ import {
   findUserProjectForRepo,
   getInstallation,
   upsertProject,
-} from "@codegenie/db";
-import { listInstallationRepos } from "@codegenie/github";
+} from "@hobai/db";
+import { listInstallationRepos } from "@hobai/github";
 import { HttpError } from "@/lib/http-error";
-import type { CreateProjectInput, ProjectResponse } from "@codegenie/shared";
+import type { CreateProjectInput, ProjectResponse } from "@hobai/shared";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { toProjectResponse } from "../projects.types";
 
 export type CreateProjectDeps = {
@@ -34,7 +35,7 @@ export async function createProject(
   if (installation.suspendedAt) {
     throw new HttpError(
       409,
-      `The CodeGenie GitHub App is suspended on ${installation.accountLogin}.`,
+      `The ${PRODUCT_NAME} GitHub App is suspended on ${installation.accountLogin}.`,
       "GITHUB_INSTALLATION_SUSPENDED",
     );
   }

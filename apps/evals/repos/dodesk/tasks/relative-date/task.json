@@ -2,8 +2,8 @@
   "task": "Add formatRelativeDate(date: Date | string, now: Date = new Date()): string to client/lib/utils.ts, for showing when something happened. Rules, by how long before now the date is:\n\n- under 1 minute: \"just now\"\n- under 1 hour: \"1 minute ago\" / \"N minutes ago\"\n- under 24 hours: \"1 hour ago\" / \"N hours ago\"\n- under 48 hours: \"yesterday\"\n- under 7 days: \"N days ago\"\n- otherwise the date: \"Jun 5\" in the same year as now, \"Dec 28, 2025\" in another year\n\nRound down (90 seconds is \"1 minute ago\"). Accept ISO strings as well as Date objects. Add tests.",
   "grader": {
     "type": "hidden-tests",
-    "target": "client/tests/codegenie-hidden",
-    "command": "npx vitest run tests/codegenie-hidden",
+    "target": "client/tests/hobai-hidden",
+    "command": "npx vitest run tests/hobai-hidden",
     "cwd": "client"
   }
 }

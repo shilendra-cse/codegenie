@@ -1,6 +1,8 @@
 export const WORKSPACE_DIR = "/workspace";
 
-export const SANDBOX_LOG_DIR = "/tmp/codegenie/logs";
+export const SANDBOX_TMP_DIR = `/tmp/${SHORT_NAME}`;
+
+export const SANDBOX_LOG_DIR = `${SANDBOX_TMP_DIR}/logs`;
 
 export type ExecOptions = {
   cwd?: string;
@@ -61,3 +63,4 @@ export type CreateSandboxOptions =
 export type ConnectSandboxOptions =
   | { provider: "docker"; id: string }
   | { provider: "daytona"; connection: DaytonaConnection; id: string };
+import { SHORT_NAME } from "@hobai/shared/brand";

@@ -1,4 +1,4 @@
-import { createGithubApp } from "@codegenie/github";
+import { createGithubApp } from "@hobai/github";
 import { config } from "@/config";
 
 export const githubApp = createGithubApp({

@@ -1,5 +1,5 @@
-import { type Db, recordInstallation } from "@codegenie/db";
-import { listUserInstallations } from "@codegenie/github";
+import { type Db, recordInstallation } from "@hobai/db";
+import { listUserInstallations } from "@hobai/github";
 import type { Request, RequestHandler } from "express";
 
 export type InstallCallbackDeps = {

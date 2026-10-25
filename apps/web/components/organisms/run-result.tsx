@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Logo } from "@/components/atoms/logo";
@@ -33,7 +34,7 @@ export type RunResultProps = {
   pullRequest: PullRequestCardProps | null;
 };
 
-/** CodeGenie's reply once a run has ended: how it went, and the pull request. */
+/** hobai's reply once a run has ended: how it went, and the pull request. */
 export function RunResult(props: RunResultProps) {
   const { notice } = props;
   return (
@@ -42,10 +43,10 @@ export function RunResult(props: RunResultProps) {
       className="rise overflow-hidden rounded-lg border border-border bg-card"
     >
       <header className="flex items-center gap-2.5 px-4 pt-3">
-        <span className="flex size-7 items-center justify-center rounded-md border border-border bg-card">
+        <span className="flex size-7 items-center justify-center">
           <Logo variant="mark" />
         </span>
-        <span className="font-semibold">CodeGenie</span>
+        <span className="font-semibold">{PRODUCT_NAME}</span>
         <span className="text-xs text-faint">{props.time}</span>
       </header>
       <div className="flex flex-col gap-2.5 p-4">

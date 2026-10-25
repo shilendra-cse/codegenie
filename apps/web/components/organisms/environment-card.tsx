@@ -1,4 +1,4 @@
-import type { EnvironmentResponse } from "@codegenie/shared";
+import type { EnvironmentResponse } from "@hobai/shared";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/atoms/badge";

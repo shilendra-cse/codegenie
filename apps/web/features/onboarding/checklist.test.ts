@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildChecklist, type ChecklistInput } from "./checklist";
 
-const installUrl = "https://github.com/apps/codegenie/installations/new";
+const installUrl = "https://github.com/apps/hobai/installations/new";
 const project = (
   id: string,
   env: ChecklistInput["projects"][number]["environment"],

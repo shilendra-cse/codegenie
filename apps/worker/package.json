@@ -1,5 +1,5 @@
 {
-  "name": "@codegenie/worker",
+  "name": "@hobai/worker",
   "version": "0.0.0",
   "private": true,
   "description": "Worker: consumes queued task runs and project onboarding, and runs them in a sandbox",
@@ -37,12 +37,12 @@
     "typescript-eslint": "^8.59.3"
   },
   "dependencies": {
-    "@codegenie/agent": "workspace:*",
-    "@codegenie/db": "workspace:*",
-    "@codegenie/github": "workspace:*",
-    "@codegenie/runner": "workspace:*",
-    "@codegenie/sandbox": "workspace:*",
-    "@codegenie/shared": "workspace:*",
+    "@hobai/agent": "workspace:*",
+    "@hobai/db": "workspace:*",
+    "@hobai/github": "workspace:*",
+    "@hobai/runner": "workspace:*",
+    "@hobai/sandbox": "workspace:*",
+    "@hobai/shared": "workspace:*",
     "bullmq": "^6.3.17",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.5",

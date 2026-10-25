@@ -1,4 +1,4 @@
-import type { OnboardingEvent } from "@codegenie/shared";
+import type { OnboardingEvent } from "@hobai/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { environmentsKey, onboardingEventsUrl, onboardingKey } from "./api";

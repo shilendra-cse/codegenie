@@ -1,5 +1,6 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { describe, expect, it } from "vitest";
+import { SHORT_NAME } from "@hobai/shared/brand";
 import { createBaseline, findBaseline } from "./baseline.js";
 
 describe("createBaseline", () => {
@@ -10,7 +11,7 @@ describe("createBaseline", () => {
     const command = sandbox.execCalls[0]!.command;
     expect(command).toContain("echo node_modules/ >> .git/info/exclude");
     expect(command).toContain(
-      'git commit -q --allow-empty --no-verify -m "codegenie: baseline"',
+      `git commit -q --allow-empty --no-verify -m "${SHORT_NAME}: baseline"`,
     );
   });
 
@@ -29,7 +30,7 @@ describe("findBaseline", () => {
     sandbox.execHandler = () => ({ stdout: "abc123\n" });
     expect(await findBaseline(sandbox)).toBe("abc123");
     expect(sandbox.execCalls[0]!.command).toContain(
-      '--grep="codegenie: baseline"',
+      `--grep="${SHORT_NAME}: baseline"`,
     );
   });
 

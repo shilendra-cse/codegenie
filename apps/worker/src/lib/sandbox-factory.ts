@@ -1,4 +1,4 @@
-import type { Sandbox, SandboxLabels } from "@codegenie/sandbox";
+import type { Sandbox, SandboxLabels } from "@hobai/sandbox";
 
 export type SandboxFactory = (labels: SandboxLabels) => Promise<Sandbox>;
 

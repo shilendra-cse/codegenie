@@ -1,6 +1,6 @@
-import { type Db, findUserTask } from "@codegenie/db";
+import { type Db, findUserTask } from "@hobai/db";
 import { HttpError } from "@/lib/http-error";
-import type { TaskDetail } from "@codegenie/shared";
+import type { TaskDetail } from "@hobai/shared";
 import { toTaskDetail } from "../tasks.types";
 
 export async function getUserTask(

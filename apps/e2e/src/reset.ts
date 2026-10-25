@@ -1,6 +1,6 @@
 // Run before the servers start: an empty database and queue, and GitHub back to "not installed".
 import { mkdirSync, rmSync } from "node:fs";
-import { recreateDatabase } from "@codegenie/db/testing";
+import { recreateDatabase } from "@hobai/db/testing";
 import { Redis } from "ioredis";
 import { DATABASE_URL, LOG_DIR, REDIS_URL, STATE_DIR } from "./environment.js";
 

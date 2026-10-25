@@ -1,4 +1,4 @@
-import type { RunEvent, RunResponse } from "@codegenie/shared";
+import type { RunEvent, RunResponse } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { buildRunView } from "@/features/runs/run-view";
 import { runOutcome } from "@/features/runs/outcome";

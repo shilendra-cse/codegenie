@@ -1,7 +1,8 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { writeFileSync } from "node:fs";
-import { E2E_GITHUB } from "@codegenie/github/testing";
+import { E2E_GITHUB } from "@hobai/github/testing";
 import { expect, test, type Page } from "@playwright/test";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import {
   API_URL,
   INSTALLED_FLAG,
@@ -105,7 +106,7 @@ test("watch it work", async () => {
     page.getByRole("button", { name: "Wrote README +2" }),
   ).toBeVisible({ timeout: 120_000 });
   await expect(
-    page.getByRole("tabpanel").getByText("Hello from CodeGenie."),
+    page.getByRole("tabpanel").getByText(`Hello from ${PRODUCT_NAME}.`),
   ).toBeVisible();
 });
 

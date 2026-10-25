@@ -1,4 +1,5 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { SANDBOX_LOG_DIR } from "@hobai/sandbox";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { describe, expect, it } from "vitest";
 import { classify, runChecks } from "./checks.js";
 
@@ -43,7 +44,7 @@ describe("runChecks", () => {
       expect.objectContaining({
         name: "lint",
         status: "passing",
-        logPath: "/tmp/codegenie/logs/baseline-1-lint.log",
+        logPath: `${SANDBOX_LOG_DIR}/baseline-1-lint.log`,
       }),
       expect.objectContaining({
         name: "test",

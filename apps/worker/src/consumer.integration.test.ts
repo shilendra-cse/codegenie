@@ -3,7 +3,7 @@ import {
   CANCEL_CHANNEL,
   WORK_QUEUE,
   type OnboardingAnswer,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { Queue, QueueEvents, type Job } from "bullmq";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { startConsumer, type Consumer, type Handlers } from "./consumer.js";

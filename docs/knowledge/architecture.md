@@ -1,8 +1,8 @@
-# CodeGenie Architecture
+# hobai Architecture
 
 > Status: **Accepted** (MVP) · Last updated: 2026-10-25
 
-CodeGenie is a web-based autonomous coding agent. A user connects their GitHub repositories, assigns a task (a prompt for the MVP; Jira and Notion later), and the agent completes it inside an isolated cloud sandbox and delivers the result as a pull request.
+hobai is a web-based autonomous coding agent. A user connects their GitHub repositories, assigns a task (a prompt for the MVP; Jira and Notion later), and the agent completes it inside an isolated cloud sandbox and delivers the result as a pull request.
 
 ---
 
@@ -66,16 +66,18 @@ packages/
   github/     GitHub App: repo-scoped installation tokens, bot identity, webhook signatures (github.md)
   db/         Postgres schema, client and migrations (Drizzle), shared by server and worker
   terminal/   terminal output for the CLI and evals
-  shared/     types shared across apps and packages (API, events, setup)
+  shared/     types shared across apps and packages (API, events, setup), and the brand (@hobai/shared/brand)
 docs/
   api/        OpenAPI spec
   knowledge/  architecture, design and feature docs
 ```
 
-Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `db → shared`; `terminal → shared`. Apps: `server → db, github, shared`; `worker → runner, agent, sandbox, db, github, shared`; `cli → runner, agent, terminal, shared`; `evals → runner, agent, sandbox, terminal, shared`; `web → shared`. Apps never import from other apps, except `e2e`, which drives the worker in-process.
+Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sandbox, shared`; `sandbox → shared`; `db → shared`; `terminal → shared`. Apps: `server → db, github, shared`; `worker → runner, agent, sandbox, db, github, shared`; `cli → runner, agent, terminal, shared`; `evals → runner, agent, sandbox, terminal, shared`; `web → shared`. Apps never import from other apps, except `e2e`, which drives the worker in-process.
+
+**The brand lives in one place.** `@hobai/shared/brand` exports the product name (`hobai`), the short name (`hobai`) and the domain. UI copy, error messages, prompts and the PR footer use the product name; the identifiers built from the short name (branch prefix, sandbox image, snapshot and label, `/tmp/hobai`, the CLI home and `HOBAI_HOME`, the queue, the localStorage prefix, test prefixes) build it rather than write it out. Files that can't import TypeScript write it out: package names, `docker-compose.yml`, `ci.yml`, `script/*.sh`, `.env.example`, the sandbox Dockerfile (including the bot git identity `hobai <bot@hobai.app>`) and the docs.
 
 **`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates runs and writes events), so the schema lives in one shared package instead of inside one app:
-- **all data access lives here:** schema, client, migrations and every query (`src/queries/`, one folder per domain, mirroring `src/schema/`). Apps call query functions and never build queries; ESLint enforces it (`@codegenie/db/eslint`). Queries hold no business rules: they report what happened, and the app decides what it means;
+- **all data access lives here:** schema, client, migrations and every query (`src/queries/`, one folder per domain, mirroring `src/schema/`). Apps call query functions and never build queries; ESLint enforces it (`@hobai/db/eslint`). Queries hold no business rules: they report what happened, and the app decides what it means;
 - migrations run from one place (the deploy step, `pnpm migrate`), never on app startup;
 - the connection is created by each app (`createDb(url)` with its own config), never on import.
 A schema change can mean redeploying both apps; that comes from sharing the database, not from the package. The old `apps/agent` REPL is replaced by `apps/cli`. Details: [runner.md](./runner.md), [agent.md](./agent.md), [sandbox.md](./sandbox.md).
@@ -96,7 +98,7 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/r
 - Writes rows and enqueues; does no long-running work.
 
 ### apps/worker
-Consumes the BullMQ queue `codegenie-work` and runs the pipeline in §5. Details and commands: [apps/worker/README.md](../../apps/worker/README.md).
+Consumes the BullMQ queue `hobai-work` and runs the pipeline in §5. Details and commands: [apps/worker/README.md](../../apps/worker/README.md).
 
 - **Work kinds:** `run-task { runId }` (one run of a task) and `onboard-project { onboardingId }` (one setup of a project's environment, recorded in `onboardings`; [environment.md](./environment.md) §3.5). A setup's events are stored in `onboarding_events` and published live on `onboarding:{id}`; a failed setup fails its queue item, and the reaper ends setups whose worker is gone, as it does for runs.
 - **Concurrency:** `WORKER_CONCURRENCY` items at once per process (default 3), each in its own sandbox; more throughput means more processes.
@@ -125,7 +127,7 @@ interface Sandbox {
 ```
 Implementations: `DaytonaSandbox` (prod), `DockerSandbox` (dev/tests). Selected by `SANDBOX_PROVIDER=daytona|docker`.
 
-Daytona sandboxes are created from the **`codegenie-base` snapshot**, built from the same Dockerfile as the Docker image (`pnpm sandbox:build-snapshot`). Every sandbox is labelled `codegenie=1` plus `kind` and `runId` / `projectId`; Daytona's are ephemeral, with a 2-hour TTL and auto-stop as safety nets. Details: [sandbox.md](./sandbox.md) §7.
+Daytona sandboxes are created from the **`hobai-base` snapshot**, built from the same Dockerfile as the Docker image (`pnpm sandbox:build-snapshot`). Every sandbox is labelled `hobai=1` plus `kind` and `runId` / `projectId`; Daytona's are ephemeral, with a 2-hour TTL and auto-stop as safety nets. Details: [sandbox.md](./sandbox.md) §7.
 
 ---
 
@@ -162,7 +164,7 @@ Events are keyed by (`run_id`, `seq`); `seq` is the SSE event id. High-frequency
 
 ### 4.4 Follow-ups
 - **UI follow-up message** (planned, Phase 5: `POST /api/tasks/:id/messages`) → new run on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous run's summary + new instruction, pushes to the same PR.
-- **PR review comment / `@codegenie` mention** (webhook, deduped via `webhook_deliveries`) → new run on the task with `trigger=pr_comment`; context includes comment, file and line.
+- **PR review comment / `@hobai` mention** (webhook, deduped via `webhook_deliveries`) → new run on the task with `trigger=pr_comment`; context includes comment, file and line.
 - **Jira (post-MVP)** → webhook on assignment/label → Task → run; PR link posted back to the ticket.
 
 Every entry point reduces to **task → new run**.
@@ -178,7 +180,7 @@ Every entry point reduces to **task → new run**.
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
 | **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
 | **Verify** | run lint + tests; on failure with budget left, feed failures back into the agent | `checks_completed` |
-| **Deliver** | no diff → finish with explanation, no PR. Else the runner lists the changes and the worker commits them through GitHub's API as the App on `codegenie/<title slug>-<taskId prefix>` and opens the PR (draft if checks failed or incomplete) with summary + checks + changed files ([github.md](./github.md) §8) | `branch_created`, `git_push`, `pr_opened` |
+| **Deliver** | no diff → finish with explanation, no PR. Else the runner lists the changes and the worker commits them through GitHub's API as the App on `hobai/<title slug>-<taskId prefix>` and opens the PR (draft if checks failed or incomplete) with summary + checks + changed files ([github.md](./github.md) §8) | `branch_created`, `git_push`, `pr_opened` |
 | **Finally** | persist summary & usage; `status=succeeded/failed/cancelled`; **always** destroy sandbox | `done` / `error` |
 
 The clone token is passed to git through that command's environment rather than stored in `.git/config`; no write token enters the sandbox.
@@ -271,7 +273,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | worker | Railway service | private; scale via replicas / BullMQ concurrency |
 | Postgres | Railway | managed, backups |
 | Redis | Railway | real TCP Redis (BullMQ + pub/sub) |
-| Sandboxes | Daytona Cloud | `codegenie-base` snapshot built by script |
+| Sandboxes | Daytona Cloud | `hobai-base` snapshot built by script |
 | GitHub App | GitHub | separate dev and prod Apps |
 
 **Local dev:** `docker-compose` (Postgres, Redis) · `pnpm dev:web` / `dev:server` / `dev:worker` · `SANDBOX_PROVIDER=docker` (or `daytona` on free tier) · webhooks via smee.io or cloudflared tunnel.
@@ -288,4 +290,4 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | 3. GitHub App | install flow, token minting, clone → commit → PR | Real PRs | Done |
 | 4. API + UI | projects/tasks/runs/onboarding endpoints, SSE, the web app (repo picker, environment setup, new task, live run view, Inbox, project page), Playwright end-to-end test | Prompt → PR from the browser | Done |
 | 5. MVP launch | follow-ups, quotas, hardening, production builds, deploy | **MVP: live, open for signup** | Next |
-| 6+. Post-MVP | PR-comment / `@codegenie` triggers, Jira then Notion, plan approval, sandbox pause/resume, live previews, code index, billing, orgs | | |
+| 6+. Post-MVP | PR-comment / `@hobai` triggers, Jira then Notion, plan approval, sandbox pause/resume, live previews, code index, billing, orgs | | |

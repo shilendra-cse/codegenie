@@ -6,7 +6,7 @@ import {
   type EnvironmentDecision,
   type EnvironmentSource,
   type StepResult,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { isUsable } from "./checks.js";
 
 export function stepKey(step: { name: string; cwd: string }) {

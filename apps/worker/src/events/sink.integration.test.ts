@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { runEvents, type Db } from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import type { RunEvent, RunStage } from "@codegenie/shared";
+import { runEvents, type Db } from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
+import type { RunEvent, RunStage } from "@hobai/shared";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { createEventSink, runEventTarget, type Publisher } from "./sink.js";

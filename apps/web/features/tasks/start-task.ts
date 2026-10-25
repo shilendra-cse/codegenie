@@ -1,4 +1,4 @@
-import type { ProjectResponse } from "@codegenie/shared";
+import type { ProjectResponse } from "@hobai/shared";
 import { ApiError } from "@/lib/api/client";
 import { environmentPath } from "@/lib/routes";
 

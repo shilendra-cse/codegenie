@@ -2,8 +2,8 @@
   "task": "In the backend, anyone can edit or delete any comment. Only the comment's author should be allowed to.\n\n- Change commentService.update to update(commentId, userId, content) and commentService.delete to delete(commentId, userId).\n- Both must first load the comment (add commentQuery.findById(id)). If it doesn't exist, throw AppError(ErrorCodes.COMMENT_NOT_FOUND, 404). If its userId isn't the given userId, throw AppError(ErrorCodes.FORBIDDEN, 403) and change nothing.\n- Keep commentQuery.update(id, content) and commentQuery.delete(id) as they are.\n- Pass the signed-in user's id from the comment controller, and update the existing tests.",
   "grader": {
     "type": "hidden-tests",
-    "target": "backend/tests/codegenie-hidden",
-    "command": "npx vitest run tests/codegenie-hidden",
+    "target": "backend/tests/hobai-hidden",
+    "command": "npx vitest run tests/hobai-hidden",
     "cwd": "backend"
   }
 }

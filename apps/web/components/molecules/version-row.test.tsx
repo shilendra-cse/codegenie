@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { VersionRow, type VersionRowProps } from "./version-row";
 
 const show = (overrides: Partial<VersionRowProps> = {}) => {
@@ -7,7 +8,7 @@ const show = (overrides: Partial<VersionRowProps> = {}) => {
     version: 1,
     active: false,
     activeVersion: 2,
-    made: "Set up by CodeGenie",
+    made: `Set up by ${PRODUCT_NAME}`,
     when: "5 days ago",
     confirming: false,
     restoring: false,
@@ -26,8 +27,8 @@ describe("VersionRow", () => {
     const props = show();
 
     expect(screen.getByText("replaced")).toBeVisible();
-    expect(screen.getByText(/Set up by CodeGenie/)).toHaveTextContent(
-      "Set up by CodeGenie · 5 days ago",
+    expect(screen.getByText(new RegExp(`Set up by ${PRODUCT_NAME}`))).toHaveTextContent(
+      `Set up by ${PRODUCT_NAME} · 5 days ago`,
     );
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     expect(props.onRestore).toHaveBeenCalledOnce();

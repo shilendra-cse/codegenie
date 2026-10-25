@@ -1,8 +1,9 @@
 "use client";
 
-import type { EnvironmentSource, OnboardingResponse } from "@codegenie/shared";
+import type { EnvironmentSource, OnboardingResponse } from "@hobai/shared";
 import Link from "next/link";
 import { useState } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { Skeleton } from "@/components/atoms/skeleton";
 import { VersionRow } from "@/components/molecules/version-row";
@@ -23,9 +24,9 @@ import { SetupScreen } from "./setup-screen";
 
 const MADE_BY: Record<EnvironmentSource, string> = {
   detected: "Detected from the repository",
-  ai: "Set up by CodeGenie",
+  ai: `Set up by ${PRODUCT_NAME}`,
   user: "Set by you",
-  mixed: "Set up by CodeGenie with your answers",
+  mixed: `Set up by ${PRODUCT_NAME} with your answers`,
 };
 
 function unfinishedReason(onboarding: OnboardingResponse | null | undefined) {

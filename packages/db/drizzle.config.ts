@@ -3,7 +3,7 @@ import { config as loadEnv } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
 // The development database is the one in apps/server/docker-compose.yml, configured in its .env.
-// drizzle-kit runs from this package's folder (pnpm --filter @codegenie/db …).
+// drizzle-kit runs from this package's folder (pnpm --filter @hobai/db …).
 loadEnv({
   path: path.resolve("..", "..", "apps", "server", ".env"),
   quiet: true,

@@ -1,4 +1,4 @@
-import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
+import { scriptedModel, type ScriptedStep } from "@hobai/agent/testing";
 import {
   DbEnvironmentStore,
   findOnboarding,
@@ -8,11 +8,11 @@ import {
   markOnboardingEnded,
   createOnboarding,
   type Db,
-} from "@codegenie/db";
-import { insertProject, testDatabaseOrSkip } from "@codegenie/db/testing";
-import type { SandboxLabels } from "@codegenie/sandbox";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { OnboardingAnswer, OnboardingEvent } from "@codegenie/shared";
+} from "@hobai/db";
+import { insertProject, testDatabaseOrSkip } from "@hobai/db/testing";
+import type { SandboxLabels } from "@hobai/sandbox";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { OnboardingAnswer, OnboardingEvent } from "@hobai/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Publisher } from "../events/sink.js";
 import { fakeGithubApp } from "../testing/fake-github-app.js";

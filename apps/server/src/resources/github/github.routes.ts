@@ -1,4 +1,4 @@
-import { findUserProjectRepos } from "@codegenie/db";
+import { findUserProjectRepos } from "@hobai/db";
 import { config } from "@/config";
 import { db } from "@/db";
 import { api } from "@/lib/ApiRouter";

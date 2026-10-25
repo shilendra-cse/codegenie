@@ -4,8 +4,8 @@ import {
   type Emit,
   type ResolvedModel,
   type SetupAgentResult,
-} from "@codegenie/agent";
-import { DockerSandbox, type Sandbox } from "@codegenie/sandbox";
+} from "@hobai/agent";
+import { DockerSandbox, type Sandbox } from "@hobai/sandbox";
 import {
   checkKey,
   type EnvironmentConfig,
@@ -14,7 +14,7 @@ import {
   type OnboardingStatus,
   type TryResult,
   type UserChannel,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { buildConfig } from "../environment/build-config.js";
 import { isUsable } from "../environment/checks.js";
 import { draftEnvironment } from "../environment/draft/draft.js";

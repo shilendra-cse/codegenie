@@ -1,6 +1,7 @@
-import { DEFAULT_AGENT_MODEL } from "@codegenie/shared";
+import { DEFAULT_AGENT_MODEL } from "@hobai/shared";
 import { z } from "zod";
 import "dotenv/config";
+import { SHORT_NAME } from "@hobai/shared/brand";
 
 // Schema
 const envSchema = z.object({
@@ -13,9 +14,9 @@ const envSchema = z.object({
   DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default("localhost"),
   DB_PORT: z.string().transform(Number).default(5439),
-  DB_NAME: z.string().default("codegenie_db"),
-  DB_USER: z.string().default("codegenie_user"),
-  DB_PASSWORD: z.string().default("codegenie_password"),
+  DB_NAME: z.string().default(`${SHORT_NAME}_db`),
+  DB_USER: z.string().default(`${SHORT_NAME}_user`),
+  DB_PASSWORD: z.string().default(`${SHORT_NAME}_password`),
 
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
@@ -31,7 +32,7 @@ const envSchema = z.object({
 
   REDIS_HOST: z.string().default("localhost"),
   REDIS_PORT: z.string().transform(Number).default(6380),
-  REDIS_PASSWORD: z.string().default("codegenie_password"),
+  REDIS_PASSWORD: z.string().default(`${SHORT_NAME}_password`),
   REDIS_URL: z.string().default("redis://localhost:6380"),
 
   AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),

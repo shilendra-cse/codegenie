@@ -1,12 +1,12 @@
-import { scriptedModel } from "@codegenie/agent/testing";
-import { DbEnvironmentStore, runs, type Db } from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { scriptedModel } from "@hobai/agent/testing";
+import { DbEnvironmentStore, runs, type Db } from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { fakeGithubApp } from "../testing/fake-github-app.js";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-vi.mock("@codegenie/runner", () => ({
+vi.mock("@hobai/runner", () => ({
   runTask: vi.fn(async () => {
     throw new Error("runner bug");
   }),

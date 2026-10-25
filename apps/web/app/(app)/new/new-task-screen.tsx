@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Icon } from "@/components/atoms/icon";
@@ -33,7 +34,7 @@ export function NewTaskScreen({ projectId: requested }: NewTaskScreenProps) {
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-7 px-6 pt-[14vh] pb-16">
       <h1 className="rise text-center text-[28px] font-semibold tracking-[-0.02em]">
-        What should CodeGenie do?
+        What should {PRODUCT_NAME} do?
       </h1>
 
       {projects.isError ? (
@@ -89,7 +90,7 @@ function NoProjects() {
     <div className="rise flex flex-col items-center gap-3 rounded-lg border border-border bg-card px-6 py-7 text-center [animation-delay:80ms]">
       <p className="font-medium">Add a repository first</p>
       <p className="max-w-[420px] text-[13px] text-muted-foreground">
-        CodeGenie works on a project: a repository you&apos;ve added and set up.
+        {PRODUCT_NAME} works on a project: a repository you&apos;ve added and set up.
         It takes a few minutes, once per repository.
       </p>
       <Button asChild variant="primary" size="sm" glow>

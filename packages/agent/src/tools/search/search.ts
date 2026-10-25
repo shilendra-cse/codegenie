@@ -1,4 +1,4 @@
-import { WORKSPACE_DIR } from "@codegenie/sandbox";
+import { WORKSPACE_DIR } from "@hobai/sandbox";
 import { tool } from "ai";
 import { z } from "zod";
 import { shellJoin } from "../../lib/shell-quote.js";

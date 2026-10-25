@@ -3,7 +3,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { Request } from "express";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
-import { schema } from "@codegenie/db";
+import { schema } from "@hobai/db";
 import { config } from "@/config";
 
 export const auth = betterAuth({

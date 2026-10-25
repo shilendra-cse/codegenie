@@ -1,4 +1,4 @@
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { shellQuote } from "../../lib/shell-quote.js";
 import { collectDiff, createBaseline } from "../changes/index.js";

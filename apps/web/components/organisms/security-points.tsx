@@ -1,4 +1,5 @@
 import { Check, GitBranch, ShieldCheck } from "lucide-react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { SecurityPoint } from "@/components/molecules/security-point";
 import { SecurityDiagram } from "./security-diagram";
 
@@ -14,7 +15,7 @@ export function SecurityPoints() {
             </h2>
           </div>
           <p className="flex-[1_1_320px] text-base text-muted-foreground">
-            You stay in control of what gets merged. CodeGenie only ever
+            You stay in control of what gets merged. {PRODUCT_NAME} only ever
             proposes changes, and the agent never holds a token that can write.
           </p>
         </div>

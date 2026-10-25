@@ -1,7 +1,7 @@
 // Starts the API for the end-to-end test (apps/e2e): GitHub is answered by a fake, everything else is real.
 import { generateKeyPairSync } from "node:crypto";
 import { existsSync } from "node:fs";
-import { e2eGithubFetch } from "@codegenie/github/testing";
+import { e2eGithubFetch } from "@hobai/github/testing";
 
 const installedFlag = process.env.E2E_GITHUB_INSTALLED_FLAG;
 if (!installedFlag) throw new Error("E2E_GITHUB_INSTALLED_FLAG is not set.");

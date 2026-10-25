@@ -1,5 +1,5 @@
-import { type Db, restoreEnvironmentUnlessSettingUp } from "@codegenie/db";
-import type { EnvironmentResponse } from "@codegenie/shared";
+import { type Db, restoreEnvironmentUnlessSettingUp } from "@hobai/db";
+import type { EnvironmentResponse } from "@hobai/shared";
 import { HttpError } from "@/lib/http-error";
 import { toEnvironmentResponse } from "../projects.types";
 import { getUserProject } from "./getUserProject.service";

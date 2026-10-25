@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { ApiError } from "@/lib/api/client";
 import { addProjectError } from "./create-project";
 
@@ -10,18 +11,18 @@ describe("addProjectError", () => {
     ],
     [
       new ApiError(404, "Not found.", "GITHUB_REPOSITORY_NOT_FOUND"),
-      "This repository is no longer available to CodeGenie.",
+      `This repository is no longer available to ${PRODUCT_NAME}.`,
     ],
     [
       new ApiError(404, "Not found.", "GITHUB_INSTALLATION_NOT_FOUND"),
-      "This repository is no longer available to CodeGenie.",
+      `This repository is no longer available to ${PRODUCT_NAME}.`,
     ],
     [
       new ApiError(
         0,
-        "Couldn't reach CodeGenie. Check your connection and try again.",
+        `Couldn't reach ${PRODUCT_NAME}. Check your connection and try again.`,
       ),
-      "Couldn't reach CodeGenie. Check your connection and try again.",
+      `Couldn't reach ${PRODUCT_NAME}. Check your connection and try again.`,
     ],
     [new Error("boom"), "Something went wrong. Try again."],
   ])("explains %s", (error, message) => {

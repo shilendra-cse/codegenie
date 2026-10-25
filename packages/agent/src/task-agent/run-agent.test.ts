@@ -1,7 +1,7 @@
-import { SandboxGoneError } from "@codegenie/sandbox";
-import type { RunEvent } from "@codegenie/shared";
+import { SandboxGoneError } from "@hobai/sandbox";
+import type { RunEvent } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { scriptedModel, type ScriptedStep } from "../testing/mock-model.js";
 import { createToolContext } from "../tools/core/context.js";
 import { runAgent, type RunAgentOptions } from "./run-agent.js";

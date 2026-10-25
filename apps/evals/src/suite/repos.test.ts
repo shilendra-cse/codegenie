@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentConfig } from "@codegenie/shared";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { EnvironmentConfig } from "@hobai/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import { madeForOtherCommit } from "./environments.js";
 import { loadRepo, pinCommit, repoSource, type EvalRepo } from "./repos.js";

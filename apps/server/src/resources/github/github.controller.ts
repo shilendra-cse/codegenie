@@ -1,11 +1,8 @@
-import {
-  listInstallationRepos,
-  listUserInstallations,
-} from "@codegenie/github";
+import { listInstallationRepos, listUserInstallations } from "@hobai/github";
 import type {
   GitHubInstallationsResponse,
   GitHubReposResponse,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { ok } from "@/lib/api-response";
 import { HttpError } from "@/lib/http-error";
 import type { AuthenticatedController } from "@/types/base.types";

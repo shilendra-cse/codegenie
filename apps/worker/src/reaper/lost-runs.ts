@@ -4,9 +4,9 @@ import {
   markRunEnded,
   saveRunDiff,
   type Db,
-} from "@codegenie/db";
-import { collectDiff, findBaseline } from "@codegenie/runner";
-import { parkSandbox } from "@codegenie/sandbox";
+} from "@hobai/db";
+import { collectDiff, findBaseline } from "@hobai/runner";
+import { parkSandbox } from "@hobai/sandbox";
 import type { Queue } from "bullmq";
 import {
   createEventSink,

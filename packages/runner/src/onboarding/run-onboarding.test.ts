@@ -1,6 +1,6 @@
-import { scriptedModel, type ScriptedStep } from "@codegenie/agent/testing";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { RunEvent, SetupQuestion, UserChannel } from "@codegenie/shared";
+import { scriptedModel, type ScriptedStep } from "@hobai/agent/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { RunEvent, SetupQuestion, UserChannel } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { autoChannel } from "./auto-channel.js";
 import { runOnboarding, type RunOnboardingOptions } from "./run-onboarding.js";

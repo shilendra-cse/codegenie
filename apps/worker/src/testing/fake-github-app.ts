@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
-import type { GithubApp, RepoPermissions } from "@codegenie/github";
+import type { GithubApp, RepoPermissions } from "@hobai/github";
 import {
   fakeGithubClient,
   type FakeCall,
   type FakeReply,
-} from "@codegenie/github/testing";
+} from "@hobai/github/testing";
 
 export const FAKE_REPO_TOKEN = "ghs_faketoken0123456789abcdefghijklmnop";
 export const FAKE_TREE_SHA = "7".repeat(40);

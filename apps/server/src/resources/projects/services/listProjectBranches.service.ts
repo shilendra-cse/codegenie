@@ -1,6 +1,7 @@
-import { listRepoBranches } from "@codegenie/github";
+import { listRepoBranches } from "@hobai/github";
 import { HttpError } from "@/lib/http-error";
-import type { BranchListResponse } from "@codegenie/shared";
+import type { BranchListResponse } from "@hobai/shared";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import type { CreateProjectDeps } from "./createProject.service";
 import { getUserProject } from "./getUserProject.service";
 
@@ -27,7 +28,7 @@ export async function listProjectBranches(
   if (!listed) {
     throw new HttpError(
       404,
-      "This repository is no longer available to CodeGenie.",
+      `This repository is no longer available to ${PRODUCT_NAME}.`,
       "GITHUB_REPOSITORY_NOT_FOUND",
     );
   }

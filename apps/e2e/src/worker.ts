@@ -1,8 +1,8 @@
 // Starts the worker for the test: scripted models and a fake GitHub, real queue, database and Docker sandboxes.
 import { createServer } from "node:http";
-import { scriptedModel, TEST_MODEL_SPEC } from "@codegenie/agent/testing";
-import { startWorker } from "@codegenie/worker";
-import { fakeGithubApp } from "@codegenie/worker/testing";
+import { scriptedModel, TEST_MODEL_SPEC } from "@hobai/agent/testing";
+import { startWorker } from "@hobai/worker";
+import { fakeGithubApp } from "@hobai/worker/testing";
 import {
   DATABASE_URL,
   REDIS_URL,

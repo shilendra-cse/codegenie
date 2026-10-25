@@ -1,4 +1,4 @@
-import type { RunEvent } from "@codegenie/shared";
+import type { RunEvent } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { createRunReporter } from "./run-events.js";
 import { createStyle, plain } from "./style.js";

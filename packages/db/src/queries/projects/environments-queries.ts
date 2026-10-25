@@ -4,7 +4,7 @@ import type {
   EnvironmentSource,
   EnvironmentStore,
   StoredEnvironment,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { and, desc, eq, inArray, max } from "drizzle-orm";
 import type { Db } from "../../client.js";
 import { onboardings } from "../../schema/projects/onboardings-schema.js";

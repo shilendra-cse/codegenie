@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import {
   Dialog,
@@ -35,7 +36,7 @@ export function RemoveProjectDialog({
       <DialogContent>
         <DialogTitle>Remove {projectName}?</DialogTitle>
         <DialogDescription>
-          {tasks}, their runs and the environment are deleted from CodeGenie.
+          {tasks}, their runs and the environment are deleted from {PRODUCT_NAME}.
           The repository and its pull requests on GitHub are not touched.
         </DialogDescription>
         {error && (

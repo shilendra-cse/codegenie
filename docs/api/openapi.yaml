@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: CodeGenie API
+  title: hobai API
   version: 1.0.0
-  description: HTTP API for the CodeGenie web app.
+  description: HTTP API for the hobai web app.
 servers:
   - url: http://localhost:3001
     description: Local development
@@ -57,7 +57,7 @@ paths:
                           installUrl:
                             type: string
                             format: uri
-                            example: https://github.com/apps/codegenie-dev-app/installations/new
+                            example: https://github.com/apps/hobai-dev-app/installations/new
         "401":
           $ref: "#/components/responses/GitHubSignInRequired"
 
@@ -332,7 +332,7 @@ paths:
     delete:
       tags: [Projects]
       summary: Remove a project
-      description: Deletes its tasks, runs and environments from CodeGenie. The repository and its pull requests on GitHub are not touched.
+      description: Deletes its tasks, runs and environments from hobai. The repository and its pull requests on GitHub are not touched.
       operationId: deleteProject
       responses:
         "200":

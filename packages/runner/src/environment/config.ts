@@ -1,4 +1,4 @@
-import { CHECK_NAMES, type EnvironmentConfig } from "@codegenie/shared";
+import { CHECK_NAMES, type EnvironmentConfig } from "@hobai/shared";
 import { z } from "zod";
 
 const command = z.string().trim().min(1);

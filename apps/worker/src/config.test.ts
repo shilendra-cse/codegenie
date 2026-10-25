@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DOMAIN, SHORT_NAME } from "@hobai/shared/brand";
 import { ConfigError, parseConfig } from "./config.js";
 
 const key = {
@@ -13,8 +14,7 @@ describe("parseConfig", () => {
     expect(parseConfig(key)).toEqual({
       logLevel: "info",
       prettyLogs: true,
-      databaseUrl:
-        "postgresql://codegenie_user:codegenie_password@localhost:5439/codegenie_db",
+      databaseUrl: `postgresql://${SHORT_NAME}_user:${SHORT_NAME}_password@localhost:5439/${SHORT_NAME}_db`,
       redisUrl: "redis://localhost:6380",
       model: "openai:gpt-6-luna",
       concurrency: 3,
@@ -44,9 +44,8 @@ describe("parseConfig", () => {
 
   it("reads the web app's address without a trailing slash", () => {
     expect(
-      parseConfig({ ...key, FRONTEND_URL: "https://codegenie.dev/" })
-        .frontendUrl,
-    ).toBe("https://codegenie.dev");
+      parseConfig({ ...key, FRONTEND_URL: `https://${DOMAIN}/` }).frontendUrl,
+    ).toBe(`https://${DOMAIN}`);
   });
 
   it("connects to Daytona when it's the sandbox provider", () => {

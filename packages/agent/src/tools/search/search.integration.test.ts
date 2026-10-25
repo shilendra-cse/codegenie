@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
 import { createToolContext } from "../core/context.js";
 import { search } from "./search.js";
 

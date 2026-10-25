@@ -1,4 +1,4 @@
-import type { SetupResult } from "@codegenie/shared";
+import type { SetupResult } from "@hobai/shared";
 import type { ResolvedModel } from "../model/resolve-model.js";
 import { buildRepoContext } from "./prompt/repo-context.js";
 import { buildSystemPrompt } from "./prompt/system-prompt.js";

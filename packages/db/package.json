@@ -1,5 +1,5 @@
 {
-  "name": "@codegenie/db",
+  "name": "@hobai/db",
   "version": "0.0.0",
   "private": true,
   "description": "Postgres schema, client and migrations (Drizzle), shared by the server and the worker",
@@ -28,7 +28,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@codegenie/shared": "workspace:*",
+    "@hobai/shared": "workspace:*",
     "drizzle-orm": "^0.44.5",
     "pg": "^8.16.3"
   },

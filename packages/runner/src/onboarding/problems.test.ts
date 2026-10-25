@@ -1,4 +1,4 @@
-import type { TryResult } from "@codegenie/shared";
+import type { TryResult } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { findProblems } from "./problems.js";
 

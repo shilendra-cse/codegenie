@@ -2,8 +2,8 @@
   "task": "Issue labels are saved exactly as they're sent, so \" Bug\", \"bug\" and \"BUG\" end up as three different labels on one issue.\n\nIn the backend's issueService.create and issueService.update, clean the labels before saving: trim each label, drop empty ones, and remove duplicates ignoring case, keeping the first spelling and the original order. For example [\" Bug\", \"bug\", \"\", \"ui \", \"UI\"] becomes [\"Bug\", \"ui\"]. Add tests.",
   "grader": {
     "type": "hidden-tests",
-    "target": "backend/tests/codegenie-hidden",
-    "command": "npx vitest run tests/codegenie-hidden",
+    "target": "backend/tests/hobai-hidden",
+    "command": "npx vitest run tests/hobai-hidden",
     "cwd": "backend"
   }
 }

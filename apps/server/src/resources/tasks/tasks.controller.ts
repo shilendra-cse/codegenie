@@ -8,7 +8,7 @@ import {
   listTasksQuerySchema,
   projectParamsSchema,
   taskParamsSchema,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 export type TaskControllerDeps = CreateTaskDeps;
 

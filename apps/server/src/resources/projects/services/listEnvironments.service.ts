@@ -1,5 +1,5 @@
-import { type Db, DbEnvironmentStore } from "@codegenie/db";
-import type { EnvironmentResponse } from "@codegenie/shared";
+import { type Db, DbEnvironmentStore } from "@hobai/db";
+import type { EnvironmentResponse } from "@hobai/shared";
 import { toEnvironmentResponse } from "../projects.types";
 import { getUserProject } from "./getUserProject.service";
 

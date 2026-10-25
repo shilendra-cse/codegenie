@@ -1,9 +1,9 @@
-import type { Db } from "@codegenie/db";
+import type { Db } from "@hobai/db";
 import {
   afterSeqSchema,
   answerOnboardingSchema,
   projectParamsSchema,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { ok } from "@/lib/api-response";
 import { openSse } from "@/lib/sse";
 import type {

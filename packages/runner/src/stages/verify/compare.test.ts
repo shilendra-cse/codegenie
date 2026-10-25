@@ -1,4 +1,4 @@
-import type { CheckResult } from "@codegenie/shared";
+import type { CheckResult } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
 import { compareCheck, compareChecks } from "./compare.js";
 

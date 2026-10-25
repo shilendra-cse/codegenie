@@ -37,10 +37,10 @@ interface Sandbox {
 
 | Area | Decision |
 |---|---|
-| Base image | `codegenie-base` from `node:24-bookworm` + ripgrep + fd + corepack (pnpm, yarn). Minimal: the base already has git, curl, python3, make/gcc. |
+| Base image | `hobai-base` from `node:24-bookworm` + ripgrep + fd + corepack (pnpm, yarn). Minimal: the base already has git, curl, python3, make/gcc. |
 | Node version | Node 24 only (see TODO). |
 | Environment | `CI=true` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` for every command, so test runners and corepack never wait for input. |
-| User | Non-root `agent` user; git identity `CodeGenie <bot@codegenie.dev>`. |
+| User | Non-root `agent` user; git identity `hobai <bot@hobai.app>`. |
 | Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). Daytona: 2 CPUs, 4 GB, 10 GB disk, set on the snapshot. |
 | Network | Docker: full internet access (needed for clone and package installs). Daytona: limited by our tier; see §7 "Network". |
 | Host access | No volume mounts, no Docker socket, no secrets in phase 1. Local folders are **copied** in, never mounted. |
@@ -50,14 +50,14 @@ interface Sandbox {
 | writeFile | Content sent via stdin, never in the command line: no quoting or injection issues. |
 | Lifecycle | One sandbox per run (two per onboarding). `destroy()` in `finally`. Docker: main process is `sleep 7200`, so a container exits by itself after 2 h even if cleanup never runs. Daytona: see §7. |
 | Lost runs | When a run's worker dies, the reaper reconnects to its sandbox (`connectSandbox`), saves its diff, then **parks** it (`parkSandbox`): Daytona stops it and keeps it for the retention period, so the run could be resumed there; Docker deletes it, since a stopped container never expires. |
-| Labels | Every sandbox has `codegenie=1`, plus what the caller passes: the worker adds `kind=run, runId` or `kind=onboarding, projectId`, so the reaper can find sandboxes whose work is over. |
+| Labels | Every sandbox has `hobai=1`, plus what the caller passes: the worker adds `kind=run, runId` or `kind=onboarding, projectId`, so the reaper can find sandboxes whose work is over. |
 | Errors | `SandboxUnavailableError` (Docker not running / image missing / Daytona key rejected), `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`. |
 
 ## 4. Code layout
 
 ```
 packages/sandbox/
-├── images/base/Dockerfile          codegenie-base image
+├── images/base/Dockerfile          hobai-base image
 └── src/
     ├── index.ts                    public API (re-exports only)
     ├── create-sandbox.ts           createSandbox() — picks the provider
@@ -81,7 +81,7 @@ packages/sandbox/
     │       └── constants.ts        snapshot, labels, auto-stop, timeouts
     ├── scripts/
     │   └── build-snapshot.ts       pnpm sandbox:build-snapshot
-    └── testing/                    @codegenie/sandbox/testing
+    └── testing/                    @hobai/sandbox/testing
         ├── fake-sandbox.ts         FakeSandbox: in-memory files, scripted exec
         └── docker.ts               dockerSandboxOrSkip(): a DockerSandbox, or null to skip without Docker (fails in CI)
 ```
@@ -92,9 +92,9 @@ Tests sit next to the code: `*.test.ts` are fast unit tests, `*.integration.test
 
 | Command | What it does |
 |---|---|
-| `pnpm sandbox:build-image` | Build `codegenie-base` (needed once, and after Dockerfile changes) |
-| `pnpm sandbox:build-snapshot` | Build the `codegenie-base` snapshot on Daytona from the same Dockerfile, then check a sandbox made from it (needed once per account, and `--replace` after Dockerfile changes). Reads `DAYTONA_*` from `apps/worker/.env`. |
-| `pnpm sandbox:clean` | Remove any leftover Docker containers labelled `codegenie=1` |
+| `pnpm sandbox:build-image` | Build `hobai-base` (needed once, and after Dockerfile changes) |
+| `pnpm sandbox:build-snapshot` | Build the `hobai-base` snapshot on Daytona from the same Dockerfile, then check a sandbox made from it (needed once per account, and `--replace` after Dockerfile changes). Reads `DAYTONA_*` from `apps/worker/.env`. |
+| `pnpm sandbox:clean` | Remove any leftover Docker containers labelled `hobai=1` |
 | `docker exec -it <id> bash` | Inspect a running sandbox (e.g. one kept with `--keep`) |
 
 ## 6. Testing
@@ -107,7 +107,7 @@ Daytona has **no automated tests against the real service**, by decision: every 
 
 | Method | DockerSandbox | DaytonaSandbox |
 |---|---|---|
-| create | `docker run codegenie-base` | `daytona.create` from the `codegenie-base` snapshot |
+| create | `docker run hobai-base` | `daytona.create` from the `hobai-base` snapshot |
 | exec | `docker exec … timeout … bash -lc` | one `process.executeCommand` running a wrapper (below) |
 | readFile / writeFile | `docker exec cat` / stdin | `fs.downloadFile` / `fs.uploadFile` (upload creates missing folders) |
 | listFiles | `docker exec find` | the same `find`, through `exec` |
@@ -117,7 +117,7 @@ Decisions, from a probe of the real API (SDK 0.225):
 
 | Area | Decision |
 |---|---|
-| Snapshot | `codegenie-base`, built on Daytona from **the same Dockerfile** as the Docker image, so both providers have the same tools, `agent` user and writable `/workspace` (checked on a real sandbox). 2 CPUs, 4 GB, 10 GB disk. Daytona's default snapshot (1 CPU, 1 GB, no `/workspace`) isn't used. |
+| Snapshot | `hobai-base`, built on Daytona from **the same Dockerfile** as the Docker image, so both providers have the same tools, `agent` user and writable `/workspace` (checked on a real sandbox). 2 CPUs, 4 GB, 10 GB disk. Daytona's default snapshot (1 CPU, 1 GB, no `/workspace`) isn't used. |
 | exec | Daytona returns stdout and stderr **mixed together**, but `diff` and `search` parse stdout. So exec sends a wrapper: the command goes in the env var `CG_CMD` (no quoting), runs under `timeout -k` like Docker, with stderr redirected to a temp file; the wrapper then prints a random marker, the exit code and the stderr file, and the provider splits on the marker. |
 | Timeouts | Same limits as Docker: exit 124 means timed out. The SDK's own timeout (ours + 20 s) is a backstop; its timeout error becomes `timedOut: true`, not a failure. |
 | Output | Daytona doesn't cap output; the provider applies Docker's 1 MB head + tail cap. |

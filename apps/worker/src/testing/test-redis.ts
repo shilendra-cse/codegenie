@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Redis } from "ioredis";
+import { SHORT_NAME } from "@hobai/shared/brand";
 
 export type TestRedis = {
   /** A key prefix of this test file's own, so tests never touch other queues. */
@@ -31,7 +32,7 @@ export async function testRedisOrSkip(
     return null;
   }
 
-  const prefix = `codegenie-test-${randomBytes(4).toString("hex")}`;
+  const prefix = `${SHORT_NAME}-test-${randomBytes(4).toString("hex")}`;
   const connections = [admin];
   return {
     prefix,

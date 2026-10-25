@@ -2,7 +2,7 @@
 
 > Status: **Built**, including the worker and the website (Phase 2 and 4) · Last updated: 2026-10-25 · Related: [runner.md](./runner.md), [agent.md](./agent.md), [database.md](./database.md), [requirements.md](./requirements.md)
 
-Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. CodeGenie answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task run.
+Before the agent can work on a repository, something has to know **how to install it and how to check that it still works**. hobai answers that once per repository with an **environment config**, created through a short guided conversation (**onboarding**), and replays that config in every task run.
 
 ```
 connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONFIG ──► every TASK RUN replays it
@@ -21,7 +21,7 @@ connect repo ──► ONBOARDING (once, interactive) ──► ENVIRONMENT CONF
 | AI in task runs | **None.** Runs only replay the config | Speed, cost and predictability. All figuring-out happens in onboarding. |
 | Storage | **Database** (`project_environments`, versioned) for the product; a local file store for the CLI | Shared with the team, versioned, health-tracked, audit trail per run. |
 | Config committed in the user's repo | **Post-MVP**, optional | Adds friction to onboarding; only teams that want setup reviewed in PRs need it. |
-| Writing into the user's repo | **Never**, except the agent's task changes | Nothing CodeGenie-specific can end up in a PR. |
+| Writing into the user's repo | **Never**, except the agent's task changes | Nothing hobai-specific can end up in a PR. |
 
 ## 2. The config
 
@@ -44,7 +44,7 @@ type EnvironmentConfig = {
 ```
 
 - **Steps, not one script:** each step is validated and logged on its own, so errors name the exact step, and multi-project repos are simply several steps.
-- **Checks:** `Check` from `@codegenie/shared` (`lint`, `typecheck`, `test`, `build`, each with a working folder).
+- **Checks:** `Check` from `@hobai/shared` (`lint`, `typecheck`, `test`, `build`, each with a working folder).
 - **Not in the MVP config:** environment variables, secrets and services (e.g. a database for tests).
 
 Example (DoDesk):
@@ -122,7 +122,7 @@ Every step and check is run and classified:
 
 `runSetupAgent({ runId, sandbox, model, initial: { proposal, result, notes }, tryEnvironment, channel, limits, emit, signal }) → { status, proposal, notes, decisions, usage, … }`
 
-- Lives in `@codegenie/agent` (`setup-agent/`), reusing the agent loop, with its own prompt: make the repository installable and checkable, prefer recommended choices, ask only when it can't decide.
+- Lives in `@hobai/agent` (`setup-agent/`), reusing the agent loop, with its own prompt: make the repository installable and checkable, prefer recommended choices, ask only when it can't decide.
 - Tools:
 
 | Tool | Purpose |
@@ -227,7 +227,7 @@ The fix is to rerun onboarding, which produces a new version. Today a rerun star
 
 ## 5. Storage
 
-All storage goes through one interface (`@codegenie/shared`), so the runner doesn't know where configs live:
+All storage goes through one interface (`@hobai/shared`), so the runner doesn't know where configs live:
 
 ```ts
 interface EnvironmentStore {
@@ -242,7 +242,7 @@ interface EnvironmentStore {
 | Where | Store | Notes |
 |---|---|---|
 | Product (worker + website) | `DbEnvironmentStore` (`packages/db`): **database** table `project_environments` ([database.md](./database.md)), keyed by project id | every version kept, one active per project, health with reasons; `runs.environment_id` records which version each run used (set by the worker) |
-| CLI (built) | `FileEnvironmentStore` (`apps/cli/src/store/`): `~/.codegenie/environments/<repo-key>.json`, or under `$CODEGENIE_HOME` | the last 5 versions in one file, numbered on; written through a temporary file; configs validated on load |
+| CLI (built) | `FileEnvironmentStore` (`apps/cli/src/store/`): `~/.hobai/environments/<repo-key>.json`, or under `$HOBAI_HOME` | the last 5 versions in one file, numbered on; written through a temporary file; configs validated on load |
 
 **Repo key** (`repo-key.ts`): git URLs become host/path, lowercased, without protocol, user or `.git` (`github.com/acme/app`), so every URL form of a repository matches. A local folder uses its `origin` remote when it is the repository's top level, so a clone and its URL share one environment; otherwise (no remote, or a folder inside another repository) it is `local:<absolute path>`.
 
@@ -311,7 +311,7 @@ apps/server/src/resources/onboarding/   setup API (§3.5)
 
 ## 9. Not in the MVP
 
-- [ ] Config committed in the user's repository (`.codegenie/environment.json`, checked before the database)
+- [ ] Config committed in the user's repository (`.hobai/environment.json`, checked before the database)
 - [ ] Services in the sandbox (e.g. PostgreSQL for tests)
 - [ ] Environment variables and secrets (onboarding offers "skip" or "dummy value" options meanwhile)
 - [ ] Snapshots after setup for faster runs, plus a maintenance step on resume. Measured in the baseline eval run ([evals.md](./evals.md)): DoDesk tasks took 6–10 minutes for only 7–15 agent steps, most of it clone + `npm ci` in two projects (client ~80 s), baseline checks (client build ~45 s) and the same checks again in verify. Options, largest gain first:

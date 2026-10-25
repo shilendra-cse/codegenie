@@ -42,7 +42,7 @@ describe("ChecklistStep", () => {
     renderStep({
       action: {
         label: "Install on GitHub",
-        href: "https://github.com/apps/codegenie/installations/new",
+        href: "https://github.com/apps/hobai/installations/new",
         external: true,
       },
     });
@@ -51,7 +51,7 @@ describe("ChecklistStep", () => {
       screen.getByRole("link", { name: "Install on GitHub" }),
     ).toHaveAttribute(
       "href",
-      "https://github.com/apps/codegenie/installations/new",
+      "https://github.com/apps/hobai/installations/new",
     );
   });
 

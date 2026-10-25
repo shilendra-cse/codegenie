@@ -5,7 +5,7 @@ import type {
   RunEvent,
   SetupQuestion,
   UserChannel,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import type { EventSink } from "../events/sink.js";
 import type { OnboardingRecord } from "./onboarding-record.js";
 

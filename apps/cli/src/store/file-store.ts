@@ -1,14 +1,15 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import { parseEnvironmentConfig } from "@codegenie/runner";
+import { parseEnvironmentConfig } from "@hobai/runner";
 import type {
   EnvironmentConfig,
   EnvironmentHealth,
   EnvironmentSource,
   EnvironmentStore,
   StoredEnvironment,
-} from "@codegenie/shared";
+} from "@hobai/shared";
+import { SHORT_NAME } from "@hobai/shared/brand";
 
 export const MAX_VERSIONS = 5;
 
@@ -18,10 +19,12 @@ type StoreFile = {
   versions: Omit<StoredEnvironment, "repoKey">[];
 };
 
-/** ~/.codegenie/environments, or $CODEGENIE_HOME/environments. */
+export const HOME_ENV = `${SHORT_NAME.toUpperCase()}_HOME`;
+
+/** ~/.hobai/environments, or $HOBAI_HOME/environments. */
 export function defaultStoreDir() {
   return path.join(
-    process.env.CODEGENIE_HOME ?? path.join(homedir(), ".codegenie"),
+    process.env[HOME_ENV] ?? path.join(homedir(), `.${SHORT_NAME}`),
     "environments",
   );
 }

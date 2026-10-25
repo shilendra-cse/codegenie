@@ -92,11 +92,11 @@ log "Starting Postgres and Redis"
 compose up -d
 
 log "Waiting for databases"
-wait_for "Postgres" compose exec -T postgres pg_isready -U codegenie_user -d codegenie_db
+wait_for "Postgres" compose exec -T postgres pg_isready -U hobai_user -d hobai_db
 wait_for "Redis" compose exec -T redis redis-cli ping
 
 log "Running database migrations"
-pnpm --filter @codegenie/db migrate
+pnpm --filter @hobai/db migrate
 
 cat <<'EOF'
 

@@ -1,6 +1,6 @@
-import type { RepoSource } from "@codegenie/runner";
-import type { StoredEnvironment } from "@codegenie/shared";
-import { intro, line, outro, type Style } from "@codegenie/terminal";
+import type { RepoSource } from "@hobai/runner";
+import type { StoredEnvironment } from "@hobai/shared";
+import { intro, line, outro, type Style } from "@hobai/terminal";
 
 const where = (item: { name: string; cwd: string }) =>
   item.cwd === "." ? item.name : `${item.name} (${item.cwd})`;

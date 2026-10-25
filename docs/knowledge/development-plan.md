@@ -37,7 +37,7 @@ Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
 - [x] Base image: git, ripgrep, fd, Node + corepack (npm/pnpm/yarn). bun deferred (see [sandbox.md](./sandbox.md) TODO).
 - [x] Tools rebuilt on `Sandbox` in `packages/agent` ([agent.md](./agent.md)): `list_files`, `read_file`, `search`, `edit_file` (unique match), `write_file`, `bash`, `run_checks`, `finish_task`; output truncation.
 - [x] Agent loop: native SDK tool messages, model catalog (platform-controlled), step/time/cost limits with forced wrap-up, stop only on `finish_task`, `AbortSignal` cancellation, cache-friendly context compaction ([agent.md](./agent.md)).
-- [x] Environment setup in `packages/runner` (setup stage): pluggable ecosystem detection (Node), package manager, frozen-then-fallback install, lint/typecheck/test/build checks; result passed to the agent's prompt and `run_checks`; `AGENTS.md` read into the prompt ([runner.md](./runner.md)). `.codegenie.yml` deferred.
+- [x] Environment setup in `packages/runner` (setup stage): pluggable ecosystem detection (Node), package manager, frozen-then-fallback install, lint/typecheck/test/build checks; result passed to the agent's prompt and `run_checks`; `AGENTS.md` read into the prompt ([runner.md](./runner.md)). `.hobai.yml` deferred.
 - [x] Dev harness: `pnpm agent:run --repo <path|url> --task "…"` (`apps/cli`) running a task end to end via the runner (`runTask`: sandbox, checkout, setup, baseline, agent, verify, diff); config in `apps/cli/.env`; `apps/agent` removed ([runner.md](./runner.md)).
 - [x] **Environment onboarding** ([environment.md](./environment.md)): a per-repository environment config created once through a guided conversation and replayed by every run.
   - [x] **A.** Config type + schema; `apply` / `validate`; runs replay the config (`--environment`, `--save-environment`); baseline check run + before/after comparison in verify (`--no-baseline-checks`); files written by the first check run are part of the baseline, and the diff is taken before verify; rules-only draft, auto-approved inside the run. Standalone setup comes with D.
@@ -68,11 +68,11 @@ Decisions:
 Branches, each built in small batches (see Ways of working):
 
 - [x] **1. `refactor/db-package`** — move only, no behavior change.
-  1. `packages/db`: Drizzle schema, migrations, `drizzle.config` and `createDb(url)` moved from `apps/server/src/db/`; the server imports `@codegenie/db`; db scripts run from the package. (Planned as two batches; one, since a half-moved schema doesn't compile.)
+  1. `packages/db`: Drizzle schema, migrations, `drizzle.config` and `createDb(url)` moved from `apps/server/src/db/`; the server imports `@hobai/db`; db scripts run from the package. (Planned as two batches; one, since a half-moved schema doesn't compile.)
   2. Docs.
 - [x] **2. `feat/db-environments`** — environments in Postgres, the same `EnvironmentStore` as the CLI's file store, keyed by project id ([database.md](./database.md)).
   1. Schema + migration: `project_environments`, `runs.environment_id`, drop `projects.setup_config` if present.
-  2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests on a fresh Postgres database per run (`@codegenie/db/testing`), and a Postgres service in CI.
+  2. `DbEnvironmentStore`: load, list, save (new active version, previous superseded, one transaction), markHealth; tests on a fresh Postgres database per run (`@hobai/db/testing`), and a Postgres service in CI.
   3. Docs.
 - [x] **3. `feat/worker-queue`** — the worker, on Docker sandboxes. (Two PRs: `feat/worker-queue` for 1–4 and `feat/worker-consumer` for 5–8, with `refactor/job-to-run` between them renaming jobs to runs.)
   1. Queue contract in `shared`: queue name, work kinds (`run-task`, `onboard-project`), payloads.
@@ -86,7 +86,7 @@ Branches, each built in small batches (see Ways of working):
 - [x] **4. `feat/daytona-sandbox`** ([sandbox.md](./sandbox.md) §7).
   1. `DaytonaSandbox` (exec, files, destroy), designed from a probe of the real API and tested with a fake built from its recorded answers.
   2. `SANDBOX_PROVIDER=docker|daytona` in the worker and `createSandbox`; sandboxes labelled by run or onboarding for the reaper.
-  3. `pnpm sandbox:build-snapshot`: `codegenie-base` built on Daytona from the same Dockerfile, then checked.
+  3. `pnpm sandbox:build-snapshot`: `hobai-base` built on Daytona from the same Dockerfile, then checked.
   4. ~~Integration test against Daytona~~: dropped, no automated tests against real Daytona (cost). Checked by hand instead: onboarding and a run of `octocat/Hello-World` through the worker on Daytona. Added the worker's start / finish / outcome logs, which that run showed were missing.
   5. Docs.
 - [x] **5. `feat/reaper`**: three PRs (`feat/reaper` with run diffs, `refactor/query-layer`, `feat/reaper-lost-runs`).
@@ -101,7 +101,7 @@ Branches, each built in small batches (see Ways of working):
 **Known issue:** production builds of the server and worker don't run yet (`tsc` keeps the `@/…` path aliases, which plain Node can't resolve; development runs through `tsx`). Fixed with the deploy work in Phase 5.
 
 ### Phase 3 — GitHub App & delivery
-**Goal:** a run on a real repository, private ones included, ends in a pull request opened by `codegenie[bot]`, using only short-lived tokens scoped to that repository. *(U1, U2, U6 backend)*
+**Goal:** a run on a real repository, private ones included, ends in a pull request opened by `hobai[bot]`, using only short-lived tokens scoped to that repository. *(U1, U2, U6 backend)*
 
 Decisions:
 - **One GitHub App** for sign-in and repository access: its OAuth signs users in, its installations give repo access. No separate OAuth App.
@@ -114,7 +114,7 @@ Decisions:
 
 Branches, each built in small batches (see Ways of working):
 
-- [x] **1. `feat/github-app`**: `@codegenie/github`, used by the server and the worker.
+- [x] **1. `feat/github-app`**: `@hobai/github`, used by the server and the worker.
   1. Package and token minting: `createGithubApp({ appId, privateKey })`; `repoToken` / `repoClient` (one repository, given permissions, cached until near expiry); `installationForRepo`; private key parsing.
   2. Bot identity (`<slug>[bot]` and its noreply email, for commits) and webhook signature verification (`X-Hub-Signature-256`).
   3. Docs: `github.md` with the App registration guide (permissions, events, callback and setup URLs), the token model and the settings each app needs.
@@ -132,7 +132,7 @@ Branches, each built in small batches (see Ways of working):
   4. Docs.
 - [x] **4. `feat/delivery`** ([github.md](./github.md) §8)
   1. Runner deliver step: list the agent's changes (files, modes, blob hashes, deletions, parent, expected tree) and hand them to a callback; no changes → no branch. (Planned as a push from the sandbox; changed so no write token enters the sandbox after the agent ran.)
-  2. Worker: commit through GitHub's API on `codegenie/<task>-<slug>` as the App (verified), open the PR (draft when checks failed or the run is incomplete; ready with a note where drafts aren't available) with the summary, check results and changed files; update the task (branch, PR number and URL, `pr_open`) and the run (`commit_sha`); `branch_created` / `git_push` / `pr_opened` events; `deliver_failed` on errors. The agent titles its change in `finish_task`. The run link in the PR comes with the web app's run page (Phase 4).
+  2. Worker: commit through GitHub's API on `hobai/<task>-<slug>` as the App (verified), open the PR (draft when checks failed or the run is incomplete; ready with a note where drafts aren't available) with the summary, check results and changed files; update the task (branch, PR number and URL, `pr_open`) and the run (`commit_sha`); `branch_created` / `git_push` / `pr_opened` events; `deliver_failed` on errors. The agent titles its change in `finish_task`. The run link in the PR comes with the web app's run page (Phase 4).
   3. Docs.
 - [x] **5. `feat/pr-webhooks`** ([github.md](./github.md) §6)
   1. `pull_request` merged / closed / reopened → the task's status.
@@ -178,7 +178,7 @@ Checklist:
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@codegenie` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
+PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · BYO API key / billing · team projects · more languages.
 
 ## 3. Ways of working
 

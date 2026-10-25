@@ -1,12 +1,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ResolvedModel } from "@codegenie/agent";
+import type { ResolvedModel } from "@hobai/agent";
 import {
   autoChannel,
   parseEnvironmentConfig,
   runOnboarding,
-} from "@codegenie/runner";
-import type { EnvironmentConfig } from "@codegenie/shared";
+} from "@hobai/runner";
+import type { EnvironmentConfig } from "@hobai/shared";
 import { pinCommit, repoSource, type EvalRepo } from "./repos.js";
 
 export const environmentFile = (repo: EvalRepo) =>

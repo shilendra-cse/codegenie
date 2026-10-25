@@ -1,5 +1,5 @@
-import type { AgentResult } from "@codegenie/agent";
-import type { FinalRunStatus, SetupResult } from "@codegenie/shared";
+import type { AgentResult } from "@hobai/agent";
+import type { FinalRunStatus, SetupResult } from "@hobai/shared";
 import type { Diff } from "../stages/changes/index.js";
 import type { ChangeSet } from "../stages/deliver/index.js";
 import type { VerifyResult } from "../stages/verify/index.js";

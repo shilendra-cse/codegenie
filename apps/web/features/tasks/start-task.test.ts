@@ -1,5 +1,6 @@
-import type { ProjectResponse } from "@codegenie/shared";
+import type { ProjectResponse } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { ApiError } from "@/lib/api/client";
 import { defaultProjectId, startTaskError, taskReadiness } from "./start-task";
 
@@ -104,12 +105,12 @@ describe("startTaskError", () => {
     [
       new ApiError(
         503,
-        "CodeGenie can't take new work right now. Try again in a moment.",
+        `${PRODUCT_NAME} can't take new work right now. Try again in a moment.`,
         "QUEUE_UNAVAILABLE",
       ),
       {
         message:
-          "CodeGenie can't take new work right now. Try again in a moment.",
+          `${PRODUCT_NAME} can't take new work right now. Try again in a moment.`,
         fix: null,
       },
     ],

@@ -1,4 +1,4 @@
-import type { RunDiff } from "@codegenie/shared";
+import type { RunDiff } from "@hobai/shared";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 

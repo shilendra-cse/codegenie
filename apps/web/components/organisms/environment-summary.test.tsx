@@ -1,4 +1,4 @@
-import type { EnvironmentResponse } from "@codegenie/shared";
+import type { EnvironmentResponse } from "@hobai/shared";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EnvironmentSummary } from "./environment-summary";

@@ -1,5 +1,5 @@
-import type { Sandbox } from "@codegenie/sandbox";
-import type { StepResult } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { StepResult } from "@hobai/shared";
 import { lastLines, runLogged, type LoggedRun } from "../lib/run-logged.js";
 import type { DraftStep } from "./draft/draft.js";
 

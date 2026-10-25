@@ -1,4 +1,4 @@
-import type { RunEvent } from "@codegenie/shared";
+import type { RunEvent } from "@hobai/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { taskKey } from "@/features/tasks/api";

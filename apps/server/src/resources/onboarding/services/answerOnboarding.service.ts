@@ -1,9 +1,9 @@
-import { type Db, findOnboardingQuestion } from "@codegenie/db";
+import { type Db, findOnboardingQuestion } from "@hobai/db";
 import {
   ANSWER_CHANNEL,
   type AnswerOnboardingInput,
   type OnboardingAnswerMessage,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import { HttpError } from "@/lib/http-error";
 import type { Publisher } from "../../runs/services/cancelRun.service";
 import { toOnboardingQuestion } from "../onboarding.types";

@@ -1,7 +1,7 @@
 import type { Server } from "node:http";
 import { config } from "@/config/index.js";
 import { db } from "@/db/index.js";
-import { pingDatabase } from "@codegenie/db";
+import { pingDatabase } from "@hobai/db";
 import { createApp } from "@/app.js";
 import { logger } from "./lib/logger.js";
 import { redis } from "./lib/redis.js";

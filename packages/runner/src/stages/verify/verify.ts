@@ -1,5 +1,5 @@
-import type { Sandbox } from "@codegenie/sandbox";
-import type { Check, CheckResult } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { Check, CheckResult } from "@hobai/shared";
 import { runChecks } from "../../environment/checks.js";
 import { compareChecks, type ComparedCheck } from "./compare.js";
 

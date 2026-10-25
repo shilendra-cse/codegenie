@@ -2,7 +2,7 @@
 
 > Status: **Built** · Last updated: 2026-10-25 · Code: `packages/runner`, `apps/cli` · Related: [agent.md](./agent.md), [sandbox.md](./sandbox.md), [architecture.md](./architecture.md)
 
-The runner executes a coding task end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@codegenie/agent`, which the runner calls.
+The runner executes a coding task end to end: get the repository into a sandbox, prepare it, run the agent, verify the result and deliver it. It contains **no AI logic of its own**: everything it does is deterministic. The AI work happens in `@hobai/agent`, which the runner calls.
 
 The CLI (`apps/cli`) and the worker (`apps/worker`) both use the runner, so a local run behaves exactly like production.
 
@@ -55,7 +55,7 @@ pnpm agent:run   --repo https://github.com/org/repo.git --ref main --task-file t
 ```
 
 - Configuration in `apps/cli/.env`: `OPENAI_API_KEY`, `AGENT_MODEL` (default `openai:gpt-6-luna`).
-- Environments are saved per repository in `~/.codegenie/environments/` (last 5 versions; [environment.md](./environment.md)). `agent:run` stops with the `agent:setup` command when a repository has none, and marks the active version as needing attention when setup reports a problem.
+- Environments are saved per repository in `~/.hobai/environments/` (last 5 versions; [environment.md](./environment.md)). `agent:run` stops with the `agent:setup` command when a repository has none, and marks the active version as needing attention when setup reports a problem.
 - `agent:run` options: `--model`, `--max-steps`, `--max-cost`, `--timeout`, `--environment <file>` (use a file instead of the saved environment), `--no-baseline-checks`, `--patch`, `--keep`, `--json`.
 - `agent:setup` options: `--ref`, `--model` (the setup agent's model), `--yes` (recommended answers), `--save <file>` (also write a copy), `--show`.
 - Relative paths resolve against the folder the command was run from.
@@ -69,7 +69,7 @@ pnpm agent:run   --repo https://github.com/org/repo.git --ref main --task-file t
 `agent:run`, `agent:setup` and `pnpm eval` share one look:
 
 ```
-◆ CodeGenie · gpt-6-luna · ../BuyerBook
+◆ hobai · gpt-6-luna · ../BuyerBook
 │ Task: Reject budgetMax below budgetMin
 │
 ◇ Setup ────────────────────────────────────────

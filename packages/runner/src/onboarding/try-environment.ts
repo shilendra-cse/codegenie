@@ -1,5 +1,5 @@
-import type { Sandbox } from "@codegenie/sandbox";
-import type { Check, StepResult, TryResult } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { Check, StepResult, TryResult } from "@hobai/shared";
 import { applySteps } from "../environment/apply.js";
 import { runChecks } from "../environment/checks.js";
 import type { DraftStep } from "../environment/draft/draft.js";

@@ -1,9 +1,10 @@
-import type { ApiErrorBody, ApiErrorCode, ApiSuccess } from "@codegenie/shared";
+import type { ApiErrorBody, ApiErrorCode, ApiSuccess } from "@hobai/shared";
 import axios, {
   type AxiosAdapter,
   type AxiosInstance,
   isAxiosError,
 } from "axios";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 
 export class ApiError extends Error {
   constructor(
@@ -23,7 +24,7 @@ export type ApiClientOptions = {
 };
 
 const UNREACHABLE =
-  "Couldn't reach CodeGenie. Check your connection and try again.";
+  `Couldn't reach ${PRODUCT_NAME}. Check your connection and try again.`;
 
 function toApiError(error: unknown, onUnauthorized: () => void): ApiError {
   if (!isAxiosError<Partial<ApiErrorBody>>(error) || !error.response) {

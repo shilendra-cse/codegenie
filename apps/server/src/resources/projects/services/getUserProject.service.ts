@@ -1,6 +1,6 @@
-import { type Db, findUserProject } from "@codegenie/db";
+import { type Db, findUserProject } from "@hobai/db";
 import { HttpError } from "@/lib/http-error";
-import type { ProjectResponse } from "@codegenie/shared";
+import type { ProjectResponse } from "@hobai/shared";
 import { toProjectResponse } from "../projects.types";
 
 export async function getUserProject(

@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Alert } from "@/components/atoms/alert";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -27,7 +28,7 @@ export function SetupOutcome(props: SetupOutcomeProps) {
             Set up {props.projectName}&apos;s environment
           </span>
           <span className="text-muted-foreground">
-            CodeGenie works in a fresh sandbox: it detects how{" "}
+            {PRODUCT_NAME} works in a fresh sandbox: it detects how{" "}
             {props.projectName} installs, runs its lint, type-check and tests,
             and fixes what it can. The result is saved and every task starts
             from it.

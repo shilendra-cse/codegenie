@@ -1,5 +1,5 @@
-import { forgetWebhookDelivery, recordWebhookDelivery } from "@codegenie/db";
-import { verifyWebhookSignature } from "@codegenie/github";
+import { forgetWebhookDelivery, recordWebhookDelivery } from "@hobai/db";
+import { verifyWebhookSignature } from "@hobai/github";
 import type { RequestHandler } from "express";
 import { handleGithubEvent, type WebhookDeps } from "./github.webhook-events";
 

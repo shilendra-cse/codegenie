@@ -1,12 +1,13 @@
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { EnvironmentConfig } from "@codegenie/shared";
+import type { EnvironmentConfig } from "@hobai/shared";
 import { afterAll, describe, expect, it } from "vitest";
 import {
   defaultStoreDir,
   EnvironmentFileError,
   FileEnvironmentStore,
+  HOME_ENV,
   MAX_VERSIONS,
 } from "./file-store.js";
 
@@ -86,11 +87,11 @@ describe("FileEnvironmentStore", () => {
     await expect(s.load(KEY)).rejects.toThrow(/github\.com__acme__app\.json/);
   });
 
-  it("lives under CODEGENIE_HOME when it's set", () => {
-    const before = process.env.CODEGENIE_HOME;
-    process.env.CODEGENIE_HOME = "/tmp/cg-home";
+  it("lives under the home env var when it's set", () => {
+    const before = process.env[HOME_ENV];
+    process.env[HOME_ENV] = "/tmp/cg-home";
     expect(defaultStoreDir()).toBe("/tmp/cg-home/environments");
-    if (before === undefined) delete process.env.CODEGENIE_HOME;
-    else process.env.CODEGENIE_HOME = before;
+    if (before === undefined) delete process.env[HOME_ENV];
+    else process.env[HOME_ENV] = before;
   });
 });

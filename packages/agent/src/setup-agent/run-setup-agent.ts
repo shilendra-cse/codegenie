@@ -1,10 +1,10 @@
-import type { Sandbox } from "@codegenie/sandbox";
+import type { Sandbox } from "@hobai/sandbox";
 import type {
   EnvironmentDecision,
   EnvironmentProposal,
   TryResult,
   UserChannel,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 import type { LoopResult } from "../loop/agent-result.js";
 import type { Emit } from "../loop/events.js";
 import { createDeadline } from "../loop/deadline.js";

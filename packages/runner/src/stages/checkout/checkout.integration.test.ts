@@ -1,4 +1,4 @@
-import { dockerSandboxOrSkip } from "@codegenie/sandbox/testing";
+import { dockerSandboxOrSkip } from "@hobai/sandbox/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { gitAuthEnv } from "../../lib/git-auth.js";
 import { checkoutRepo } from "./checkout.js";

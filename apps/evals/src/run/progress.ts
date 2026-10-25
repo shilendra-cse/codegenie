@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { RunEvent } from "@codegenie/shared";
+import type { RunEvent } from "@hobai/shared";
 import {
   clock,
   cost,
@@ -8,7 +8,7 @@ import {
   plural,
   spinnerFrame,
   type Style,
-} from "@codegenie/terminal";
+} from "@hobai/terminal";
 import type { TaskResult } from "./run-eval-task.js";
 
 const STAGE: Record<string, string> = {

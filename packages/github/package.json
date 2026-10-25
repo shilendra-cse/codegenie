@@ -1,5 +1,5 @@
 {
-  "name": "@codegenie/github",
+  "name": "@hobai/github",
   "version": "0.0.0",
   "private": true,
   "description": "GitHub App access shared by the server and the worker: repo-scoped installation tokens, API clients, the bot identity, webhook signatures",

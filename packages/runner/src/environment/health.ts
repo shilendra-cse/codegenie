@@ -1,6 +1,6 @@
 import path from "node:path";
-import type { Sandbox } from "@codegenie/sandbox";
-import type { EnvironmentConfig } from "@codegenie/shared";
+import type { Sandbox } from "@hobai/sandbox";
+import type { EnvironmentConfig } from "@hobai/shared";
 import type { PackageJson } from "./draft/node/package-json.js";
 import { findLayout } from "./draft/node/projects.js";
 import { RepoReader } from "./draft/repo-reader.js";

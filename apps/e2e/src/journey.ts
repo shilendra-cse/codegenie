@@ -1,4 +1,5 @@
-import type { ScriptedStep } from "@codegenie/agent/testing";
+import type { ScriptedStep } from "@hobai/agent/testing";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 
 /** What the scripted models say during the journey, shared by the worker and the test that checks it. */
 export const JOURNEY = {
@@ -14,10 +15,10 @@ export const JOURNEY = {
     check: { name: "test", cwd: ".", command: "grep -q Hello README" },
   },
   task: {
-    prompt: "Add a greeting from CodeGenie to the README.",
+    prompt: `Add a greeting from ${PRODUCT_NAME} to the README.`,
     title: "Add a greeting to the README",
-    readme: "Hello World!\nHello from CodeGenie.\n",
-    summary: "Added a greeting from CodeGenie to the README.",
+    readme: `Hello World!\nHello from ${PRODUCT_NAME}.\n`,
+    summary: `Added a greeting from ${PRODUCT_NAME} to the README.`,
   },
   prNumber: 7,
 } as const;

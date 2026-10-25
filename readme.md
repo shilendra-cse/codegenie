@@ -1,17 +1,18 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/white/codegenie_logo_white_transparent.png">
-    <img alt="CodeGenie" src="apps/web/public/brand/black/codegenie_logo_transparent.png" width="360">
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/white/hobai-white.png">
+    <img alt="hobai" src="apps/web/public/brand/black/hobai-black.png" width="220">
   </picture>
 </p>
 
 <p align="center">
   <b>Describe a coding task. Get a pull request.</b><br>
-  An autonomous coding agent that does the work in an isolated cloud sandbox and opens the PR for you.
+  An autonomous coding agent that does the work in an isolated cloud sandbox and opens the PR for you.<br>
+  <sub>hobai (formerly CodeGenie)</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/shilendra-cse/codegenie/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/shilendra-cse/codegenie/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/shilendra-cse/hobai/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/shilendra-cse/hobai/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <img alt="Node 24" src="https://img.shields.io/badge/node-24-339933?logo=node.js&logoColor=white">
   <img alt="pnpm 10" src="https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
@@ -27,11 +28,11 @@
 
 ## How it works
 
-1. **Connect GitHub.** Sign in with GitHub and install the CodeGenie App on the repositories it may work on.
-2. **Set up once.** CodeGenie works out how to install and check each repository, tries it, and asks you a multiple-choice question only when it can't decide. Every task replays that setup.
+1. **Connect GitHub.** Sign in with GitHub and install the hobai App on the repositories it may work on.
+2. **Set up once.** hobai works out how to install and check each repository, tries it, and asks you a multiple-choice question only when it can't decide. Every task replays that setup.
 3. **Describe a task.** "Add a /health endpoint with a test."
 4. **Watch it work.** The agent reads, edits and runs commands in its own sandbox; you follow every step live.
-5. **Get the PR.** A pull request from `codegenie[bot]` with a summary and the check results: ready when the checks pass, a draft when they don't.
+5. **Get the PR.** A pull request from `hobai[bot]` with a summary and the check results: ready when the checks pass, a draft when they don't.
 
 ```mermaid
 flowchart LR
@@ -114,7 +115,7 @@ Run the agent on a repository:
 
 ```bash
 pnpm sandbox:build-image   # once, and after sandbox image changes
-pnpm agent:setup --repo ../my-project      # once per repository; saved in ~/.codegenie
+pnpm agent:setup --repo ../my-project      # once per repository; saved in ~/.hobai
 pnpm agent:setup --repo ../my-project --show
 pnpm agent:run --repo ../my-project --task "Add a /health endpoint with a test"
 pnpm agent:run --help      # all options
@@ -128,7 +129,7 @@ Sign in at http://localhost:3000/signin.
 | Command | What it does |
 |---|---|
 | `pnpm migrate` | Apply database migrations |
-| `pnpm --filter @codegenie/db generate` | Write a migration after a schema change (`packages/db/src/schema/`) |
+| `pnpm --filter @hobai/db generate` | Write a migration after a schema change (`packages/db/src/schema/`) |
 | `pnpm db:studio` | Browse the database (Drizzle Studio) |
 | `pnpm sandbox:build-snapshot` | Build the Daytona snapshot, once per account (reads `apps/worker/.env`) |
 | `pnpm sandbox:clean` | Remove leftover local sandbox containers |

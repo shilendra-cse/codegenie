@@ -1,4 +1,4 @@
-import type { CheckStatus, RunEvent } from "@codegenie/shared";
+import type { CheckStatus, RunEvent } from "@hobai/shared";
 import { oneLine } from "./format.js";
 import { line, section } from "./layout.js";
 import type { Style } from "./style.js";

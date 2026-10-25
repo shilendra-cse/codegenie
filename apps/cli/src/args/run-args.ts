@@ -1,7 +1,7 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
-import type { AgentLimits } from "@codegenie/agent";
-import type { RepoSource } from "@codegenie/runner";
+import type { AgentLimits } from "@hobai/agent";
+import type { RepoSource } from "@hobai/runner";
 import {
   parseSource,
   positiveNumber,

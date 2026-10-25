@@ -1,5 +1,5 @@
-import type { RunResult } from "@codegenie/runner";
-import { checkKey } from "@codegenie/shared";
+import type { RunResult } from "@hobai/runner";
+import { checkKey } from "@hobai/shared";
 import type { Grade } from "./grade.js";
 
 /** Passes when every listed check (name@cwd) passes after the agent's changes. */

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { config as loadDotenv } from "dotenv";
-import { resolveModel, type ResolvedModel } from "@codegenie/agent";
-import { DEFAULT_AGENT_MODEL } from "@codegenie/shared";
+import { resolveModel, type ResolvedModel } from "@hobai/agent";
+import { DEFAULT_AGENT_MODEL } from "@hobai/shared";
 import { z } from "zod";
 
 export const ENV_FILE = path.join(import.meta.dirname, "..", ".env");

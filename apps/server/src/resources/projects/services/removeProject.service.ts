@@ -1,4 +1,4 @@
-import { type Db, deleteProjectUnlessBusy } from "@codegenie/db";
+import { type Db, deleteProjectUnlessBusy } from "@hobai/db";
 import { HttpError } from "@/lib/http-error";
 import { getUserProject } from "./getUserProject.service";
 

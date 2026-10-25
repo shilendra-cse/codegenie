@@ -1,6 +1,7 @@
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { EnvironmentProposal, TryResult } from "@codegenie/shared";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { EnvironmentProposal, TryResult } from "@hobai/shared";
 import { describe, expect, it } from "vitest";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { scriptedModel, type ScriptedStep } from "../testing/mock-model.js";
 import { runSetupAgent, type RunSetupAgentOptions } from "./run-setup-agent.js";
 
@@ -126,7 +127,9 @@ describe("runSetupAgent", () => {
     const { model, run } = setup([finish(drafted)]);
     await run();
     const [system, first] = model.doStreamCalls[0]!.prompt;
-    expect(JSON.stringify(system)).toContain("You are CodeGenie's setup agent");
+    expect(JSON.stringify(system)).toContain(
+      `You are ${PRODUCT_NAME}'s setup agent`,
+    );
     expect(JSON.stringify(system)).toContain("server");
     const brief = JSON.stringify(first);
     expect(brief).toContain("npm run lint");

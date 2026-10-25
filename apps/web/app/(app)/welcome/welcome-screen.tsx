@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { InstallNotice } from "@/components/molecules/install-notice";
 import { RepositoryPicker } from "@/components/organisms/repository-picker";
@@ -118,7 +119,7 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
         <p className="text-[15px] text-muted-foreground">
           {firstTaskRunning
             ? "You'll get a pull request to review."
-            : "A few steps and CodeGenie is ready to work on your code."}
+            : `A few steps and ${PRODUCT_NAME} is ready to work on your code.`}
         </p>
         {firstTaskRunning && firstTask && (
           <Button asChild variant="primary" glow className="mt-2 self-start">
@@ -129,7 +130,7 @@ export function WelcomeScreen({ github }: WelcomeScreenProps) {
       <InstallNotice outcome={outcome} />
       <WelcomeChecklist {...checklistView} />
       <p className="text-[13px] text-faint">
-        CodeGenie works best on JavaScript and TypeScript repositories whose
+        {PRODUCT_NAME} works best on JavaScript and TypeScript repositories whose
         install, lint, type-check and tests run without outside services.
       </p>
     </div>

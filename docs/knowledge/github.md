@@ -2,7 +2,7 @@
 
 > Status: **Built** · Last updated: 2026-10-25 · Code: `packages/github` · Related: [architecture.md](./architecture.md) (D3), [development-plan.md](./development-plan.md) (Phase 3)
 
-CodeGenie reaches GitHub through **one GitHub App**: users sign in with it, install it on the repositories CodeGenie may work on, and the worker gets short-lived tokens from it to clone, commit and open pull requests as `<app-slug>[bot]`. No user's own GitHub token is used to touch repositories.
+hobai reaches GitHub through **one GitHub App**: users sign in with it, install it on the repositories hobai may work on, and the worker gets short-lived tokens from it to clone, commit and open pull requests as `<app-slug>[bot]`. No user's own GitHub token is used to touch repositories.
 
 ## 1. How access works
 
@@ -19,7 +19,7 @@ installation token ghs_…  (one repository, only those permissions, expires wit
 git clone, REST API calls (commits, pull requests)
 ```
 
-- **App** (registered once): its ID and private key prove "this is CodeGenie". The private key never leaves the server and the worker.
+- **App** (registered once): its ID and private key prove "this is hobai". The private key never leaves the server and the worker.
 - **Installation**: an account or organization allowing the App into some or all of its repositories. Users choose; "All repositories" is one click.
 - **Installation token**: what actually opens a repository. Minted per use, never stored.
 
@@ -33,7 +33,7 @@ git clone, REST API calls (commits, pull requests)
 
 Every token is scoped to **one repository** and expires within an hour. `repoToken` reuses a token until it has less than 5 minutes left. The agent has a shell in the sandbox, so a token is never left where it could read it (`.git/config`, the remote URL, the environment).
 
-## 3. `@codegenie/github`
+## 3. `@hobai/github`
 
 | Export | What it does |
 |---|---|
@@ -51,7 +51,7 @@ Every token is scoped to **one repository** and expires within an hour. `repoTok
 | `listUserInstallations(userToken)` · `listInstallationRepos(userToken, installationId)` | Through the user's token: the installations they can access, and an installation's repositories (`null` when they can't access it) |
 | `listRepoBranches(userToken, owner, repo, { limit? })` | The repository's branch names (`{ names, truncated }`); `null` when the user can't see it |
 
-Tests answer with GitHub's response shapes and sign real JWTs; nothing calls GitHub. `@codegenie/github/testing` has the fake (`fakeGithub`, `fakeGithubClient`) for other packages' tests, and the fake GitHub for the end-to-end test: `E2E_GITHUB` (one user, one installation, the public `octocat/Hello-World`) and `e2eGithubFetch`, a `fetch` that answers `github.com` and `api.github.com` itself. `apps/server/src/e2e.ts` installs it before starting the API; it requires `E2E_GITHUB_INSTALLED_FLAG` (a file whose existence means the App is installed) and generates a throwaway App private key.
+Tests answer with GitHub's response shapes and sign real JWTs; nothing calls GitHub. `@hobai/github/testing` has the fake (`fakeGithub`, `fakeGithubClient`) for other packages' tests, and the fake GitHub for the end-to-end test: `E2E_GITHUB` (one user, one installation, the public `octocat/Hello-World`) and `e2eGithubFetch`, a `fetch` that answers `github.com` and `api.github.com` itself. `apps/server/src/e2e.ts` installs it before starting the API; it requires `E2E_GITHUB_INSTALLED_FLAG` (a file whose existence means the App is installed) and generates a throwaway App private key.
 
 ## 4. Registering the dev App
 
@@ -59,7 +59,7 @@ On GitHub: **Settings → Developer settings → GitHub Apps → New GitHub App*
 
 | Field | Value |
 |---|---|
-| GitHub App name | unique on GitHub, e.g. `codegenie-dev-<you>`; it becomes the bot's name (`<name>[bot]`) |
+| GitHub App name | unique on GitHub, e.g. `hobai-dev-<you>`; it becomes the bot's name (`<name>[bot]`) |
 | Homepage URL | `http://localhost:3000` |
 | Callback URL | `http://localhost:3000/api/auth/callback/github` (sign-in, through the web app's `/api` rewrite; must match `BETTER_AUTH_URL`) |
 | Expire user authorization tokens | checked |
@@ -156,7 +156,7 @@ sandbox (runner, deliver stage)                 worker (deliverToGithub)
 ```
 
 - **What's in the commit:** only the agent's changes since the baseline, on top of the cloned commit. The baseline commit and files that only setup or the checks wrote stay out; a file both setup and the agent changed goes in with its final content.
-- **Branch:** `codegenie/<slug of the task title>-<first 4 of the task id>`, never the default branch. The title is the short one the model writes at the start of the task's first run ([agent.md](./agent.md) §10), else the prompt's first line; delivery waits for it. **Title:** the agent's `finish_task` title, else the task title; it's the commit subject and the PR title. **Body:** the agent's summary, a checks table, the changed files, notes for an incomplete run, and a link to the task in CodeGenie (`FRONTEND_URL/tasks/:id`, left out when `FRONTEND_URL` isn't set).
+- **Branch:** `hobai/<slug of the task title>-<first 4 of the task id>`, never the default branch. The title is the short one the model writes at the start of the task's first run ([agent.md](./agent.md) §10), else the prompt's first line; delivery waits for it. **Title:** the agent's `finish_task` title, else the task title; it's the commit subject and the PR title. **Body:** the agent's summary, a checks table, the changed files, notes for an incomplete run, and a link to the task in hobai (`FRONTEND_URL/tasks/:id`, left out when `FRONTEND_URL` isn't set).
 - **Draft PRs** aren't available in private repositories on GitHub Free; GitHub refuses them, and the PR is opened ready with a "Not ready to merge" note.
 - **Limits:** 1,000 files and 50 MB per delivery; submodule changes and non-UTF-8 file names can't be delivered. Any failure fails the run with `deliver_failed`; its diff is still saved.
 - **Recorded:** the task's `branch_name` once the branch exists, then `pr_number`, `pr_url` and `pr_open`; the run's `commit_sha`; events `branch_created`, `git_push`, `pr_opened`.

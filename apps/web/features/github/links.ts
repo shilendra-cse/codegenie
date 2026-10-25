@@ -1,4 +1,4 @@
-import type { GitHubInstallation } from "@codegenie/shared";
+import type { GitHubInstallation } from "@hobai/shared";
 
 export type InstallReturn = "add-repo";
 

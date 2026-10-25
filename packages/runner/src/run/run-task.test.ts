@@ -1,6 +1,6 @@
-import { scriptedModel } from "@codegenie/agent/testing";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
-import type { RunEvent } from "@codegenie/shared";
+import { scriptedModel } from "@hobai/agent/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
+import type { RunEvent } from "@hobai/shared";
 import { describe, expect, it, vi } from "vitest";
 import type { ChangeSet } from "../stages/deliver/index.js";
 import { runTask, type RunTaskOptions } from "./run-task.js";
@@ -266,7 +266,7 @@ describe("runTask", () => {
   });
 
   describe("delivery", () => {
-    const delivered = { branchName: "codegenie/1-set-a", sha: "c0ffee" };
+    const delivered = { branchName: "hobai/1-set-a", sha: "c0ffee" };
 
     it("hands the changes over after verify, before the sandbox goes", async () => {
       const { sandbox, destroyed } = fakeSandbox();

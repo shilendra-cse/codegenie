@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { Logo } from "@/components/atoms/logo";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
@@ -9,7 +10,7 @@ export function SiteHeader({ signedIn }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1160px] flex-wrap items-center gap-4 px-6 py-3.5">
-        <Link href="/" aria-label="CodeGenie home">
+        <Link href="/" aria-label={`${PRODUCT_NAME} home`}>
           <Logo />
         </Link>
         <nav aria-label="Main" className="ml-4 flex flex-1 gap-1">
@@ -22,7 +23,7 @@ export function SiteHeader({ signedIn }: SiteHeaderProps) {
         </nav>
         {signedIn ? (
           <Button asChild variant="primary">
-            <Link href={APP_HOME}>Open CodeGenie</Link>
+            <Link href={APP_HOME}>Open {PRODUCT_NAME}</Link>
           </Button>
         ) : (
           <>

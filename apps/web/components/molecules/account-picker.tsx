@@ -1,4 +1,4 @@
-import type { GitHubInstallation } from "@codegenie/shared";
+import type { GitHubInstallation } from "@hobai/shared";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { GitHubMark } from "@/components/atoms/github-mark";

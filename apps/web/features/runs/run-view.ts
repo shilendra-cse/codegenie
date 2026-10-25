@@ -4,7 +4,7 @@ import type {
   FinalRunStatus,
   RunEvent,
   RunStage,
-} from "@codegenie/shared";
+} from "@hobai/shared";
 
 /** The stages the page shows; Prepare covers the sandbox and the clone. */
 export type StageId = "prepare" | "setup" | "working" | "checks" | "pr";

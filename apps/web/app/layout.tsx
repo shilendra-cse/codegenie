@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { PRODUCT_NAME } from "@hobai/shared/brand";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -11,9 +12,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodeGenie",
+  title: PRODUCT_NAME,
   description:
-    "Describe the change, review the pull request. CodeGenie works on your GitHub repositories in an isolated sandbox.",
+    `Describe the change, review the pull request. ${PRODUCT_NAME} works on your GitHub repositories in an isolated sandbox.`,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

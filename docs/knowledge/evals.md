@@ -44,7 +44,7 @@ the repository's saved environment (onboarded once with the recommended answers)
 
 | Grader | How | For |
 |---|---|---|
-| `hidden-tests` | test files the agent never saw are copied into the repository (`target`, default `codegenie-hidden/`) and `command` runs in `cwd`; exit 0 passes | most tasks |
+| `hidden-tests` | test files the agent never saw are copied into the repository (`target`, default `hobai-hidden/`) and `command` runs in `cwd`; exit 0 passes | most tasks |
 | `checks` | the listed checks (`name@cwd`) must pass after the agent's changes | bug fixes in repositories without tests |
 | `manual` | nothing automatic; the report asks for a review of the saved diff | open-ended tasks |
 
@@ -71,7 +71,7 @@ apps/evals/repos/<repo>/
 ```json
 {
   "task": "paginate() in src/paginate.ts returns the wrong items: …",
-  "grader": { "type": "hidden-tests", "command": "node --test 'codegenie-hidden/*.test.*'" }
+  "grader": { "type": "hidden-tests", "command": "node --test 'hobai-hidden/*.test.*'" }
 }
 ```
 

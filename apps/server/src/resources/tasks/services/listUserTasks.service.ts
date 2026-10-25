@@ -1,5 +1,5 @@
-import { countUserTasks, type Db, findUserTasks } from "@codegenie/db";
-import type { TaskFilter, TaskPage } from "@codegenie/shared";
+import { countUserTasks, type Db, findUserTasks } from "@hobai/db";
+import type { TaskFilter, TaskPage } from "@hobai/shared";
 import { toTaskListItem } from "../tasks.types";
 
 const PAGE_SIZE = 50;

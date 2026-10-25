@@ -4,9 +4,9 @@ import {
   runs,
   projectEnvironments,
   type Db,
-} from "@codegenie/db";
-import { insertRun, testDatabaseOrSkip } from "@codegenie/db/testing";
-import type { RunResult } from "@codegenie/runner";
+} from "@hobai/db";
+import { insertRun, testDatabaseOrSkip } from "@hobai/db/testing";
+import type { RunResult } from "@hobai/runner";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { createRunRecord, RunStateError } from "./run-record.js";

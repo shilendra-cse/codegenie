@@ -1,4 +1,4 @@
-import type { TryResult } from "@codegenie/shared";
+import type { TryResult } from "@hobai/shared";
 
 const where = (item: { name: string; cwd: string }) =>
   item.cwd === "." ? `"${item.name}"` : `"${item.name}" (${item.cwd})`;

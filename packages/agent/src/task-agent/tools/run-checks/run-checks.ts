@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { wrapWithLog } from "../../../tools/core/output-log.js";
 import { truncateForModel } from "../../../lib/truncate.js";
-import { CHECK_NAMES, type Check } from "@codegenie/shared";
+import { CHECK_NAMES, type Check } from "@hobai/shared";
 import type { ToolContext } from "../../../tools/core/context.js";
 import { runChecksDescription } from "./description.js";
 import { runTool } from "../../../tools/core/run-tool.js";

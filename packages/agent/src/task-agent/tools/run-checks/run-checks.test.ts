@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FakeSandbox } from "@codegenie/sandbox/testing";
+import { FakeSandbox } from "@hobai/sandbox/testing";
 import { createToolContext } from "../../../tools/core/context.js";
 import { LOG_DIR } from "../../../tools/core/workspace-path.js";
 import { runChecks } from "./run-checks.js";
