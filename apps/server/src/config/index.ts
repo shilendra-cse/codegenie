@@ -36,7 +36,7 @@ const envSchema = z.object({
 
   AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
 
-  BETTER_AUTH_URL: z.string().default("http://localhost:3001"),
+  BETTER_AUTH_URL: z.string().default("http://localhost:3000"),
   BETTER_AUTH_SECRET: z.string().default("your-better-auth-secret"),
 });
 
