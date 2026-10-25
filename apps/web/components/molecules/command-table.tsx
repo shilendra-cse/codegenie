@@ -28,10 +28,18 @@ export function CommandTable({ title, commands, ticked }: CommandTableProps) {
                     <Icon icon={Check} className="text-ok" />
                   </td>
                 )}
-                <td className={ticked ? "px-3 py-2" : "py-2 pr-3 pl-[18px]"}>
+                <td
+                  className={
+                    ticked
+                      ? "w-[120px] px-3 py-2"
+                      : "w-[120px] py-2 pr-3 pl-[18px]"
+                  }
+                >
                   {name}
                 </td>
-                <td className="px-3 py-2 font-mono text-faint">{cwd}</td>
+                <td className="w-[120px] px-3 py-2 font-mono text-faint">
+                  {cwd}
+                </td>
                 <td className="py-2 pr-[18px] pl-3 font-mono">{command}</td>
               </tr>
             ))}

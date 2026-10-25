@@ -36,7 +36,7 @@ export function SettingsScreen({ projectId }: SettingsScreenProps) {
   const { installation } = project;
 
   return (
-    <div className="flex w-full max-w-[900px] flex-col gap-5 px-6 pt-5 pb-12">
+    <div className="mx-auto flex w-full max-w-[780px] flex-col gap-5 px-6 pt-8 pb-20">
       <div className="rounded-lg border border-border bg-card">
         <Field label="Repository">
           <a

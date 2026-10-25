@@ -87,7 +87,7 @@ export function EnvironmentScreen({ projectId, view }: EnvironmentScreenProps) {
 
   const unfinished = unfinishedReason(onboarding);
   return (
-    <div className="w-full max-w-[900px] px-6 pt-5 pb-12">
+    <div className="mx-auto w-full max-w-[780px] px-6 pt-8 pb-20">
       <EnvironmentSummary
         environment={active}
         savedAgo={timeAgo(active.savedAt)}

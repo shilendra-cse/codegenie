@@ -53,7 +53,7 @@ export function ProjectTabs({
       </TopBar>
       <nav
         aria-label="Project"
-        className="flex gap-1 overflow-x-auto border-b border-border bg-background px-6"
+        className="flex gap-1 border-b border-border bg-background px-6"
       >
         {tabs.map((tab) => (
           <Link
