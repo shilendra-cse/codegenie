@@ -60,6 +60,7 @@ async function main() {
     github: createGithubApp(config.github),
     answers: createAnswerRouter(),
     answerTimeoutMs: config.answerTimeoutMs,
+    frontendUrl: config.frontendUrl,
   };
   const consumer = await startConsumer({
     connection: redis.queue,

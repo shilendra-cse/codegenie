@@ -13,6 +13,7 @@ import { commitMessage, isDraft, pullRequestBody } from "./pull-request.js";
 export type DeliverDeps = {
   db: Db;
   github: Pick<GithubApp, "repoClient">;
+  frontendUrl?: string;
 };
 
 export type DeliveryTarget = {
@@ -62,19 +63,20 @@ export function deliverToGithub(
       head: branch,
       base: task.baseBranch,
     };
+    const taskUrl = deps.frontendUrl && `${deps.frontendUrl}/tasks/${task.id}`;
     const draft = isDraft(run);
     let pullRequest;
     try {
       ({ data: pullRequest } = await client.rest.pulls.create({
         ...request,
-        body: pullRequestBody(run),
+        body: pullRequestBody(run, { taskUrl }),
         draft,
       }));
     } catch (error) {
       if (!draft || !draftPullRequestsUnavailable(error)) throw error;
       ({ data: pullRequest } = await client.rest.pulls.create({
         ...request,
-        body: pullRequestBody(run, { draftUnavailable: true }),
+        body: pullRequestBody(run, { draftUnavailable: true, taskUrl }),
       }));
     }
     await setTaskPullRequest(deps.db, task.id, {

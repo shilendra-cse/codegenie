@@ -29,7 +29,7 @@ function truncate(text: string, max: number) {
 
 export function pullRequestBody(
   run: DeliverableRun,
-  options: { draftUnavailable?: boolean } = {},
+  options: { draftUnavailable?: boolean; taskUrl?: string } = {},
 ) {
   const sections: string[] = [];
   if (run.agent.status === "incomplete") {
@@ -75,6 +75,10 @@ export function pullRequestBody(
   }
   sections.push(["### Changed files", "", ...listed].join("\n"));
 
-  sections.push("<sub>Opened by CodeGenie.</sub>");
+  sections.push(
+    options.taskUrl
+      ? `<sub>Opened by CodeGenie · [View the task](${options.taskUrl})</sub>`
+      : "<sub>Opened by CodeGenie.</sub>",
+  );
   return sections.join("\n\n");
 }
