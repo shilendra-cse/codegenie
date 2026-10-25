@@ -64,7 +64,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | POST | `/runs/:id/cancel` | 202 `{ outcome: "cancelled" }` for a queued run, `"stopping"` for a running one |
 | GET | `/runs/:id/events` | The run's events as a stream (server-sent events), replayed then live (§6) |
 
-A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) installation state (`accountLogin`, `suspended`, `uninstalled`) and latest setup (`id`, `status`, or `null` before the first).
+A **project** is its repository (`githubId`, `owner`, `name`), default branch, active environment (`version`, `health`, `healthReasons`, `savedAt`, or `null` until set up) installation (`id`, `accountLogin`, `accountType`, `suspended`, `uninstalled`) and latest setup (`id`, `status`, or `null` before the first).
 
 **Adding a project** checks, in order: the installation is recorded and installed (404), not suspended (409), the user has a GitHub token (401), GitHub shows the user that installation (404) and the repository in it (404). The project belongs to the signed-in user, whoever installed the App; the repository's owner, name and default branch come from GitHub at that moment.
 

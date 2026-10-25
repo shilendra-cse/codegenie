@@ -25,7 +25,13 @@ const project: ProjectResponse = {
   repo: { githubId: 1, owner: "ada", name: "dodesk" },
   defaultBranch: "main",
   environment: null,
-  installation: { accountLogin: "ada", suspended: false, uninstalled: false },
+  installation: {
+    id: 1,
+    accountLogin: "ada",
+    accountType: "user",
+    suspended: false,
+    uninstalled: false,
+  },
   setup: null,
   createdAt: "2026-10-20T08:00:00.000Z",
 };

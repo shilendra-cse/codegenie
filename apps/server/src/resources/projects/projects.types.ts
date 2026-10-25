@@ -21,7 +21,9 @@ export function toProjectResponse(project: UserProject): ProjectResponse {
         }
       : null,
     installation: {
+      id: project.installation.installationId,
       accountLogin: project.installation.accountLogin,
+      accountType: project.installation.accountType,
       suspended: project.installation.suspendedAt !== null,
       uninstalled: project.installation.uninstalledAt !== null,
     },

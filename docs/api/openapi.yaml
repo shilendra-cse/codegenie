@@ -1435,10 +1435,17 @@ components:
               format: date-time
         installation:
           type: object
-          required: [accountLogin, suspended, uninstalled]
+          required: [id, accountLogin, accountType, suspended, uninstalled]
           properties:
+            id:
+              type: integer
+              description: GitHub's id for the installation
+              example: 173633971
             accountLogin:
               type: string
+            accountType:
+              type: string
+              enum: [user, organization]
             suspended:
               type: boolean
             uninstalled:

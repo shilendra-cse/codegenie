@@ -132,7 +132,9 @@ describe.skipIf(!database)("project controllers against Postgres", () => {
               healthReasons: [],
             },
             installation: {
+              id: expect.any(Number),
               accountLogin: "acme",
+              accountType: "organization",
               suspended: false,
               uninstalled: false,
             },

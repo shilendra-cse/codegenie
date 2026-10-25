@@ -15,7 +15,13 @@ const project = (
     healthReasons: [],
     savedAt: "2026-10-24T08:00:00.000Z",
   },
-  installation: { accountLogin: "ada", suspended: false, uninstalled: false },
+  installation: {
+    id: 1,
+    accountLogin: "ada",
+    accountType: "user",
+    suspended: false,
+    uninstalled: false,
+  },
   setup: null,
   createdAt: "2026-10-24T08:00:00.000Z",
   ...overrides,
@@ -48,7 +54,9 @@ describe("taskReadiness", () => {
       "with the App suspended",
       {
         installation: {
+          id: 1,
           accountLogin: "ada",
+          accountType: "user" as const,
           suspended: true,
           uninstalled: false,
         },
@@ -61,7 +69,9 @@ describe("taskReadiness", () => {
       {
         environment: null,
         installation: {
+          id: 1,
           accountLogin: "ada",
+          accountType: "user" as const,
           suspended: false,
           uninstalled: true,
         },

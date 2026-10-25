@@ -37,7 +37,9 @@ export type ProjectResponse = {
     savedAt: string;
   } | null;
   installation: {
+    id: number;
     accountLogin: string;
+    accountType: "user" | "organization";
     suspended: boolean;
     uninstalled: boolean;
   };
