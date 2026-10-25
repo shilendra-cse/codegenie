@@ -14,8 +14,13 @@ export const createTaskSchema = z.object({
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
+export const TASK_FILTERS = ["running", "pr", "done"] as const;
+
+export type TaskFilter = (typeof TASK_FILTERS)[number];
+
 export const listTasksQuerySchema = z.object({
   projectId: z.uuid("The project id must be a UUID.").optional(),
+  filter: z.enum(TASK_FILTERS, "Not a valid filter.").optional(),
   cursor: z.uuid("Not a valid cursor.").optional(),
 });
 
@@ -49,6 +54,9 @@ export type TaskListItem = {
     status: RunStatus;
     stage: RunStage | null;
     error: RunError | null;
+    checksPassed: boolean | null;
+    filesChanged: number | null;
+    summaryLine: string | null;
   } | null;
   runCount: number;
   durationMs: number;
@@ -71,7 +79,13 @@ export type TaskDetail = TaskListItem & {
   runs: RunResponse[];
 };
 
-export type TaskPage = { tasks: TaskListItem[]; nextCursor: string | null };
+export type TaskCounts = Record<"all" | TaskFilter, number>;
+
+export type TaskPage = {
+  tasks: TaskListItem[];
+  nextCursor: string | null;
+  counts: TaskCounts;
+};
 
 export type CreatedTask = {
   task: {

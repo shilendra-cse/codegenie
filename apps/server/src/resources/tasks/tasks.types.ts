@@ -28,6 +28,17 @@ export function taskLabel(task: UserTaskListItem): TaskLabel {
   return "no_changes";
 }
 
+const MAX_SUMMARY_LINE = 200;
+
+function summaryLine(summary: string | null) {
+  const line = summary
+    ?.split("\n")
+    .filter((l) => !l.trimStart().startsWith("#"))
+    .map((l) => l.replace(/^\s*(?:[>*+-]\s+)*/, "").trim())
+    .find(Boolean);
+  return line ? line.slice(0, MAX_SUMMARY_LINE) : null;
+}
+
 const latestOf = (dates: (Date | null)[]) =>
   new Date(Math.max(...dates.map((d) => d?.getTime() ?? 0)));
 
@@ -60,6 +71,9 @@ export function toTaskListItem(task: UserTaskListItem): TaskListItem {
           error: latest.errorCode
             ? { code: latest.errorCode, message: latest.errorMessage }
             : null,
+          checksPassed: latest.checksPassed,
+          filesChanged: latest.diff?.files.length ?? null,
+          summaryLine: summaryLine(latest.summary),
         }
       : null,
     runCount: task.runs.length,

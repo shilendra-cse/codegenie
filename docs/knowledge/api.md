@@ -56,7 +56,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | GET | `/projects/:id/environments` | The saved environment versions, newest (active) first |
 | GET | `/projects/:id/branches` | `{ branches, defaultBranch, truncated }`: the repository's branch names from GitHub (with the user's token), the default first, at most 1,000 |
 | POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued |
-| GET | `/tasks?projectId=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` |
+| GET | `/tasks?projectId=&filter=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` and `counts` |
 | GET | `/tasks/:id` | A task with its messages and runs |
 | GET | `/runs/:id` | One run |
 | GET | `/runs/:id/diff` | The run's patch and files, or `null` |
@@ -71,7 +71,7 @@ A **project** is its repository (`githubId`, `owner`, `name`), default branch, a
 
 **Starting work** (a task or setup) needs the App installed and not suspended (409); a task also needs the environment set up and healthy (409). The task's title is the prompt's first line (≤ 120 characters), its base branch the project's default unless given, and its run records the server's `AGENT_MODEL`. The database is written first, then the queue; if Redis can't be reached the run is failed and the request answers 503.
 
-A **task** in a list: `id`, `title`, `project` (`id`, `owner`, `name`), `label`, `baseBranch`, `branchName`, `pullRequest` (`number`, `url`, `draft`, or `null`), `latestRun` (`id`, `status`, `stage`, `error`), `runCount`, `durationMs` and `costUsd` across runs, `createdAt`, `updatedAt` (latest activity). Its **label**, in order: latest run queued → `queued`, running → `working`; PR merged → `merged`, closed → `closed`, open → `pr_open` / `pr_draft`; latest run failed → `failed`, cancelled → `cancelled`; otherwise `no_changes` ([ui.md](./ui.md) §5). Pages are cursored by the last task's id. The task detail adds `messages` (oldest first) and `runs` (newest first).
+A **task** in a list: `id`, `title`, `project` (`id`, `owner`, `name`), `label`, `baseBranch`, `branchName`, `pullRequest` (`number`, `url`, `draft`, or `null`), `latestRun` (`id`, `status`, `stage`, `error`, `checksPassed`, `filesChanged`, and `summaryLine`, the summary's first line that isn't a heading), `runCount`, `durationMs` and `costUsd` across runs, `createdAt`, `updatedAt` (latest activity). Its **label**, in order: latest run queued → `queued`, running → `working`; PR merged → `merged`, closed → `closed`, open → `pr_open` / `pr_draft`; latest run failed → `failed`, cancelled → `cancelled`; otherwise `no_changes` ([ui.md](./ui.md) §5). Pages are cursored by the last task's id. **Filters** follow the label: `running` is queued or working; `pr` is `pr_open` / `pr_draft`; `done` is the rest. Each page carries `counts` (`all`, `running`, `pr`, `done`) across every page, for one project with `projectId`, whatever the filter. The task detail adds `messages` (oldest first) and `runs` (newest first).
 
 A **run**: `id`, `taskId`, `trigger`, `status`, `stage`, `model`, `summary`, `checksPassed`, `commitSha`, `error` (`code`, `message`, or `null`), `steps`, `inputTokens`, `outputTokens`, `costUsd`, `queuedAt`, `startedAt`, `finishedAt`, `durationMs`, `changes` (`files`, `truncated`, or `null`; the patch comes from `/runs/:id/diff`).
 

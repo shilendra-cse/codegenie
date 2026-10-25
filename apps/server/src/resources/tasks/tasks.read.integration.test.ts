@@ -14,7 +14,14 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { AuthenticatedRequest } from "@/types/base.types";
 import { createRunControllers } from "../runs/runs.controller";
 import { createTaskControllers } from "./tasks.controller";
-import type { TaskDetail, TaskListItem } from "@codegenie/shared";
+import {
+  TASK_FILTERS,
+  type TaskCounts,
+  type TaskDetail,
+  type TaskFilter,
+  type TaskLabel,
+  type TaskListItem,
+} from "@codegenie/shared";
 
 const database = await testDatabaseOrSkip("task and run reads");
 
@@ -72,6 +79,7 @@ describe.skipIf(!database)("reading tasks and runs against Postgres", () => {
     (await tasks.listTasks(request(userId, {}, query), response)).data as {
       tasks: TaskListItem[];
       nextCursor: string | null;
+      counts: TaskCounts;
     };
 
   it("labels each task from its pull request and latest run", async () => {
@@ -137,6 +145,68 @@ describe.skipIf(!database)("reading tasks and runs against Postgres", () => {
       "merged",
       "closed",
     ]);
+
+    const filterOf: Record<TaskLabel, TaskFilter> = {
+      queued: "running",
+      working: "running",
+      pr_open: "pr",
+      pr_draft: "pr",
+      merged: "done",
+      closed: "done",
+      no_changes: "done",
+      failed: "done",
+      cancelled: "done",
+    };
+    for (const filter of TASK_FILTERS) {
+      const page = await list(project.userId, { filter });
+      expect(page.tasks.map((t) => t.id).sort()).toEqual(
+        [...labels]
+          .filter(([, label]) => filterOf[label] === filter)
+          .map(([id]) => id)
+          .sort(),
+      );
+      expect(page.counts).toEqual({ all: 9, running: 2, pr: 2, done: 5 });
+    }
+    await expect(
+      list(project.userId, { filter: "needs_you" }),
+    ).rejects.toThrow();
+  });
+
+  it("gives the latest run's checks, files changed and the summary's first line", async () => {
+    const project = await insertProject(db);
+    const ended = { startedAt: new Date(), finishedAt: new Date() };
+    const done = await task(project, {
+      status: "succeeded",
+      checksPassed: true,
+      summary: "## What changed\n\n- Added GET /health.\n- Tested it.",
+      ...ended,
+    });
+    await saveRunDiff(db, done.run.id, {
+      patch: "diff --git a/a b/a",
+      files: [
+        { path: "src/health.ts", added: 12, removed: 0 },
+        { path: "src/app.ts", added: 2, removed: 1 },
+      ],
+      truncated: false,
+    });
+    const queued = await task(project);
+
+    const { tasks: listed } = await list(project.userId);
+
+    expect(listed.map((t) => t.latestRun)).toMatchObject([
+      {
+        id: queued.run.id,
+        checksPassed: null,
+        filesChanged: null,
+        summaryLine: null,
+      },
+      {
+        id: done.run.id,
+        checksPassed: true,
+        filesChanged: 2,
+        summaryLine: "Added GET /health.",
+      },
+    ]);
   });
 
   it("lists only the user's tasks, newest first, by project, a page of 50 at a time", async () => {
@@ -159,6 +229,7 @@ describe.skipIf(!database)("reading tasks and runs against Postgres", () => {
     expect(second).toEqual({
       tasks: [expect.objectContaining({ id: created[0].task.id })],
       nextCursor: null,
+      counts: { all: 51, running: 51, pr: 0, done: 0 },
     });
     expect(filtered.tasks.map((t) => t.id)).toEqual([newest.task.id]);
     expect(filtered.tasks[0]).toMatchObject({

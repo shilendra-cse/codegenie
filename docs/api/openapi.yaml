@@ -741,7 +741,7 @@ paths:
     get:
       tags: [Tasks]
       summary: The signed-in user's tasks
-      description: Newest first, 50 per page.
+      description: Newest first, 50 per page, with how many tasks each filter holds.
       operationId: listTasks
       parameters:
         - name: projectId
@@ -749,6 +749,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: filter
+          in: query
+          description: "running: the latest run is queued or running. pr: otherwise, a pull request is open (or draft). done: everything else."
+          schema:
+            type: string
+            enum: [running, pr, done]
         - name: cursor
           in: query
           description: "`nextCursor` from the previous page"
@@ -767,7 +773,7 @@ paths:
                     properties:
                       data:
                         type: object
-                        required: [tasks, nextCursor]
+                        required: [tasks, nextCursor, counts]
                         properties:
                           tasks:
                             type: array
@@ -777,6 +783,19 @@ paths:
                             type: string
                             format: uuid
                             nullable: true
+                          counts:
+                            description: Across all pages (one project's, with projectId), whatever the filter
+                            type: object
+                            required: [all, running, pr, done]
+                            properties:
+                              all:
+                                type: integer
+                              running:
+                                type: integer
+                              pr:
+                                type: integer
+                              done:
+                                type: integer
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
@@ -1454,7 +1473,7 @@ components:
         latestRun:
           type: object
           nullable: true
-          required: [id, status, stage, error]
+          required: [id, status, stage, error, checksPassed, filesChanged, summaryLine]
           properties:
             id:
               type: string
@@ -1465,6 +1484,17 @@ components:
               $ref: "#/components/schemas/RunStage"
             error:
               $ref: "#/components/schemas/RunError"
+            checksPassed:
+              type: boolean
+              nullable: true
+            filesChanged:
+              type: integer
+              nullable: true
+              description: Files in the run's diff; null without one
+            summaryLine:
+              type: string
+              nullable: true
+              description: The summary's first line that isn't a heading, at most 200 characters
         runCount:
           type: integer
         durationMs:
