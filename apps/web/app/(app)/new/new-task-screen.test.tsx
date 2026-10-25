@@ -99,6 +99,11 @@ describe("NewTaskScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
 
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/tasks/t9"));
+    // Stays busy while the task page loads, instead of flicking back to Start.
+    expect(screen.getByRole("button", { name: "Start" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
     expect(api.post).toHaveBeenCalledWith("/projects/p2/tasks", {
       prompt: "Add a /health endpoint",
       baseBranch: "main",
