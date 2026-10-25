@@ -25,8 +25,6 @@
   <a href="#documentation">Docs</a>
 </p>
 
-> **Status:** in development, working towards the MVP. See the [development plan](docs/knowledge/development-plan.md).
-
 ## How it works
 
 1. **Connect GitHub.** Sign in with GitHub and install the CodeGenie App on the repositories it may work on.
