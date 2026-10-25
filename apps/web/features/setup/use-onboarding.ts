@@ -42,8 +42,10 @@ export function useStartOnboarding(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => startOnboarding(projectId),
-    onSuccess: (onboarding) =>
-      queryClient.setQueryData(onboardingKey(projectId), onboarding),
+    onSuccess: (onboarding) => {
+      queryClient.setQueryData(onboardingKey(projectId), onboarding);
+      void queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 }
 

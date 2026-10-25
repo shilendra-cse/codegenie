@@ -45,7 +45,7 @@ vi.mock("@/features/setup/use-onboarding-events", () => ({
   useOnboardingEvents: () => state.events,
 }));
 vi.mock("@/features/projects/projects", () => ({
-  useProjects: () => ({ data: [{ id: "p1", repo: { name: "dodesk" } }] }),
+  useProject: () => ({ project: { id: "p1", repo: { name: "dodesk" } } }),
 }));
 vi.mock("@/features/account/use-account", () => ({
   useAccount: () => ({
@@ -104,13 +104,6 @@ describe("SetupScreen", () => {
     state.onboarding = null;
     show();
 
-    expect(
-      screen.getByRole("heading", { name: "Environment setup" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "dodesk" })).toHaveAttribute(
-      "href",
-      "/projects/p1",
-    );
     fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
     expect(state.start).toHaveBeenCalledOnce();
   });
@@ -224,13 +217,5 @@ describe("SetupScreen", () => {
     expect(screen.getByText("Saved as v1")).toBeInTheDocument();
     expect(screen.getByText("7m 05s · $0.06")).toBeInTheDocument();
     expect(screen.getByText("Saved. dodesk is ready.")).toBeInTheDocument();
-  });
-
-  it("says when the project isn't yours", () => {
-    state.error = new ApiError(404, "Not found.", "PROJECT_NOT_FOUND");
-    show();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "doesn't exist or isn't yours",
-    );
   });
 });

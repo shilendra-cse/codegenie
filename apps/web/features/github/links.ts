@@ -17,3 +17,6 @@ export function manageAccessUrl({
     ? `https://github.com/organizations/${accountLogin}/settings/installations/${id}`
     : `https://github.com/settings/installations/${id}`;
 }
+
+export const repositoryUrl = (owner: string, name: string) =>
+  `https://github.com/${owner}/${name}`;

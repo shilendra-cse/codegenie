@@ -19,7 +19,13 @@ const project = (
   repo: { githubId: 1, owner: "ada", name: id },
   defaultBranch: "main",
   environment: null,
-  installation: { accountLogin: "ada", suspended: false, uninstalled: false },
+  installation: {
+    id: 1,
+    accountLogin: "ada",
+    accountType: "user",
+    suspended: false,
+    uninstalled: false,
+  },
   setup,
   createdAt: "2026-10-23T08:00:00.000Z",
 });
