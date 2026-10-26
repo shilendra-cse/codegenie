@@ -1,6 +1,6 @@
 # Database Design
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-25 · Engine: PostgreSQL · ORM: Drizzle
+> Status: **Accepted** (MVP) · Last updated: 2026-10-26 · Engine: PostgreSQL · ORM: Drizzle
 
 See [architecture.md](./architecture.md) for how these tables are used by the server and worker.
 
@@ -20,6 +20,7 @@ This keeps follow-ups simple: a new run finds its branch and PR on its task, wit
 ```
 user ─┬─< session                       (Better Auth)
       ├─< account                       (Better Auth)
+      ├── subscriptions >── plans       (one per user: plan and cycle)
       ├─< github_installations          (installed_by)
       └─< projects >── github_installations
               │
@@ -41,6 +42,34 @@ webhook_deliveries                      (standalone, idempotency)
 
 ### Auth (managed by Better Auth)
 `user`, `session`, `account`, `verification` — unchanged; keep Better Auth's text ids and shape. `account` holds the GitHub **login** OAuth token only; repository access goes through `github_installations`.
+
+### `plans`
+What a plan allows ([billing.md](./billing.md) §2). Seeded with `free` and `unlimited`; later plans are new rows.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `slug` | text unique | `free`, `unlimited`; stable, used by scripts and code |
+| `name` | text | shown to users: "Free" |
+| `runs_per_cycle` | integer null | null = no limit |
+| `concurrent_runs` | integer | tasks running at once |
+| `created_at` / `updated_at` | timestamptz | |
+
+Price and included credits are added with paid plans.
+
+### `subscriptions`
+Which plan a user is on and their current cycle.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `user_id` | text FK → `user.id` unique | cascade; one per user |
+| `plan_id` | uuid FK → `plans.id` | restrict: a plan in use can't be deleted |
+| `source` | enum `subscription_source` (`signup`, `admin`) | how they got this plan; `payment` comes with paid plans |
+| `period_start` / `period_end` | timestamptz | the current cycle; a month apart, from the user's own start date |
+| `created_at` / `updated_at` | timestamptz | |
+
+Created when a user signs up (`free`, the first cycle starting then). When `period_end` has passed, the next request that needs it moves the cycle forward. Usage isn't stored here: it's counted from `runs` in the period.
 
 ### `github_installations`
 One row per GitHub App installation.
@@ -249,8 +278,8 @@ Insert first; on conflict, skip processing. If processing fails, the row is dele
 - **IDs:** `uuid` for our tables, defaulting to `gen_random_uuid()` in Postgres; Better Auth tables keep text ids, so FKs to `user` are `text`.
 - **Time:** every timestamp in our tables is `timestamptz`. Better Auth tables keep the plain `timestamp` columns Better Auth generates.
 - **Enums:** Postgres enums for statuses, mirrored as TS unions in `packages/shared`.
-- **Deletion:** cascade `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`, `projects → onboardings → onboarding_events`, and `github_installations → projects`. Projects are hard-deleted (`deleteProjectUnlessBusy`, refused while a run is queued or running); `archived_at` exists but is unused.
-- **Naming:** snake_case tables/columns; one kebab-case schema file per table, grouped by domain in `packages/db/src/schema/` (`auth/`, `github/`, `projects/`, `tasks/`, `runs/`; e.g. `runs/run-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
+- **Deletion:** cascade `user → subscriptions`, `user → projects → tasks → runs → run_events, run_diffs` and `projects → project_environments`, `projects → onboardings → onboarding_events`, and `github_installations → projects`. Projects are hard-deleted (`deleteProjectUnlessBusy`, refused while a run is queued or running); `archived_at` exists but is unused.
+- **Naming:** snake_case tables/columns; one kebab-case schema file per table, grouped by domain in `packages/db/src/schema/` (`auth/`, `billing/`, `github/`, `projects/`, `tasks/`, `runs/`; e.g. `runs/run-events-schema.ts`), relations in `relations.ts`, all re-exported from `schema/index.ts`.
 - **Shared types:** `packages/shared/src/api/*.ts` mirror these tables for the API and web app; change both together.
 
 ## 5. Migrations

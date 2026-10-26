@@ -58,12 +58,13 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 └──────────────┴────────────────────────────────────────────┘
 ```
 
-- **Sidebar:** New task; Inbox (count = tasks that need you or are running); Projects with a health dot (green ok, amber ⚠ needs attention, accent "Needs you" during setup) and Add repository; Recent (the last ~10 tasks with a live status icon); the account menu.
+- **Sidebar:** New task; Inbox (count = tasks that need you or are running); Projects with a health dot (green ok, amber ⚠ needs attention, accent "Needs you" during setup) and Add repository; Recent (the last ~10 tasks with a live status icon); the runs used this cycle (see Usage & limits); the account menu.
 - At phone width the sidebar stacks above the page, and the task side panel stacks below the conversation.
 
 | Route | Screen | Signed in? |
 |---|---|---|
 | `/` | Landing (signed in: Open hobai, no redirect) | no |
+| `/pricing` | Pricing | no |
 | `/signin` | Sign in | no |
 | `/welcome` | First-run checklist | yes |
 | `/new` | New task | yes |
@@ -80,6 +81,14 @@ The install callback returns to `/projects/new` when the install started there (
 
 ### Landing
 Hero ("Describe the change. Review the pull request."), Sign in with GitHub, a static product preview (a task thread with a diff), how it works in 3 steps, 4 security points (sandbox, never the main branch, per-repository short-lived access with no write token for the agent, checks that really ran), a closing call to action, footer. **Data:** none.
+
+### Pricing
+Public, linked from the landing page's header (**Pricing**) and from Usage & limits (**See plans**).
+- **Free:** ₹0; 10 runs per cycle, 1 task at a time, GPT-6 Luna; **Start free** (signed in: **Open hobai**).
+- **Pro:** **Coming soon**, with what it adds (more runs, model choice) and no price yet: prices are set from measured run costs ([billing.md](./billing.md) §3).
+- **Questions:** what a run is (one attempt at a task; setups don't count, nor runs that failed through hobai's fault), when runs reset (a month from the day you signed up), what happens at the limit.
+
+**Data:** none; the plans shown are fixed text until Pro exists.
 
 ### Sign in
 One card: Continue with GitHub, what's shared (name and email; repository access comes separately). **States:** default, sign-in failed. **Data:** Better Auth.
@@ -130,8 +139,18 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
 
 **Data:** project, its tasks, environment and its versions, health.
 
+### Usage & limits
+How many runs you've used and what your plan allows ([billing.md](./billing.md) §2).
+- **Sidebar line**, above the account menu: "4 of 10 runs · resets 25 Nov", amber from 8 used, red at the limit; on a plan without a run limit, "Unlimited". Clicking it opens the dialog.
+- **Account menu:** a **Usage & limits** item opens the same dialog.
+- **The dialog:** your plan; the cycle (from, resets on) with a usage bar; the limits (runs per cycle, tasks at once); this cycle's runs (task, date, outcome, whether it counted, and why not); **See plans** (the pricing page).
+- **At the limit:** New task (and Welcome's last step) shows a banner above the composer, "You've used all 10 runs this cycle. They reset on 25 Nov. See plans", and Start is disabled. Task pages, the Inbox and setups keep working.
+- **The other refusals** (a task already running, today's capacity reached) show above Start like the other errors when starting fails.
+
+**Data:** `GET /me/usage`, with this cycle's runs.
+
 ### Everywhere
-Banners for: the App suspended or uninstalled (tasks can't start), setup needs attention, monthly run limit reached (Phase 5). Empty states point to the next step.
+Banners for: the App suspended or uninstalled (tasks can't start), setup needs attention, run limit reached (above the composer, see Usage & limits). Empty states point to the next step.
 
 ## 5. Status vocabulary
 
@@ -177,11 +196,11 @@ Drawn from the screens above; the shapes are fixed in each Phase 4 branch.
 - **Tasks:** list across projects and per project, with the derived label (§5), PR (number, url, draft/merged/closed), latest run (status, stage, step, a one-line detail), total duration and cost, updated time; get with messages and runs; create (project, prompt, base branch).
 - **Runs:** get (stages, summary, checks before/after, PR, totals); events (replay + live); cancel; the diff; a command's full output.
 - **Environment:** active version and history, restore, start or re-run setup, answer a question, save / start over.
-- **Account:** installations (exists), sign out.
+- **Account:** installations (exists), sign out, usage (plan, runs used and limit, concurrency, cycle and reset).
 
 ## 8. Not in the MVP, already placed
 
-Follow-up messages (the composer after a run) · PR review comments in the thread · Preview tab · run-limit banner · Jira tasks (a sidebar section and a task source) · team switcher (above the logo).
+Follow-up messages (the composer after a run) · PR review comments in the thread · Preview tab · Jira tasks (a sidebar section and a task source) · team switcher (above the logo).
 
 **Task assistant** (post-MVP): a chat about the task, separate from its thread. The thread is for work: every message there is a run that changes the code. The assistant is for talk: it answers questions, never changes the branch and never starts a run.
 - **What it knows:** read-only tools over the task's branch, every run's saved diff (so it can explain a cancelled run's edits too), commands, checks and summaries. One conversation per task, saved.

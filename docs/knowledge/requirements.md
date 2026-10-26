@@ -59,7 +59,7 @@ Follow-ups on a task (U8: a message starts a new run on the same branch, pushed 
 | Max agent steps per run | 150 |
 | Max LLM cost per run | $2 |
 | Concurrent runs per user | 1 |
-| Runs per user per month | 10 (free tier, [billing.md](./billing.md)) |
+| Runs per user per cycle (a month from signup) | 10 on the free plan ([billing.md](./billing.md) §2) |
 | Global concurrent runs | set by worker capacity (start: 3) |
 
 On hitting a per-run limit the agent stops gracefully and delivers a draft PR marked incomplete.
@@ -107,7 +107,7 @@ On hitting a per-run limit the agent stops gracefully and delivers a draft PR ma
 | Model selection | **Platform-controlled for MVP.** Users don't choose a model; the platform picks one per role (agent loop, utility calls) based on eval results and can change it at any time. Each run records the model it ran on. | The platform pays for usage, so cost must stay predictable; quality stays consistent and measurable; no "which model were you on?" support burden. |
 | Environment setup | **In the MVP:** a per-repository environment config created once by guided onboarding (rules → try → AI setup agent → multiple-choice questions → verify → approve) and replayed by every task run. | Setup is the foundation of every run; deterministic replay keeps runs fast and predictable, and questions solve the cases rules and AI can't. |
 | Environment storage | **Database** (`project_environments`, versioned, one active per project); the CLI uses local files. A config committed in the user's repo is post-MVP. | Zero friction at onboarding; versions, health and per-run audit need the database. |
-| Plans | **Free tier only in the MVP:** 10 runs per user per month on the platform model (GPT-6 Luna), 1 concurrent run, no payments. Paid plans come after launch ([billing.md](./billing.md)). | No payment setup before launch; real usage from free users prices the paid plans. |
+| Plans | **Free tier only in the MVP:** 10 runs per cycle (a month from signup) on the platform model (GPT-6 Luna), 1 concurrent run, no payments. Paid plans come after launch ([billing.md](./billing.md)). | No payment setup before launch; real usage from free users prices the paid plans. |
 | Future model choice | **Per run, on paid plans** (post-MVP): users pick any model in the catalog for a run. Plans differ by price and included credits, not by which models they unlock. No bring-your-own API key. | Paid users carry the cost through credits, so an expensive model just uses credits faster. The agent already takes the model as a parameter, so no rework is needed. |
 
 ## 8. Open questions
