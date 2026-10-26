@@ -94,7 +94,7 @@ Pages: sign-in, connect GitHub (App install), repo picker, project view (tasks/r
 - GitHub App ([github.md](./github.md) §6): install callback, webhook receiver with signature verification and delivery dedupe (`installation`, `installation_repositories`, `pull_request` → task status; `pull_request_review_comment`, `issue_comment` later), repo picker API (installations and their repositories, through the user's token).
 - REST: projects, environments (and restore), branches, onboarding, tasks, runs (diff, cancel), GitHub. Full list: [api.md](./api.md) §4.
 - SSE, replay + live: `GET /api/runs/:id/events` and `GET /api/projects/:id/onboarding/events`.
-- Task follow-ups (`POST /api/tasks/:id/messages`) are planned (Phase 5).
+- Task follow-ups (`POST /api/tasks/:id/messages`) are post-MVP.
 - Writes rows and enqueues; does no long-running work.
 
 ### apps/worker
@@ -163,7 +163,7 @@ server SSE:       SUBSCRIBE first → replay run_events after Last-Event-ID → 
 Events are keyed by (`run_id`, `seq`); `seq` is the SSE event id. High-frequency `text_delta` and `agent_step` events are published live only, never stored.
 
 ### 4.4 Follow-ups
-- **UI follow-up message** (planned, Phase 5: `POST /api/tasks/:id/messages`) → new run on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous run's summary + new instruction, pushes to the same PR.
+- **UI follow-up message** (post-MVP: `POST /api/tasks/:id/messages`) → new run on the same task with `trigger=follow_up`; checks out the task's branch, receives the previous run's summary + new instruction, pushes to the same PR.
 - **PR review comment / `@hobai` mention** (webhook, deduped via `webhook_deliveries`) → new run on the task with `trigger=pr_comment`; context includes comment, file and line.
 - **Jira (post-MVP)** → webhook on assignment/label → Task → run; PR link posted back to the ticket.
 
@@ -289,5 +289,5 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | 2. Worker + Daytona | `DaytonaSandbox`, base snapshot, `apps/worker`, BullMQ, events → Redis + `run_events` | Runs execute in the cloud | Done |
 | 3. GitHub App | install flow, token minting, clone → commit → PR | Real PRs | Done |
 | 4. API + UI | projects/tasks/runs/onboarding endpoints, SSE, the web app (repo picker, environment setup, new task, live run view, Inbox, project page), Playwright end-to-end test | Prompt → PR from the browser | Done |
-| 5. MVP launch | follow-ups, quotas, hardening, production builds, deploy | **MVP: live, open for signup** | Next |
+| 5. MVP launch | quotas, hardening, production builds, deploy | **MVP: live, open for signup** | Next |
 | 6+. Post-MVP | PR-comment / `@hobai` triggers, Jira then Notion, plan approval, sandbox pause/resume, live previews, code index, billing, orgs | | |

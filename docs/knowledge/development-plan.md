@@ -11,8 +11,8 @@
 
 ```
 Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 3 ─► Phase 4 ─► Phase 5 (MVP launch) ─► Phase 6+
-Foundations  Agent     Worker +    GitHub     API + UI    Deploy, follow-ups,
-             core      Daytona     App                    quotas, hardening
+Foundations  Agent     Worker +    GitHub     API + UI    Deploy, quotas,
+             core      Daytona     App                    hardening
 ```
 
 ## 2. Phases
@@ -175,21 +175,19 @@ Walkthrough, by hand on real GitHub (all four `pnpm dev:*` running), on a small 
 - [x] **U9:** the project's Tasks tab lists every task with status, PR, duration and cost; the task page shows the conversation and all runs; the Inbox filters (running, PR, done) and counts match.
 
 ### Phase 5 — MVP launch
-**Goal:** live, protected, open for signup. *(U8 + non-functional requirements)*
+**Goal:** live, protected, open for signup. *(non-functional requirements)*
 
-- [ ] Follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same branch/PR. *(U8)*
-- [ ] Run outcomes: **Run again** and **Show log** on a failed run; full command logs (not capped at 2,000 characters); the setup agent knows the sandbox's network limits, so it never offers options it can't carry out ([sandbox.md](./sandbox.md) §7).
 - [ ] Quotas, the free tier ([billing.md](./billing.md)): 1 concurrent run/user, 10 runs/user/month, global daily spend cap, each with a clear rejection message; runs used this month shown in the web app. Lands before the deploy, since signup is open.
-- [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with run id.
+- [ ] Hardening: helmet + rate limiting applied, refuse default secrets in production, structured logs with run id. Plus one line in the setup agent's prompt: never offer an option that needs access the sandbox has already shown it can't get (e.g. "Allow access to binaries.prisma.sh" after its download failed with `ECONNRESET`). Scoped so nothing else changes: only options that depend on an access failure seen in this setup are left out; every other option, the question limit and how decisions are made stay as they are; provider-independent, so it does nothing on a sandbox with full internet. Checked by hand: DoDesk's setup no longer offers the Prisma option, and a setup without network failures asks the same questions as before.
 - [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
 - [ ] Deploy: Vercel (web), Railway (api, worker, Postgres, Redis), prod GitHub App, custom domain, per-service secrets, migrations as release step.
 - [ ] Re-run eval against production config.
 
-**Done when:** requirements §6 success criteria are met — U1–U9 pass in production, eval targets hit, author using it for real work. **MVP complete.**
+**Done when:** requirements §6 success criteria are met — U1–U7, U9 and U10 pass in production, eval targets hit, author using it for real work. **MVP complete.**
 **Needs:** Vercel, Railway, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
-PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · paid plans: Pro tiers with included credits and top-ups ([billing.md](./billing.md)) · users shape their environment without editing the config directly (not designed yet) · team projects · more languages.
+follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same branch/PR *(U8)* · PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · paid plans: Pro tiers with included credits and top-ups ([billing.md](./billing.md)) · task assistant: a read-only chat per task, docked as a popup on the task page ([ui.md](./ui.md) §8) · **Run again** on a failed run (`trigger=retry`) · users shape their environment without editing the config directly (not designed yet) · team projects · more languages.
 
 ## 3. Ways of working
 

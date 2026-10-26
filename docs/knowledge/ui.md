@@ -115,10 +115,10 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
   - stages: Prepare · Set up · Working · Checks · Pull request, each ✓ / spinner / pending / failed with a one-line summary and duration;
   - Working shows the agent's activity, grouped: consecutive reads and searches collapse into "Explored the code · read 6 files, searched 2 times"; each edit is a row with its path and +/−; each command is a row with its result; the one in progress has a spinner; the agent's reasoning streams underneath in a quieter style;
   - when finished: the summary, a before/after checks table, the **PR card** (title, number, ready / draft / merged / closed, verified commit, Open on GitHub). "Show steps" re-opens the timeline.
-- **Side panel**, tabs: **Changes** (files with +/−, the diff), **Terminal** (every command, its output up to 2,000 characters; full logs in Phase 5), **Checks** (before and after). Clicking an edit or command in the story opens it here. Later: **Preview**.
-- **Composer** (Phase 5): disabled while running (with Stop); after a run, "Ask for a change to this pull request" (follow-ups, Phase 5); when there's nothing to follow up (merged, closed, no changes, failed, cancelled) it says why and offers Start a new task.
+- **Side panel**, tabs: **Changes** (files with +/−, the diff), **Terminal** (every command, its output up to 2,000 characters), **Checks** (before and after). Clicking an edit or command in the story opens it here. Later: **Preview**.
+- **Composer** (post-MVP, with follow-ups): disabled while running (with Stop); after a run, "Ask for a change to this pull request"; when there's nothing to follow up (merged, closed, no changes, failed, cancelled) it says why and offers Start a new task.
 
-**Outcome states** (all drawn): PR ready, draft (checks failing or incomplete, with the reason), merged, no changes (the agent's explanation, no PR), failed (which stage, the error, nothing pushed; Re-run setup; Run again and Show log in Phase 5), cancelled.
+**Outcome states** (all drawn): PR ready, draft (checks failing or incomplete, with the reason), merged, no changes (the agent's explanation, no PR), failed (which stage, the error, nothing pushed; Re-run setup; Run again post-MVP), cancelled.
 
 **Data:** task, messages, runs; live run events (§6); the diff; command output; check results.
 
@@ -182,3 +182,10 @@ Drawn from the screens above; the shapes are fixed in each Phase 4 branch.
 ## 8. Not in the MVP, already placed
 
 Follow-up messages (the composer after a run) · PR review comments in the thread · Preview tab · run-limit banner · Jira tasks (a sidebar section and a task source) · team switcher (above the logo).
+
+**Task assistant** (post-MVP): a chat about the task, separate from its thread. The thread is for work: every message there is a run that changes the code. The assistant is for talk: it answers questions, never changes the branch and never starts a run.
+- **What it knows:** read-only tools over the task's branch, every run's saved diff (so it can explain a cancelled run's edits too), commands, checks and summaries. One conversation per task, saved.
+- **The window:** a popup docked to the bottom of the task page, like a messenger chat. Collapsed, only its top bar shows (the hobai mark, "Task assistant", an unread dot); hovering lifts it slightly to peek at the latest line; clicking slides it up to full height, clicking the bar again slides it down. Where it sits beside the side panel is settled on the canvas.
+- **Greeting and hints** show on the bar: once, "Hi, I'm your task assistant…"; then at moments worth asking about: a check failed ("Want me to explain why?"), no changes, the PR opened ("Want a walkthrough?"), a run was cancelled. Clicking one opens the window with that question asked.
+- **Ask about this** on a diff line or file, a command or a check opens it with that piece in context.
+- **Send as a follow-up:** when the chat lands on a change, it drafts the instruction into the task's composer; you review it and send.

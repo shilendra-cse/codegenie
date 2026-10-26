@@ -45,11 +45,10 @@ A developer working on **JavaScript/TypeScript** repositories hosted on **GitHub
 | U5 | As a user, I watch the agent work live. | Run view shows stage, tool calls (files read/edited, commands run), streamed reasoning summary; refreshing mid-run resumes without losing history. |
 | U6 | As a user, I get a PR when the agent finishes. | PR on branch `hobai/…` with title, summary of changes and lint/type-check/test results; **draft** if checks fail, **ready** if they pass; link shown in the UI. If no changes were needed, no PR and the agent explains why. |
 | U7 | As a user, I can cancel a running task. | Cancel stops the agent within ~10 s, sandbox is destroyed, status `cancelled`, no PR pushed. |
-| U8 | As a user, I send a follow-up on a task. | Message starts a new run on the same branch; changes are pushed to the same PR. |
 | U9 | As a user, I see my history. | Project page lists tasks with status, PR link, duration and cost; task page shows conversation and all runs. |
 
 ### Post-MVP (not required for MVP)
-PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · shaping the environment by hand · paid plans and billing ([billing.md](./billing.md)).
+Follow-ups on a task (U8: a message starts a new run on the same branch, pushed to the same PR) · PR review comments / `@hobai` mentions triggering runs · Jira and Notion intake · plan approval before editing · team/org project sharing · live app previews · a task assistant to ask questions about a task · shaping the environment by hand · paid plans and billing ([billing.md](./billing.md)).
 
 ## 5. Non-functional requirements
 
@@ -94,7 +93,7 @@ On hitting a per-run limit the agent stops gracefully and delivers a draft PR ma
 
 ## 6. Success criteria (MVP is "done" when)
 
-1. All MVP user stories U1–U10 pass their acceptance criteria in production.
+1. All MVP user stories (U1–U7, U9, U10) pass their acceptance criteria in production.
 2. On the **eval set** (≥ 10 mid-sized tasks across ≥ 3 JS/TS repos: the author's own projects, e.g. DoDesk and BuyerBook, plus small fixture projects):
    - ≥ 60% produce a PR that is mergeable as-is or with light edits.
    - ≥ 80% end with lint, type-check and tests passing.
