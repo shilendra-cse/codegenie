@@ -80,12 +80,13 @@ The install callback returns to `/projects/new` when the install started there (
 ## 4. Screens
 
 ### Landing
-Hero ("Describe the change. Review the pull request."), Sign in with GitHub, a static product preview (a task thread with a diff), how it works in 3 steps, 4 security points (sandbox, never the main branch, per-repository short-lived access with no write token for the agent, checks that really ran), a closing call to action, footer. **Data:** none.
+Hero ("Describe the change. Review the pull request."), Sign in with GitHub, a static product preview (a task thread with a diff), how it works in 3 steps, 4 security points (sandbox, never the main branch, per-repository short-lived access with no write token for the agent, checks that really ran), a closing call to action, footer. Free to start is said in the hero (its main button is **Start free with GitHub**, and below the buttons a short heading, "Free to start: 10 runs every month", above "No card needed. For JavaScript and TypeScript repositories on GitHub.") and in the closing call to action (**Start free with GitHub**). **Data:** none.
 
 ### Pricing
 Public, linked from the landing page's header (**Pricing**) and from Usage & limits (**See plans**).
-- **Free:** ₹0; 10 runs per cycle, 1 task at a time, GPT-6 Luna; **Start free** (signed in: **Open hobai**).
-- **Pro:** **Coming soon**, with what it adds (more runs, model choice) and no price yet: prices are set from measured run costs ([billing.md](./billing.md) §3).
+- **Hero:** "Start for free", one line on what a run gets you.
+- **Free:** ₹0 / month; 10 runs per cycle, 1 task at a time, GPT-6 Luna, setups free, PRs with your checks run; **Start free** (signed in: **Open hobai**).
+- **Pro:** only a **Coming soon** badge and one line (more runs, the model of your choice); no price or feature list until prices are set from measured run costs ([billing.md](./billing.md) §3).
 - **Questions:** what a run is (one attempt at a task; setups don't count, nor runs that failed through hobai's fault), when runs reset (a month from the day you signed up), what happens at the limit.
 
 **Data:** none; the plans shown are fixed text until Pro exists.
@@ -143,11 +144,11 @@ All tasks across projects, newest first, grouped by day. Filters: All · Needs y
 How many runs you've used and what your plan allows ([billing.md](./billing.md) §2).
 - **Sidebar line**, above the account menu: "4 of 10 runs · resets 25 Nov", amber from 8 used, red at the limit; on a plan without a run limit, "Unlimited". Clicking it opens the dialog.
 - **Account menu:** a **Usage & limits** item opens the same dialog.
-- **The dialog:** your plan; the cycle (from, resets on) with a usage bar; the limits (runs per cycle, tasks at once); this cycle's runs (task, date, outcome, whether it counted, and why not); **See plans** (the pricing page).
+- **The dialog:** your plan; the cycle (from, resets on) with a usage bar; the limits (runs per cycle, tasks at once, setups don't count); a note that runs failed on hobai's side don't count; **See plans** (the pricing page).
 - **At the limit:** New task (and Welcome's last step) shows a banner above the composer, "You've used all 10 runs this cycle. They reset on 25 Nov. See plans", and Start is disabled. Task pages, the Inbox and setups keep working.
 - **The other refusals** (a task already running, today's capacity reached) show above Start like the other errors when starting fails.
 
-**Data:** `GET /me/usage`, with this cycle's runs.
+**Data:** `GET /me/usage`.
 
 ### Everywhere
 Banners for: the App suspended or uninstalled (tasks can't start), setup needs attention, run limit reached (above the composer, see Usage & limits). Empty states point to the next step.

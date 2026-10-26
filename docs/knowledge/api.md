@@ -47,7 +47,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 
 | Method | Path | |
 |---|---|---|
-| GET | `/me/usage` | `{ plan: { slug, name }, runs: { used, limit }, concurrentRuns, periodStart, resetsAt, cycleRuns }`; `limit` is `null` on a plan without one; `cycleRuns` lists this cycle's runs, newest first: `{ runId, taskId, taskTitle, queuedAt, status, counted }` ([billing.md](./billing.md) §2) |
+| GET | `/me/usage` | `{ plan: { slug, name }, runs: { used, limit }, concurrentRuns, periodStart, resetsAt }`; `limit` is `null` on a plan without one ([billing.md](./billing.md) §2) |
 | GET | `/github/installations` | The user's installations and the install link ([github.md](./github.md) §6) |
 | GET | `/github/installations/:id/repositories` | Repositories the user can access there (most recently updated first), each with its `language` and its `projectId`, or `null` |
 | GET | `/projects` | The user's projects, newest first |
