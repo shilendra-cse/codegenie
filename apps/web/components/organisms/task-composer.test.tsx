@@ -25,6 +25,7 @@ function renderComposer(overrides: Partial<TaskComposerProps> = {}) {
     canStart: true,
     starting: false,
     error: null,
+    runLimit: null,
     onStart: vi.fn(),
     ...overrides,
   };
@@ -49,6 +50,28 @@ describe("TaskComposer", () => {
       ...modifier,
     });
     expect(onStart).toHaveBeenCalledOnce();
+  });
+
+  it("says when the cycle's runs are used, and starts nothing until they reset", () => {
+    const { onStart } = renderComposer({
+      runLimit: { limit: 10, resetsAt: "2026-11-25T09:30:00.000Z" },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "You've used all 10 runs this cycle. They reset on 25 Nov.",
+    );
+    expect(screen.getByRole("link", { name: "See plans" })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
+    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "placeholder",
+      "New tasks can start again on 25 Nov.",
+    );
+    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
+    fireEvent.submit(screen.getByRole("button", { name: "Start" }));
+    expect(onStart).not.toHaveBeenCalled();
   });
 
   it("doesn't start until it can, or while starting", () => {

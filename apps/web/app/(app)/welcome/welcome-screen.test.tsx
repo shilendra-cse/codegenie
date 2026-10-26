@@ -96,6 +96,7 @@ vi.mock("@/features/tasks/use-new-task", () => ({
     canStart: true,
     starting: false,
     error: null,
+    runLimit: null,
     onStart: tasks.start,
   }),
 }));

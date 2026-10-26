@@ -1,4 +1,4 @@
-import type { ProjectResponse } from "@hobai/shared";
+import type { ProjectResponse, UsageResponse } from "@hobai/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -52,6 +52,14 @@ const created = {
 };
 
 let projects: ProjectResponse[];
+let usage: UsageResponse;
+const freeUsage = (used: number): UsageResponse => ({
+  plan: { slug: "free", name: "Free" },
+  runs: { used, limit: 10 },
+  concurrentRuns: 1,
+  periodStart: "2026-10-25T09:30:00.000Z",
+  resetsAt: "2026-11-25T09:30:00.000Z",
+});
 
 function renderScreen(projectId?: string) {
   const client = new QueryClient({
@@ -74,17 +82,20 @@ describe("NewTaskScreen", () => {
     localStorage.clear();
     router.push.mockReset();
     projects = [project("p1", "dodesk"), project("p2", "buyerbook")];
+    usage = freeUsage(4);
     api.get.mockReset().mockImplementation(async (url: string) => ({
       data:
-        url === "/projects"
-          ? { projects }
-          : url.endsWith("/branches")
-            ? {
-                branches: ["main", "develop"],
-                defaultBranch: "main",
-                truncated: false,
-              }
-            : { tasks: [], nextCursor: null },
+        url === "/me/usage"
+          ? usage
+          : url === "/projects"
+            ? { projects }
+            : url.endsWith("/branches")
+              ? {
+                  branches: ["main", "develop"],
+                  defaultBranch: "main",
+                  truncated: false,
+                }
+              : { tasks: [], nextCursor: null },
     }));
     api.post.mockReset().mockResolvedValue({ data: created });
   });
@@ -109,6 +120,32 @@ describe("NewTaskScreen", () => {
       baseBranch: "main",
     });
     expect(localStorage.getItem(`${SHORT_NAME}:last-project`)).toBe("p2");
+  });
+
+  it("counts the run once the task has started", async () => {
+    renderScreen("p2");
+    await screen.findByRole("button", { name: /^Project:/ });
+    const usageReads = () =>
+      api.get.mock.calls.filter(([url]) => url === "/me/usage").length;
+    const before = usageReads();
+
+    describeTask();
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    await waitFor(() => expect(usageReads()).toBeGreaterThan(before));
+  });
+
+  it("says when the cycle's runs are used, and starts nothing", async () => {
+    usage = freeUsage(10);
+    renderScreen();
+
+    expect(
+      await screen.findByText(/You've used all 10 runs this cycle/),
+    ).toHaveTextContent("They reset on 25 Nov.");
+    expect(
+      screen.getByRole("textbox", { name: "Task description" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
   });
 
   it("starts on the project you used last", async () => {
@@ -191,20 +228,22 @@ describe("NewTaskScreen", () => {
   it("shows your recent tasks", async () => {
     api.get.mockImplementation(async (url: string) => ({
       data:
-        url === "/projects"
-          ? { projects }
-          : {
-              tasks: [
-                {
-                  id: "t1",
-                  title: "Paginate the orders API",
-                  project: { id: "p2", owner: "ada", name: "buyerbook" },
-                  label: "working",
-                  pullRequest: null,
-                },
-              ],
-              nextCursor: null,
-            },
+        url === "/me/usage"
+          ? usage
+          : url === "/projects"
+            ? { projects }
+            : {
+                tasks: [
+                  {
+                    id: "t1",
+                    title: "Paginate the orders API",
+                    project: { id: "p2", owner: "ada", name: "buyerbook" },
+                    label: "working",
+                    pullRequest: null,
+                  },
+                ],
+                nextCursor: null,
+              },
     }));
     renderScreen();
     expect(
