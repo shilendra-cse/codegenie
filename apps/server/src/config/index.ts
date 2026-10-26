@@ -40,6 +40,10 @@ const envSchema = z.object({
 
   BETTER_AUTH_URL: z.string().default("http://localhost:3000"),
   BETTER_AUTH_SECRET: z.string().default("your-better-auth-secret"),
+
+  // Proxies in front of the server (the web app's /api rewrite, the host's edge), so rate limits
+  // see each visitor's address instead of the proxy's.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(1),
 });
 
 // Get environment-specific values
@@ -61,6 +65,7 @@ const parseEnv = () => {
         port: env.PORT,
         host: env.HOST,
         environment: env.NODE_ENV,
+        trustProxy: env.TRUST_PROXY,
       },
       client: {
         url: env.FRONTEND_URL,
@@ -99,12 +104,11 @@ const parseEnv = () => {
           credentials: true,
           methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         },
+        // Requests per minute; development is 10x so local work never hits them.
         rateLimit: {
-          max: getEnvValue(
-            { development: 10000, test: 1000, production: 5000 },
-            5000,
-          ),
-          timeWindow: "15 minutes" as const,
+          flood: getEnvValue({ development: 10_000 }, 1_000),
+          signIn: getEnvValue({ development: 200 }, 20),
+          user: getEnvValue({ development: 3_000 }, 300),
         },
       },
       logging: {

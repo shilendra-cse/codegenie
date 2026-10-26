@@ -11,11 +11,19 @@ import type {
   SecureHandler,
 } from "@/types/base.types.js";
 import { protect } from "@/middleware/auth.js";
+import { rateLimits } from "@/middleware/rate-limits.js";
 import { logger } from "./logger.js";
 import { handleStream } from "./sse.js";
 
 const reportStreamError = (error: unknown, path: string) =>
   logger.error({ error, path }, "Stream failed");
+
+/** The session check, then the per-user rate limit, which needs to know who's asking. */
+const secure: RequestHandler = (req, res, next) => {
+  void protect(req, res, (error?: unknown) =>
+    error ? next(error) : void rateLimits.user(req, res, next),
+  );
+};
 
 class ApiRouter {
   private router: Router;
@@ -26,7 +34,7 @@ class ApiRouter {
 
   private authMiddleware(auth: "secure" | "public") {
     return auth === "secure"
-      ? protect
+      ? secure
       : (_req: Request, _res: Response, next: NextFunction) => next();
   }
 
