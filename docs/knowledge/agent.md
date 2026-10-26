@@ -173,7 +173,7 @@ packages/agent/src/setup-agent/
 |---|---|
 | `list_files`, `read_file`, `search`, `bash` | explore and try commands (the task agent's tools) |
 | `try_environment` | runs a whole setup through the runner's function and returns each status with the end of its output |
-| `ask_user` | a question with 2–4 options (first = recommended) through the `UserChannel`; free-text answers allowed; at most 5; each answer is recorded as a decision (`auto` when no one was asked) |
+| `ask_user` | a question with 2–4 options (first = recommended) through the `UserChannel`; only options it can carry out in the sandbox (none needing a host a download already failed to reach); free-text answers allowed; at most 5; each answer is recorded as a decision (`auto` when no one was asked) |
 | `finish_setup` | the final steps, checks and notes; ends the run |
 
 - No `edit_file` / `write_file`: the setup must work from a clean checkout, so the repository is never changed. The prompt also says anything installed by hand with `bash` is lost.
