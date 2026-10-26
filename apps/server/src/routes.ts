@@ -7,3 +7,4 @@ import "./resources/projects/projects.routes";
 import "./resources/tasks/tasks.routes";
 import "./resources/runs/runs.routes";
 import "./resources/onboarding/onboarding.routes";
+import "./resources/usage/usage.routes";

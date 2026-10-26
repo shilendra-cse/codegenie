@@ -14,6 +14,7 @@ tags:
   - name: Onboarding
   - name: Tasks
   - name: Runs
+  - name: Usage
 
 paths:
   /health:
@@ -404,7 +405,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "503":
-          $ref: "#/components/responses/QueueUnavailable"
+          description: The daily spend cap is reached (`DAILY_CAPACITY_REACHED`), or the setup couldn't be queued (`QUEUE_UNAVAILABLE`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
     get:
       tags: [Onboarding]
       summary: The project's latest setup
@@ -777,13 +782,23 @@ paths:
         "404":
           $ref: "#/components/responses/ProjectNotFound"
         "409":
-          description: The project isn't set up (`PROJECT_NOT_SET_UP`), needs attention (`PROJECT_NEEDS_ATTENTION`), or its App is uninstalled (`GITHUB_INSTALLATION_REMOVED`) or suspended (`GITHUB_INSTALLATION_SUSPENDED`)
+          description: The project isn't set up (`PROJECT_NOT_SET_UP`), needs attention (`PROJECT_NEEDS_ATTENTION`), or its App is uninstalled (`GITHUB_INSTALLATION_REMOVED`) or suspended (`GITHUB_INSTALLATION_SUSPENDED`); or the user already has as many tasks running as their plan allows (`RUN_IN_PROGRESS`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: The user has used every run in this cycle (`RUN_LIMIT_REACHED`); `data.resetsAt` says when they're back
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "503":
-          $ref: "#/components/responses/QueueUnavailable"
+          description: The daily spend cap is reached (`DAILY_CAPACITY_REACHED`), or work couldn't be queued (`QUEUE_UNAVAILABLE`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /api/tasks:
     get:
@@ -1048,6 +1063,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+
+  /api/me/usage:
+    get:
+      tags: [Usage]
+      summary: The signed-in user's plan and usage
+      description: The plan, the runs used in the current cycle (runs that failed on hobai's side don't count, setups never do) and when the cycle resets. A user without a subscription is put on the free plan.
+      operationId: getMyUsage
+      responses:
+        "200":
+          description: The usage
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Usage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
 components:
   securitySchemes:
@@ -1680,6 +1716,40 @@ components:
             $ref: "#/components/schemas/ChangedFile"
         truncated:
           type: boolean
+
+    Usage:
+      type: object
+      required: [plan, runs, concurrentRuns, periodStart, resetsAt]
+      properties:
+        plan:
+          type: object
+          required: [slug, name]
+          properties:
+            slug:
+              type: string
+              example: free
+            name:
+              type: string
+              example: Free
+        runs:
+          type: object
+          required: [used, limit]
+          properties:
+            used:
+              type: integer
+            limit:
+              type: integer
+              nullable: true
+              description: null on a plan without a run limit
+        concurrentRuns:
+          type: integer
+          description: Tasks that can run at once
+        periodStart:
+          type: string
+          format: date-time
+        resetsAt:
+          type: string
+          format: date-time
 
 security:
   - sessionCookie: []
