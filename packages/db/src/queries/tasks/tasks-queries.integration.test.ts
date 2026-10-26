@@ -11,6 +11,7 @@ import {
 import { saveRunDiff } from "../runs/run-diffs-queries.js";
 import {
   countUserTasks,
+  createTaskWithinLimits,
   createTaskWithRun,
   findUserTask,
   findUserTasks,
@@ -111,6 +112,86 @@ describe.skipIf(!database)("tasks queries against Postgres", () => {
     expect(
       await db.select().from(tasks).where(eq(tasks.projectId, project.id)),
     ).toEqual([]);
+  });
+
+  describe("within the plan's limits", () => {
+    const cycle = {
+      start: new Date(Date.now() - 86_400_000),
+      end: new Date(Date.now() + 86_400_000),
+    };
+    const limits = (
+      userId: string,
+      overrides: { runsPerCycle?: number | null; concurrentRuns?: number } = {},
+    ) => ({ userId, cycle, runsPerCycle: 10, concurrentRuns: 1, ...overrides });
+
+    it("creates the task when the user is under both limits", async () => {
+      const project = await insertProject(db);
+
+      const created = await createTaskWithinLimits(
+        db,
+        values(project),
+        limits(project.userId),
+      );
+
+      expect(created).toMatchObject({ run: { status: "queued" } });
+    });
+
+    it("refuses while the user has as many runs going as the plan allows", async () => {
+      const project = await insertProject(db);
+      await createTaskWithRun(db, values(project));
+
+      expect(
+        await createTaskWithinLimits(
+          db,
+          values(project),
+          limits(project.userId),
+        ),
+      ).toEqual({ refused: "concurrent" });
+      expect(
+        await createTaskWithinLimits(
+          db,
+          values(project),
+          limits(project.userId, { concurrentRuns: 2 }),
+        ),
+      ).toMatchObject({ run: { status: "queued" } });
+    });
+
+    it("refuses once the cycle's runs are used, unless the plan has no limit", async () => {
+      const project = await insertProject(db);
+      const { run } = await createTaskWithRun(db, values(project));
+      await db
+        .update(runs)
+        .set({ status: "succeeded" })
+        .where(eq(runs.id, run.id));
+
+      expect(
+        await createTaskWithinLimits(
+          db,
+          values(project),
+          limits(project.userId, { runsPerCycle: 1 }),
+        ),
+      ).toEqual({ refused: "cycle" });
+      expect(
+        await createTaskWithinLimits(
+          db,
+          values(project),
+          limits(project.userId, { runsPerCycle: null }),
+        ),
+      ).toMatchObject({ run: { status: "queued" } });
+    });
+
+    it("lets only one of two starts at once through", async () => {
+      const project = await insertProject(db);
+
+      const results = await Promise.all([
+        createTaskWithinLimits(db, values(project), limits(project.userId)),
+        createTaskWithinLimits(db, values(project), limits(project.userId)),
+      ]);
+
+      expect(results.filter((r) => "refused" in r)).toEqual([
+        { refused: "concurrent" },
+      ]);
+    });
   });
 
   describe("reading a user's tasks", () => {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { SHORT_NAME } from "@hobai/shared/brand";
 import { useBranches } from "@/features/projects/branches";
 import { toSidebarProject } from "@/features/projects/projects";
+import { useUsage } from "@/features/usage/use-usage";
 import { ApiError } from "@/lib/api/client";
 import { defaultProjectId, startTaskError, taskReadiness } from "./start-task";
 import { useStartTask } from "./use-tasks";
@@ -54,6 +55,11 @@ export function useNewTask({
     chosenId ?? defaultProjectId(projects, [preferredProjectId, lastProject()]);
   const project = projects.find((p) => p.id === projectId);
   const startTask = useStartTask(projectId ?? "");
+  const usage = useUsage().data;
+  const runLimit =
+    usage && usage.runs.limit !== null && usage.runs.used >= usage.runs.limit
+      ? { limit: usage.runs.limit, resetsAt: usage.resetsAt }
+      : null;
 
   const defaultBranch = project?.defaultBranch ?? "";
   const baseBranch = branch ?? defaultBranch;
@@ -87,10 +93,12 @@ export function useNewTask({
     canStart: Boolean(text.trim()) && Boolean(project),
     // Still busy once started: the screen is about to change (the task opens, or Welcome moves on).
     starting: startTask.isPending || startTask.isSuccess,
+    // At the limit the banner says why; the refusal it came with would only repeat it.
     error:
-      startTask.error && projectId
+      startTask.error && projectId && !runLimit
         ? startTaskError(startTask.error, projectId)
         : null,
+    runLimit,
     onStart: () => {
       if (!projectId) return;
       startTask.mutate(

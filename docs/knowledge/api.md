@@ -1,6 +1,6 @@
 # API
 
-> Status: **Built** · Last updated: 2026-10-25 · Code: `apps/server` · Reference: `docs/api/openapi.yaml` (served at `/api/docs`) · Related: [ui.md](./ui.md) (what each screen needs), [github.md](./github.md) §6
+> Status: **Built** · Last updated: 2026-10-26 · Code: `apps/server` · Reference: `docs/api/openapi.yaml` (served at `/api/docs`) · Related: [ui.md](./ui.md) (what each screen needs), [github.md](./github.md) §6
 
 The HTTP API behind the web app. The OpenAPI file has every request and response; this page has the rules they share.
 
@@ -38,19 +38,23 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | `ONBOARDING_NOT_FOUND` | 404 | The project has never been set up, so there's no setup to answer or stop |
 | `ONBOARDING_ENDED` | 409 | The setup has already ended, so it can't be stopped |
 | `QUESTION_NOT_OPEN` | 409 | The setup isn't waiting on that question (answered, timed out, stopped, or a different one) |
+| `RUN_IN_PROGRESS` | 409 | The user's plan allows that many tasks running at once, and that many are queued or running ([billing.md](./billing.md) §2) |
+| `RUN_LIMIT_REACHED` | 429 | The user has used every run in this cycle; `data.resetsAt` says when they're back |
+| `DAILY_CAPACITY_REACHED` | 503 | hobai's daily spend cap is reached, for everyone; no new tasks or setups until the next UTC day |
 | `QUEUE_UNAVAILABLE` | 503 | Work couldn't be queued (Redis unreachable); the task's run or the setup is marked failed (`queue_unavailable`) |
 
 ## 4. Resources
 
 | Method | Path | |
 |---|---|---|
+| GET | `/me/usage` | `{ plan: { slug, name }, runs: { used, limit }, concurrentRuns, periodStart, resetsAt }`; `limit` is `null` on a plan without one ([billing.md](./billing.md) §2) |
 | GET | `/github/installations` | The user's installations and the install link ([github.md](./github.md) §6) |
 | GET | `/github/installations/:id/repositories` | Repositories the user can access there (most recently updated first), each with its `language` and its `projectId`, or `null` |
 | GET | `/projects` | The user's projects, newest first |
 | POST | `/projects` | `{ installationId, repoId }` → 201 created, or 200 with the existing project |
 | GET | `/projects/:id` | One project |
 | DELETE | `/projects/:id` | Removes it with its tasks, runs and environments; GitHub untouched |
-| POST | `/projects/:id/onboarding` | Records a setup and queues it: 202 `{ onboarding }`; while one is queued, running or waiting, that one is returned |
+| POST | `/projects/:id/onboarding` | Refused with `DAILY_CAPACITY_REACHED` when the daily cap is reached; else records a setup and queues it: 202 `{ onboarding }`; while one is queued, running or waiting, that one is returned |
 | GET | `/projects/:id/onboarding` | The latest setup with its open question, or `null` |
 | GET | `/projects/:id/onboarding/events` | The latest setup's events as a stream, replayed then live (§6) |
 | POST | `/projects/:id/onboarding/answer` | `{ questionId, answer: { option } \| { other } }` → 202; checked against the open question, then handed to the worker |
@@ -58,7 +62,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | GET | `/projects/:id/environments` | The saved environment versions, newest first |
 | POST | `/projects/:id/environments/:version/restore` | Makes an older version active again: 200 `{ environment }` |
 | GET | `/projects/:id/branches` | `{ branches, defaultBranch, truncated }`: the repository's branch names from GitHub (with the user's token), the default first, at most 1,000 |
-| POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued |
+| POST | `/projects/:id/tasks` | `{ prompt, baseBranch? }` → 201 `{ task, run }`, the run queued; refused over the plan's limits or the daily cap (`RUN_IN_PROGRESS`, `RUN_LIMIT_REACHED`, `DAILY_CAPACITY_REACHED`) |
 | GET | `/tasks?projectId=&filter=&cursor=` | The user's tasks, newest first, 50 per page, with `nextCursor` and `counts` |
 | GET | `/tasks/:id` | A task with its messages and runs |
 | GET | `/runs/:id` | One run |

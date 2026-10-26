@@ -16,6 +16,7 @@
     "dev:server": "pnpm --filter server dev",
     "dev:worker": "pnpm --filter @hobai/worker dev",
     "dev:webhooks": "pnpm --filter server webhooks",
+    "admin:set-plan": "pnpm --filter server admin:set-plan",
     "build:web": "pnpm --filter web build",
     "build:server": "pnpm --filter server build",
     "build:worker": "pnpm --filter @hobai/worker build",

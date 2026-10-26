@@ -36,6 +36,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().default("redis://localhost:6380"),
 
   AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
+  DAILY_SPEND_CAP_USD: z.coerce.number().positive().default(5),
 
   BETTER_AUTH_URL: z.string().default("http://localhost:3000"),
   BETTER_AUTH_SECRET: z.string().default("your-better-auth-secret"),
@@ -117,6 +118,9 @@ const parseEnv = () => {
       },
       agent: {
         model: env.AGENT_MODEL,
+      },
+      limits: {
+        dailySpendCapUsd: env.DAILY_SPEND_CAP_USD,
       },
       betterAuth: {
         url: env.BETTER_AUTH_URL,

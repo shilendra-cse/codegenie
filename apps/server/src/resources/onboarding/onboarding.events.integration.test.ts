@@ -59,6 +59,7 @@ describe.skipIf(!database)("setup event stream over HTTP", () => {
       publisher: { publish: () => Promise.resolve(0) },
       hub,
       heartbeatMs,
+      dailySpendCapUsd: 1000,
     });
     const app = express();
     app.get(

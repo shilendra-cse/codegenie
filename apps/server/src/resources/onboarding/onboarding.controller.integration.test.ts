@@ -56,6 +56,7 @@ describe.skipIf(!database)("onboarding controllers against Postgres", () => {
     },
     hub: { listen: () => Promise.resolve(() => Promise.resolve()) },
     heartbeatMs: 60_000,
+    dailySpendCapUsd: 1000,
   });
   const response = {} as Response;
   afterAll(() => database?.drop());
@@ -93,6 +94,23 @@ describe.skipIf(!database)("onboarding controllers against Postgres", () => {
   }
 
   describe("starting setup", () => {
+    it("refuses once today's spend reaches the cap", async () => {
+      const project = await insertProject(db);
+      const capped = createOnboardingControllers({
+        db,
+        queue: { add: () => Promise.resolve({}) },
+        publisher: { publish: () => Promise.resolve(1) },
+        hub: { listen: () => Promise.resolve(() => Promise.resolve()) },
+        heartbeatMs: 60_000,
+        dailySpendCapUsd: 0,
+      });
+
+      await expect(
+        capped.start(request(project.userId, project.id), response),
+      ).rejects.toMatchObject({ status: 503, code: "DAILY_CAPACITY_REACHED" });
+      expect(await findLatestOnboarding(db, project.id)).toBeNull();
+    });
+
     it("records the setup, queues it, and returns the one in progress when started again", async () => {
       const project = await insertProject(db);
       const start = () =>

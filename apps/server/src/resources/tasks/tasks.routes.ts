@@ -8,6 +8,7 @@ const tasks = createTaskControllers({
   db,
   queue: workQueue,
   model: config.agent.model,
+  dailySpendCapUsd: config.limits.dailySpendCapUsd,
 });
 
 api.post("/projects/:id/tasks").authSecure(tasks.startTask);

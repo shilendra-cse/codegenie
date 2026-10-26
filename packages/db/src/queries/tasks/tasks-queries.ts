@@ -1,6 +1,8 @@
 import type { TaskCounts, TaskFilter } from "@hobai/shared";
 import { and, asc, count, desc, eq, inArray, ne, not, sql } from "drizzle-orm";
-import type { Db } from "../../client.js";
+import type { Db, DbOrTx } from "../../client.js";
+import type { Cycle } from "../billing/cycle.js";
+import { countActiveRuns, countCycleRuns } from "../billing/usage-queries.js";
 import { projects } from "../../schema/projects/projects-schema.js";
 import { runs } from "../../schema/runs/runs-schema.js";
 import { messages } from "../../schema/tasks/messages-schema.js";
@@ -15,19 +17,57 @@ export type NewTaskWithRun = {
 
 /** A task with its first message and queued run, in one transaction. */
 export async function createTaskWithRun(db: Db, values: NewTaskWithRun) {
+  return db.transaction((tx) => insertTaskWithRun(tx, values));
+}
+
+async function insertTaskWithRun(tx: DbOrTx, values: NewTaskWithRun) {
+  const [task] = await tx.insert(tasks).values(values.task).returning();
+  const [run] = await tx
+    .insert(runs)
+    .values({ ...values.run, taskId: task!.id })
+    .returning();
+  await tx.insert(messages).values({
+    ...values.message,
+    taskId: task!.id,
+    runId: run!.id,
+    role: "user",
+  });
+  return { task: task!, run: run! };
+}
+
+export type RunLimits = {
+  userId: string;
+  cycle: Cycle;
+  /** null = no limit. */
+  runsPerCycle: number | null;
+  concurrentRuns: number;
+};
+
+/**
+ * Like createTaskWithRun, unless the user already has as many runs going as their plan allows
+ * (`concurrent`) or has used the cycle's runs (`cycle`).
+ */
+export async function createTaskWithinLimits(
+  db: Db,
+  values: NewTaskWithRun,
+  limits: RunLimits,
+) {
   return db.transaction(async (tx) => {
-    const [task] = await tx.insert(tasks).values(values.task).returning();
-    const [run] = await tx
-      .insert(runs)
-      .values({ ...values.run, taskId: task!.id })
-      .returning();
-    await tx.insert(messages).values({
-      ...values.message,
-      taskId: task!.id,
-      runId: run!.id,
-      role: "user",
-    });
-    return { task: task!, run: run! };
+    // One start at a time per user, so two at once can't both pass the counts.
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${limits.userId}))`,
+    );
+    if ((await countActiveRuns(tx, limits.userId)) >= limits.concurrentRuns) {
+      return { refused: "concurrent" as const };
+    }
+    if (
+      limits.runsPerCycle !== null &&
+      (await countCycleRuns(tx, limits.userId, limits.cycle)) >=
+        limits.runsPerCycle
+    ) {
+      return { refused: "cycle" as const };
+    }
+    return insertTaskWithRun(tx, values);
   });
 }
 

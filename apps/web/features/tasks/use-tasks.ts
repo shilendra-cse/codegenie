@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { usageKey } from "@/features/usage/api";
 import { fetchTask, fetchTaskPage, startTask, taskKey, tasksKey } from "./api";
 
 const REFRESH_MS = 3_000;
@@ -58,6 +59,10 @@ export function useStartTask(projectId: string) {
     // Not awaited: the caller moves on (opens the task) without waiting for the list to refetch.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+    // A start uses a run; a refusal may mean the count shown is out of date.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: usageKey });
     },
   });
 }

@@ -124,6 +124,12 @@ pnpm eval                  # run the eval tasks (real model runs; costs money)
 
 Sign in at http://localhost:3000/signin.
 
+Everyone starts on the free plan (10 runs a cycle, [docs/knowledge/billing.md](docs/knowledge/billing.md)). To lift the limits for yourself:
+
+```bash
+pnpm admin:set-plan you@example.com unlimited
+```
+
 ## Common commands
 
 | Command | What it does |

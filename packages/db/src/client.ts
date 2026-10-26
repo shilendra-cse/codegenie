@@ -4,6 +4,9 @@ import * as schema from "./schema/index.js";
 
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
 
+/** A database or a transaction on it: what a query can run against. */
+export type DbOrTx = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 /**
  * Opens a connection pool. Each app creates its own from its config, so nothing
  * connects on import and tests control their connection.

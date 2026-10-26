@@ -5,6 +5,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { GitHubMark } from "@/components/atoms/github-mark";
 import { Icon } from "@/components/atoms/icon";
+import { FREE_PLAN } from "@/lib/plans";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
 
 export type HeroProps = { signedIn: boolean };
@@ -22,9 +23,9 @@ export function Hero({ signedIn }: HeroProps) {
         <span className="text-muted-foreground">Review the pull request.</span>
       </h1>
       <p className="max-w-[620px] text-lg leading-relaxed text-muted-foreground">
-        {PRODUCT_NAME} works in an isolated sandbox: it installs your repository,
-        makes the change, runs your checks and opens a pull request for you to
-        review.
+        {PRODUCT_NAME} works in an isolated sandbox: it installs your
+        repository, makes the change, runs your checks and opens a pull request
+        for you to review.
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
         {signedIn ? (
@@ -35,7 +36,7 @@ export function Hero({ signedIn }: HeroProps) {
           <Button asChild variant="primary" size="lg" glow>
             <Link href={SIGN_IN}>
               <GitHubMark />
-              Sign in with GitHub
+              Start free with GitHub
             </Link>
           </Button>
         )}
@@ -43,9 +44,17 @@ export function Hero({ signedIn }: HeroProps) {
           <a href="#how">See how it works</a>
         </Button>
       </div>
-      <p className="text-[13px] text-faint">
-        For JavaScript and TypeScript repositories on GitHub.
-      </p>
+      <div className="mt-1 flex flex-col items-center gap-1.5">
+        {!signedIn && (
+          <p className="text-xl font-semibold tracking-[-0.015em]">
+            Free to start: {FREE_PLAN.runsPerCycle} runs every month
+          </p>
+        )}
+        <p className="text-[13px] text-faint">
+          {!signedIn && "No card needed. "}For JavaScript and TypeScript
+          repositories on GitHub.
+        </p>
+      </div>
     </section>
   );
 }

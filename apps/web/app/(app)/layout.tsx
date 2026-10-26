@@ -2,10 +2,12 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { AccountMenu } from "@/components/organisms/account-menu";
 import { GettingStartedCard } from "@/components/organisms/getting-started-card";
+import { UsageLine } from "@/components/molecules/usage-line";
 import { Sidebar } from "@/components/organisms/sidebar";
+import { UsageDialog } from "@/components/organisms/usage-dialog";
 import { AppShell } from "@/components/templates/app-shell";
 import { useAccount } from "@/features/account/use-account";
 import { useWelcomeChecklist } from "@/features/onboarding/use-welcome-checklist";
@@ -13,6 +15,7 @@ import { toSidebarProject, useProjects } from "@/features/projects/projects";
 import { useOnboarding } from "@/features/setup/use-onboarding";
 import { useSetupsNeedingYou } from "@/features/projects/use-setups-needing-you";
 import { useTaskCounts, useTasks } from "@/features/tasks/use-tasks";
+import { useUsage } from "@/features/usage/use-usage";
 import { SIGN_IN, WELCOME } from "@/lib/routes";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -25,6 +28,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const counts = useTaskCounts();
   const setupsNeedingYou = useSetupsNeedingYou();
   const checklist = useWelcomeChecklist();
+  const usage = useUsage();
+  const [usageOpen, setUsageOpen] = useState(false);
   // The card is hidden on the welcome page itself, where the checklist is.
   const steps =
     checklist.status === "ready" && pathname !== WELCOME ? checklist.steps : [];
@@ -71,11 +76,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               />
             )
           }
+          usage={
+            usage.data && (
+              <UsageLine usage={usage.data} onOpen={() => setUsageOpen(true)} />
+            )
+          }
           account={
             <AccountMenu
               user={account}
               theme={theme}
               onThemeChange={setTheme}
+              onShowUsage={() => setUsageOpen(true)}
               onSignOut={() => void signOut()}
             />
           }
@@ -83,6 +94,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       }
     >
       {children}
+      <UsageDialog
+        open={usageOpen}
+        onOpenChange={setUsageOpen}
+        usage={usage.data}
+        failed={usage.isError}
+      />
     </AppShell>
   );
 }

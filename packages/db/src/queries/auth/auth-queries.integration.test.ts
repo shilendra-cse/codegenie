@@ -5,7 +5,7 @@ import type { Db } from "../../client.js";
 import { account, user } from "../../schema/index.js";
 import { testDatabaseOrSkip } from "../../testing/index.js";
 import { findUserIdByGithubId } from "./accounts-queries.js";
-import { ensureUser } from "./users-queries.js";
+import { ensureUser, findUserIdByEmail } from "./users-queries.js";
 
 const database = await testDatabaseOrSkip("auth queries");
 
@@ -42,5 +42,13 @@ describe.skipIf(!database)("auth queries against Postgres", () => {
 
     expect(await findUserIdByGithubId(db, 4242)).toBe(userId);
     expect(await findUserIdByGithubId(db, 9999)).toBeNull();
+  });
+
+  it("finds a user by email", async () => {
+    const values = newUser();
+    await ensureUser(db, values);
+
+    expect(await findUserIdByEmail(db, values.email)).toBe(values.id);
+    expect(await findUserIdByEmail(db, "nobody@example.com")).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ export const WELCOME = "/welcome";
 export const SIGN_IN = "/signin";
 export const ADD_REPOSITORY = "/projects/new";
 export const NEW_TASK = "/new";
+export const PRICING = "/pricing";
 
 export const projectPath = (id: string) => `/projects/${id}`;
 export const environmentPath = (projectId: string) =>

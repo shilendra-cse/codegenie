@@ -13,12 +13,14 @@ describe("Landing", () => {
     auth.session = null;
     render(<Landing />);
 
-    for (const name of ["Sign in", "Get started", "Sign in with GitHub"]) {
+    for (const name of ["Sign in", "Get started", "Start free with GitHub"]) {
       for (const link of screen.getAllByRole("link", { name })) {
         expect(link).toHaveAttribute("href", "/signin");
       }
     }
-    expect(screen.queryByRole("link", { name: `Open ${PRODUCT_NAME}` })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: `Open ${PRODUCT_NAME}` }),
+    ).toBeNull();
   });
 
   it("links its menu to its own sections", () => {
@@ -33,6 +35,19 @@ describe("Landing", () => {
           .some((l) => l.getAttribute("href") === `#${id}`),
       ).toBe(true);
     }
+  });
+
+  it("says it's free to start, and links to pricing", () => {
+    auth.session = null;
+    render(<Landing />);
+
+    expect(
+      screen.getByText("Free to start: 10 runs every month"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
   });
 
   it("offers to open the app when already signed in", () => {

@@ -36,6 +36,13 @@
       "when": 1792771296145,
       "tag": "0004_onboardings",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792983195144,
+      "tag": "0005_plans",
+      "breakpoints": true
     }
   ]
 }

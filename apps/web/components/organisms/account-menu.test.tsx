@@ -5,7 +5,11 @@ import { AccountMenu } from "./account-menu";
 const user = { name: "Ada Lovelace", email: "ada@example.com", image: null };
 
 function open() {
-  const handlers = { onThemeChange: vi.fn(), onSignOut: vi.fn() };
+  const handlers = {
+    onThemeChange: vi.fn(),
+    onShowUsage: vi.fn(),
+    onSignOut: vi.fn(),
+  };
   render(<AccountMenu user={user} theme="light" {...handlers} />);
   fireEvent.keyDown(
     screen.getByRole("button", { name: "Ada Lovelace, account menu" }),
@@ -32,6 +36,14 @@ describe("AccountMenu", () => {
     expect(onThemeChange).toHaveBeenCalledWith("dark");
   });
 
+  it("opens usage and limits", () => {
+    const { onShowUsage } = open();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Usage & limits" }));
+
+    expect(onShowUsage).toHaveBeenCalledOnce();
+  });
+
   it("signs out", () => {
     const { onSignOut } = open();
 
@@ -46,6 +58,7 @@ describe("AccountMenu", () => {
         user={null}
         theme={undefined}
         onThemeChange={vi.fn()}
+        onShowUsage={vi.fn()}
         onSignOut={vi.fn()}
       />,
     );
