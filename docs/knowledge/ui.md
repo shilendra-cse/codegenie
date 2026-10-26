@@ -84,9 +84,9 @@ Hero ("Describe the change. Review the pull request."), Sign in with GitHub, a s
 
 ### Pricing
 Public, linked from the landing page's header (**Pricing**) and from Usage & limits (**See plans**).
-- **Hero:** "Start for free", one line on what a run gets you.
+- **Hero:** "Simple pricing", and one line: every run happens in its own sandbox and ends in a pull request on your repository.
 - **Free:** ₹0 / month; 10 runs per cycle, 1 task at a time, GPT-6 Luna, setups free, PRs with your checks run; **Start free** (signed in: **Open hobai**).
-- **Pro:** only a **Coming soon** badge and one line (more runs, the model of your choice); no price or feature list until prices are set from measured run costs ([billing.md](./billing.md) §3).
+- **Pro:** **Coming soon**, "Soon" where the price goes (prices are set from measured run costs, [billing.md](./billing.md) §3), what it adds (more runs every month, the model for each task, more tasks at once, everything in Free) and a disabled **Coming soon** button, so it sits level with Free.
 - **Questions:** what a run is (one attempt at a task; setups don't count, nor runs that failed through hobai's fault), when runs reset (a month from the day you signed up), what happens at the limit.
 
 **Data:** none; the plans shown are fixed text until Pro exists.

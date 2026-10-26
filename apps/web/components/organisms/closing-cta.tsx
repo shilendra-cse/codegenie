@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { Glow } from "@/components/atoms/glow";
+import { FREE_PLAN } from "@/lib/plans";
 import { APP_HOME, SIGN_IN } from "@/lib/routes";
 
 export type ClosingCtaProps = { signedIn: boolean };
@@ -17,12 +18,14 @@ export function ClosingCta({ signedIn }: ClosingCtaProps) {
         <p className="text-base text-muted-foreground">
           Connect a repository in a minute. Review your first pull request soon
           after.
+          {!signedIn &&
+            ` Free to start, with ${FREE_PLAN.runsPerCycle} runs every month.`}
         </p>
         <Button asChild variant="primary" size="lg" glow>
           {signedIn ? (
             <Link href={APP_HOME}>Open {PRODUCT_NAME}</Link>
           ) : (
-            <Link href={SIGN_IN}>Sign in with GitHub</Link>
+            <Link href={SIGN_IN}>Start free with GitHub</Link>
           )}
         </Button>
       </div>
