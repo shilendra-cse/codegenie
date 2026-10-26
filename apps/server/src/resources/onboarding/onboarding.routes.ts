@@ -1,3 +1,4 @@
+import { config } from "@/config";
 import { db } from "@/db";
 import { api } from "@/lib/ApiRouter";
 import { eventHub } from "@/lib/events";
@@ -12,6 +13,7 @@ const onboarding = createOnboardingControllers({
   publisher: redis,
   hub: eventHub,
   heartbeatMs: 15_000,
+  dailySpendCapUsd: config.limits.dailySpendCapUsd,
 });
 
 api.post("/projects/:id/onboarding").authSecure(onboarding.start);

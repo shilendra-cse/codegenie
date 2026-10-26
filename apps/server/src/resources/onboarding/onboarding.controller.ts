@@ -26,6 +26,7 @@ export type OnboardingControllerDeps = {
   db: Db;
   queue: WorkQueue;
   publisher: Publisher;
+  dailySpendCapUsd: number;
 } & Pick<StreamOnboardingEventsDeps, "hub" | "heartbeatMs">;
 
 export function createOnboardingControllers(deps: OnboardingControllerDeps) {

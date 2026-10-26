@@ -7,9 +7,14 @@ import {
   messages,
   runs,
   setInstallationSuspended,
+  setUserPlan,
   tasks,
 } from "@hobai/db";
-import { insertProject, testDatabaseOrSkip } from "@hobai/db/testing";
+import {
+  insertProject,
+  insertTask,
+  testDatabaseOrSkip,
+} from "@hobai/db/testing";
 import { eq } from "drizzle-orm";
 import type { Response } from "express";
 import { afterAll, describe, expect, it } from "vitest";
@@ -43,6 +48,7 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
       body,
     }) as unknown as AuthenticatedRequest;
   const response = {} as Response;
+  const deps = { model: "m", dailySpendCapUsd: 1000 };
 
   async function readyProject() {
     const project = await insertProject(db);
@@ -66,6 +72,7 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
       db,
       queue,
       model: "test:model",
+      dailySpendCapUsd: 1000,
     });
     const prompt =
       "Add a GET /health endpoint\n\nReturn 503 when the database is down.";
@@ -110,7 +117,7 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
     const controllers = createTaskControllers({
       db,
       queue: fakeQueue().queue,
-      model: "m",
+      ...deps,
     });
 
     const result = await controllers.startTask(
@@ -160,7 +167,7 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
       await markInstallationUninstalled(db, installation!.installationId);
     }
     const { queue, added } = fakeQueue();
-    const controllers = createTaskControllers({ db, queue, model: "m" });
+    const controllers = createTaskControllers({ db, queue, ...deps });
     const userId = state === "someone-else" ? randomUUID() : project.userId;
 
     await expect(
@@ -181,7 +188,7 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
     const controllers = createTaskControllers({
       db,
       queue: fakeQueue(new Error("Connection is closed.")).queue,
-      model: "m",
+      ...deps,
     });
 
     await expect(
@@ -203,6 +210,80 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
     });
   });
 
+  describe("the plan's limits", () => {
+    const start = async (userId: string, projectId: string, capUsd = 1000) =>
+      createTaskControllers({
+        db,
+        queue: fakeQueue().queue,
+        model: "m",
+        dailySpendCapUsd: capUsd,
+      }).startTask(request(userId, projectId, { prompt: "Fix it" }), response);
+
+    async function useRuns(project: { id: string; userId: string }, n: number) {
+      for (let i = 0; i < n; i++) {
+        const task = await insertTask(db, project);
+        await db.insert(runs).values({
+          taskId: task.id,
+          trigger: "initial",
+          model: "m",
+          status: "succeeded",
+        });
+      }
+    }
+
+    it("refuses a second task while one is running", async () => {
+      const project = await readyProject();
+      await start(project.userId, project.id);
+
+      await expect(start(project.userId, project.id)).rejects.toMatchObject({
+        status: 409,
+        code: "RUN_IN_PROGRESS",
+        message:
+          "You already have a task running. Wait for it to finish, or cancel it.",
+      });
+    });
+
+    it("refuses once the cycle's 10 runs are used, saying when they reset", async () => {
+      const project = await readyProject();
+      await useRuns(project, 10);
+
+      const refusal = await start(project.userId, project.id).catch(
+        (error: unknown) => error,
+      );
+
+      expect(refusal).toMatchObject({
+        status: 429,
+        code: "RUN_LIMIT_REACHED",
+        message: expect.stringMatching(
+          /^You've used all 10 runs this cycle\. They reset on \d{1,2} [A-Z][a-z]{2}\.$/,
+        ) as string,
+        data: { resetsAt: expect.any(String) as string },
+      });
+    });
+
+    it("has no run limit on the unlimited plan", async () => {
+      const project = await readyProject();
+      await useRuns(project, 10);
+      await setUserPlan(db, project.userId, "unlimited");
+
+      await expect(start(project.userId, project.id)).resolves.toMatchObject({
+        status: 201,
+      });
+    });
+
+    it("refuses everyone once today's spend reaches the cap", async () => {
+      const project = await readyProject();
+
+      await expect(start(project.userId, project.id, 0)).rejects.toMatchObject({
+        status: 503,
+        code: "DAILY_CAPACITY_REACHED",
+      });
+      expect(
+        await db.select().from(tasks).where(eq(tasks.projectId, project.id)),
+      ).toEqual([]);
+    });
+  });
+
   it.each([
     ["an empty prompt", { prompt: "   " }],
     [
@@ -213,7 +294,7 @@ describe.skipIf(!database)("task controllers against Postgres", () => {
     const controllers = createTaskControllers({
       db,
       queue: fakeQueue().queue,
-      model: "m",
+      ...deps,
     });
     await expect(
       controllers.startTask(
