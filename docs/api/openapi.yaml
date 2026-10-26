@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: hobai API
   version: 1.0.0
-  description: HTTP API for the hobai web app.
+  description: HTTP API for the hobai web app. Any route can answer `429 RATE_LIMITED` (see the `RateLimited` response) when a per-minute rate limit is exceeded; `/health` and the GitHub webhook never are.
 servers:
   - url: http://localhost:3001
     description: Local development
@@ -1126,6 +1126,12 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     OnboardingNotFound:
       description: The project was never set up (`ONBOARDING_NOT_FOUND`), or it isn't one of the user's projects (`PROJECT_NOT_FOUND`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    RateLimited:
+      description: Too many requests in a minute (`RATE_LIMITED`), per address or, signed in, per account; the `RateLimit` headers say when the count resets
       content:
         application/json:
           schema:

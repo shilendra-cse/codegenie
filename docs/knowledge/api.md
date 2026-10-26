@@ -1,6 +1,6 @@
 # API
 
-> Status: **Built** · Last updated: 2026-10-26 · Code: `apps/server` · Reference: `docs/api/openapi.yaml` (served at `/api/docs`) · Related: [ui.md](./ui.md) (what each screen needs), [github.md](./github.md) §6
+> Status: **Built** · Last updated: 2026-10-26 · Code: `apps/server` · Reference: `docs/api/openapi.yaml` (served at `/api/docs` outside production) · Related: [ui.md](./ui.md) (what each screen needs), [github.md](./github.md) §6
 
 The HTTP API behind the web app. The OpenAPI file has every request and response; this page has the rules they share.
 
@@ -16,6 +16,22 @@ The HTTP API behind the web app. The OpenAPI file has every request and response
 ## 2. Ownership
 
 Every project, task and run belongs to one user. A route loads it **together with the signed-in user's id**, so someone else's resource and a missing one both answer **404** with the same code: ids of other people's things are never confirmed to exist. Nothing else checks access.
+
+### 2.1 Rate limits
+
+Counted per minute, in the server's memory (one server instance; a shared store comes with a second one). Over a limit: `429 RATE_LIMITED`, "Too many requests. Try again in a minute."
+
+| Limit | Applies to | Counted per | Production | Development |
+|---|---|---|---|---|
+| Flood guard | every request | address | 1,000 | 10,000 |
+| Sign-in | `/api/auth/sign-in/*`, `/api/auth/callback/*` | address | 20 | 200 |
+| Signed-in use | every signed-in route | account | 300 | 3,000 |
+
+- A busy user sends 40–60 requests a minute per tab (lists polled every 3 s while something runs), so 300 per account leaves room for several tabs; counting per account means people sharing one network don't share a count.
+- `/health` and `/api/github/webhooks` (GitHub's servers, verified by signature) are never limited.
+- Addresses come from `X-Forwarded-For`, trusting `TRUST_PROXY` proxies (default 1: the web app's `/api` rewrite; production also has the host's edge).
+
+Security headers come from helmet on every response, with a content security policy in production. The API docs (`/api/docs`, `/api/openapi.yaml`) are served only outside production.
 
 ## 3. Error codes
 
@@ -41,6 +57,7 @@ Every project, task and run belongs to one user. A route loads it **together wit
 | `RUN_IN_PROGRESS` | 409 | The user's plan allows that many tasks running at once, and that many are queued or running ([billing.md](./billing.md) §2) |
 | `RUN_LIMIT_REACHED` | 429 | The user has used every run in this cycle; `data.resetsAt` says when they're back |
 | `DAILY_CAPACITY_REACHED` | 503 | hobai's daily spend cap is reached, for everyone; no new tasks or setups until the next UTC day |
+| `RATE_LIMITED` | 429 | Too many requests in a minute (§2.1); the `RateLimit` headers say when the count resets |
 | `QUEUE_UNAVAILABLE` | 503 | Work couldn't be queued (Redis unreachable); the task's run or the setup is marked failed (`queue_unavailable`) |
 
 ## 4. Resources
