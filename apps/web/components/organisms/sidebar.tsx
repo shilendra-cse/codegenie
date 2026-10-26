@@ -45,6 +45,8 @@ export type SidebarProps = {
   inboxCount?: number;
   /** Shown above the account until the first-run steps are done. */
   gettingStarted?: ReactNode;
+  /** The runs used this cycle, above the account. */
+  usage?: ReactNode;
   account: ReactNode;
 };
 
@@ -106,6 +108,7 @@ const RECENT = 10;
 export function Sidebar({
   account,
   gettingStarted,
+  usage,
   tasks,
   inboxCount = 0,
   ...projects
@@ -191,7 +194,8 @@ export function Sidebar({
         </div>
       </nav>
       {gettingStarted && <div className="mt-3">{gettingStarted}</div>}
-      <div className="mt-3">{account}</div>
+      {usage && <div className="mt-3">{usage}</div>}
+      <div className={usage ? "mt-1" : "mt-3"}>{account}</div>
     </div>
   );
 }

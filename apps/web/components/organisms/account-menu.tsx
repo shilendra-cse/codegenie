@@ -1,4 +1,4 @@
-import { LogOut, Monitor, Moon, Settings2, Sun } from "lucide-react";
+import { Gauge, LogOut, Monitor, Moon, Settings2, Sun } from "lucide-react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Icon } from "@/components/atoms/icon";
 import {
@@ -24,6 +24,7 @@ export type AccountMenuProps = {
   user: AccountUser | null;
   theme: string | undefined;
   onThemeChange: (theme: Theme) => void;
+  onShowUsage: () => void;
   onSignOut: () => void;
 };
 
@@ -37,6 +38,7 @@ export function AccountMenu({
   user,
   theme,
   onThemeChange,
+  onShowUsage,
   onSignOut,
 }: AccountMenuProps) {
   if (!user) {
@@ -79,6 +81,11 @@ export function AccountMenu({
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>
+        <MenuSeparator />
+        <MenuItem onSelect={onShowUsage}>
+          <Icon icon={Gauge} />
+          Usage &amp; limits
+        </MenuItem>
         <MenuSeparator />
         <MenuItem onSelect={onSignOut}>
           <Icon icon={LogOut} />

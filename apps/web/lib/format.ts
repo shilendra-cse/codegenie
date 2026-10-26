@@ -31,3 +31,7 @@ export function formatDuration(ms: number) {
 }
 
 export const formatCost = (usd: number) => `$${usd.toFixed(2)}`;
+
+/** "25 Nov". */
+export const formatDay = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
