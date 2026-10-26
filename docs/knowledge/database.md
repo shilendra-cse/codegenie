@@ -69,7 +69,7 @@ Which plan a user is on and their current cycle.
 | `period_start` / `period_end` | timestamptz | the current cycle; a month apart, from the user's own start date |
 | `created_at` / `updated_at` | timestamptz | |
 
-Created when a user signs up (`free`, the first cycle starting then). When `period_end` has passed, the next request that needs it moves the cycle forward. Usage isn't stored here: it's counted from `runs` in the period.
+Created the first time it's needed (`ensureSubscription`): `free`, cycles counted from the user's `created_at`. When `period_end` has passed, the next request that needs it moves the cycle forward. Usage isn't stored here: it's counted from `runs` in the period.
 
 ### `github_installations`
 One row per GitHub App installation.
@@ -288,7 +288,7 @@ Migrations live in `packages/db/drizzle`, are additive, and are generated with `
 
 The schema, client, migrations and every query live in `packages/db` (queries in `src/queries/`, one folder per domain like the schema; apps never build queries themselves), shared by the server and the worker ([architecture.md](./architecture.md), [packages/db/README.md](../../packages/db/README.md)). After changing `packages/db/src/schema/`, write a migration with `pnpm --filter @hobai/db generate`; apply migrations with `pnpm migrate`.
 
-The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way. Since then: `0001_run_diffs`, `0002_installation_uninstalled_at`, `0003_task_pr_draft`, `0004_onboardings`.
+The rename to runs (`runs`, `run_events`, `run_id`, `run_*` enums) regenerated `0000_initial` the same way. Since then: `0001_run_diffs`, `0002_installation_uninstalled_at`, `0003_task_pr_draft`, `0004_onboardings`, `0005_plans` (which also seeds `free` and `unlimited`).
 
 **Tests** that need Postgres use `testDatabaseOrSkip` from `@hobai/db/testing`: a fresh, migrated database per run, created next to the development one (or on `TEST_DATABASE_URL`) and dropped afterwards; skipped without Postgres, required in CI (which runs a Postgres service).
 

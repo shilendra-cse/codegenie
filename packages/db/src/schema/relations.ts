@@ -1,5 +1,7 @@
 import { relations } from "drizzle-orm";
 import { user } from "./auth/auth-schema";
+import { plans } from "./billing/plans-schema";
+import { subscriptions } from "./billing/subscriptions-schema";
 import { githubInstallations } from "./github/github-installations-schema";
 import { runDiffs } from "./runs/run-diffs-schema";
 import { runEvents } from "./runs/run-events-schema";
@@ -113,4 +115,9 @@ export const runEventsRelations = relations(runEvents, ({ one }) => ({
 
 export const runDiffsRelations = relations(runDiffs, ({ one }) => ({
   run: one(runs, { fields: [runDiffs.runId], references: [runs.id] }),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  user: one(user, { fields: [subscriptions.userId], references: [user.id] }),
+  plan: one(plans, { fields: [subscriptions.planId], references: [plans.id] }),
 }));

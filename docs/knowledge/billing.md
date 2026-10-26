@@ -18,8 +18,8 @@ No payment setup in the MVP. Limits are enforced when a task is created and reje
 Limits live in data, not code: every user is on a **plan**, and the plan says what's allowed. The free tier, the author's own access and later Pro tiers are all rows, so changing one never needs a deploy, and the admin panel (§6) edits the same rows.
 
 - **Plan** (`plans`): a slug, a name, and its limits: runs per cycle (`null` = no limit) and concurrent runs. Seeded with `free` (10 runs, 1 at a time) and `unlimited` (no run limit, 3 at a time; internal, for the author). Later plans add a price and included credits (§4).
-- **Subscription** (`subscriptions`): which plan a user is on, and their current cycle (`period_start`, `period_end`). Every user gets `free` when they sign up, with the first cycle starting then. `source` says how they got it: `signup`, `admin`, later `payment`.
-- **Cycle:** a month long, from the user's own start date: signed up on the 25th, it resets on the 25th (on a shorter month, its last day). When a cycle has ended, the next request that needs it starts the new one. When paid plans come, the payment provider's billing period becomes the same `period_start` / `period_end`.
+- **Subscription** (`subscriptions`): which plan a user is on, and their current cycle (`period_start`, `period_end`). Every user is on `free` from signup: the subscription is created the first time it's needed (`ensureSubscription`), its cycles counted from the user's `created_at`, so existing users need no backfill. `source` says how they got it: `signup`, `admin`, later `payment`.
+- **Cycle:** a month long, from the user's own start date: signed up on the 25th, it resets on the 25th (on a shorter month, its last day). When a cycle has ended, the next request that needs it moves it to the cycle containing now (months without a request are skipped). When paid plans come, the payment provider's billing period becomes the same `period_start` / `period_end`.
 - **Changing plan:** `pnpm admin:set-plan <github-login> <plan>` (the author puts themself on `unlimited`); later the admin panel's button does the same. The cycle stays as it is.
 
 ### What counts as a run
