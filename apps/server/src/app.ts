@@ -8,7 +8,7 @@ import { routes } from "./lib/ApiRouter";
 import { auth } from "./lib/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { httpLogger } from "./middleware/http-logger.js";
-import { rateLimits } from "./middleware/rate-limits.js";
+import { rateLimits } from "./middleware/app-rate-limits.js";
 import { logger } from "./lib/logger.js";
 import { registerOpenApiDocs } from "./lib/openapi.js";
 import { keepRawBody } from "./lib/raw-body.js";
