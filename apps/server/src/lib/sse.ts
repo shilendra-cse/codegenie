@@ -19,6 +19,13 @@ function format(frame: SseFrame) {
   return `${id}data: ${frame.data}\n\n`;
 }
 
+const openStreams = new Set<Response>();
+
+/** Ends every open stream; browsers reconnect, to the new server during a deploy, from the last event they saw. */
+export function endOpenStreams() {
+  for (const res of openStreams) res.end();
+}
+
 export function openSse(res: Response): SseStream {
   res.writeHead(200, {
     "content-type": "text/event-stream",
@@ -28,7 +35,11 @@ export function openSse(res: Response): SseStream {
   });
   res.flushHeaders();
   const disconnected = new AbortController();
-  res.on("close", () => disconnected.abort());
+  openStreams.add(res);
+  res.on("close", () => {
+    openStreams.delete(res);
+    disconnected.abort();
+  });
   return {
     send: (frame) => {
       if (!res.writableEnded) res.write(format(frame));

@@ -22,11 +22,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --offline --frozen-lockfile --prod --no-optional --shamefully-hoist --filter @hobai/worker...
 
 FROM node:24-slim
-ENV NODE_ENV=production
+ENV NODE_ENV=production WORKER_HEALTH_PORT=4100
 WORKDIR /app
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=build /repo/apps/worker/package.json ./
 COPY --from=build /repo/apps/worker/dist ./dist
 USER node
+# Internal only: Coolify waits for it before stopping the old worker, and keeps the old one if this never passes.
+HEALTHCHECK --interval=30s --start-period=30s --start-interval=2s --timeout=3s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:' + process.env.WORKER_HEALTH_PORT + '/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 # Started directly, not through a shell or pnpm, so node receives Docker's SIGTERM and finishes the work in progress.
 CMD ["node", "--enable-source-maps", "dist/index.js"]

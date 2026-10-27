@@ -42,6 +42,7 @@ const schema = z
     REAPER_INTERVAL_MINUTES: z.coerce.number().min(1).default(5),
     ONBOARDING_ANSWER_TIMEOUT_MINUTES: z.coerce.number().min(1).default(30),
     FRONTEND_URL: z.url({ protocol: /^https?$/ }).optional(),
+    WORKER_HEALTH_PORT: z.coerce.number().int().min(0).default(4100),
 
     GITHUB_APP_ID: z
       .string({ error: `GITHUB_APP_ID is not set. Add it to ${ENV_FILE}.` })
@@ -76,6 +77,7 @@ export type WorkerConfig = {
   reaperIntervalMs: number;
   answerTimeoutMs: number;
   frontendUrl: string | undefined;
+  healthPort: number;
   github: { appId: string; privateKey: string };
 };
 
@@ -117,6 +119,7 @@ export function parseConfig(
     reaperIntervalMs: e.REAPER_INTERVAL_MINUTES * 60_000,
     answerTimeoutMs: e.ONBOARDING_ANSWER_TIMEOUT_MINUTES * 60_000,
     frontendUrl: e.FRONTEND_URL?.replace(/\/+$/, ""),
+    healthPort: e.WORKER_HEALTH_PORT,
     github: { appId: e.GITHUB_APP_ID, privateKey: e.GITHUB_APP_PRIVATE_KEY },
   };
 }
