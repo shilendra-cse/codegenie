@@ -1,6 +1,6 @@
 # hobai Architecture
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-25
+> Status: **Accepted** (MVP) · Last updated: 2026-10-26
 
 hobai is a web-based autonomous coding agent. A user connects their GitHub repositories, assigns a task (a prompt for the MVP; Jira and Notion later), and the agent completes it inside an isolated cloud sandbox and delivers the result as a pull request.
 
@@ -19,7 +19,7 @@ hobai is a web-based autonomous coding agent. A user connects their GitHub repos
 | D7 | Autonomy | Fire-and-forget to PR. Plan-approval step is a **post-MVP** per-task toggle. | Keep MVP flow minimal. |
 | D8 | Sandbox lifetime | **One sandbox per run, deleted at the end.** Pause/resume for follow-ups is post-MVP. | Cost and simplicity. |
 | D9 | LLM | Provider-agnostic via **Vercel AI SDK**; platform-controlled model from a **catalog** (prices, context window), selected by env (`AGENT_MODEL`); currently `gpt-6-luna` | Avoid lock-in; predictable cost; pick models by eval results. See [agent.md](./agent.md). |
-| D10 | Hosting | **Vercel** (web) + **Railway** (api, worker, Postgres, Redis) | Managed, cheap at MVP scale, private networking between services. |
+| D10 | Hosting | **Vercel** (web) + one **VPS with Coolify** (api, worker) + **Neon** (Postgres) + **Upstash** (Redis) | Fixed, low cost at MVP scale; the database and Redis are managed (backups, no upkeep), so the VPS holds no data and can be rebuilt. See §10. |
 | D11 | Domains & auth cookies | Custom domain; web at `app.`, API proxied via Next.js rewrite (`/api/*` → api service) | Single browser origin: no third-party-cookie or CORS problems with Better Auth. |
 | D12 | Task intake | All sources normalize to one `Task`; MVP = prompt only, then Jira, then Notion | Pipeline is source-agnostic; integrations are adapters. |
 | D13 | Task vs Run | A **task** owns conversation, branch and PR; a **run** is one attempt at it | Follow-ups and PR-comment replies reuse the task's branch/PR without run chains. |
@@ -34,12 +34,13 @@ hobai is a web-based autonomous coding agent. A user connects their GitHub repos
 Browser ──HTTPS──► apps/web (Next.js, Vercel)                                      │
                         │  /api/* rewrite                                          │
                         ▼                                                          │
-                   apps/server (Express, Railway) ── enqueue ──► Redis (BullMQ,    │
-                        │   auth, projects, tasks,    ◄─subscribe─  pub/sub)       │
-                        │   SSE, GitHub webhooks                      ▲   │        │
+                   apps/server (Express, VPS) ──── enqueue ──► Redis (Upstash,     │
+                        │   auth, projects, tasks,    ◄─subscribe─  BullMQ,        │
+                        │   SSE, GitHub webhooks                    pub/sub)       │
+                        │                                             ▲   │        │
                         ▼                                    publish  │   │ consume│
-                   Postgres (Railway) ◄──────────────────────────── apps/worker     │
-                                                                   (Railway, no    │
+                   Postgres (Neon) ◄─────────────────────────────── apps/worker    │
+                                                                   (VPS, no        │
                                                                     public port)   │
                         └──────────────────────────────────────────────┬───┬───────┘
                                                         Daytona SDK    │   │ GitHub App API
@@ -259,7 +260,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 - Webhook signatures verified; production refuses to boot with default secrets.
 - Agent never pushes to the default branch; one active run per task (enforced by a DB index).
-- Per-user limits (1 concurrent run, 10 runs a month) and a global daily spend cap, enforced at task creation, are planned (Phase 5, [billing.md](./billing.md)).
+- Per-user limits from the plan (free: 1 task at once, 10 runs a cycle) and a global daily spend cap, enforced at task creation ([billing.md](./billing.md) §2).
 - Full audit trail in `run_events`.
 
 ---
@@ -268,13 +269,27 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Component | Host | Notes |
 |---|---|---|
-| web | Vercel | `/api/*` rewrite to api service (SSE buffering disabled) |
-| api | Railway service | public; migrations run as release step |
-| worker | Railway service | private; scale via replicas / BullMQ concurrency |
-| Postgres | Railway | managed, backups |
-| Redis | Railway | real TCP Redis (BullMQ + pub/sub) |
+| web | Vercel | `/api/*` rewrite to the api (SSE buffering disabled) |
+| api | VPS, Coolify app (Docker) | public behind Coolify's proxy (Traefik, HTTPS); migrations run before it starts |
+| worker | VPS, Coolify app (Docker) | no public port; scale with BullMQ concurrency |
+| Postgres | Neon | managed, backups; the apps use the pooled connection string, migrations the direct one |
+| Redis | Upstash | TCP over TLS (`rediss://`), which BullMQ and pub/sub need; eviction off (`noeviction`) so jobs are never dropped |
 | Sandboxes | Daytona Cloud | `hobai-base` snapshot built by script |
 | GitHub App | GitHub | separate dev and prod Apps |
+
+**VPS:** Hostinger KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe), Ubuntu 24.04 with Coolify. It runs only the api and the worker; untrusted code never runs there (sandboxes are on Daytona), and it stores no data, so it can be rebuilt from the repo and its secrets.
+
+**Proxies:** a request passes Vercel's rewrite, then Coolify's Traefik, so production sets `TRUST_PROXY=2` (checked at deploy: the rate limits must see the visitor's address).
+
+**If the VPS goes down:** no data is lost (it lives in Neon and Upstash); the web still loads but API calls fail; queued tasks wait in Upstash and the worker picks them up when it's back; runs in progress are lost (resuming them is post-MVP). Coolify runs on the same box, so it can't help here: it reads container logs live and doesn't keep them. Two outside services cover this:
+- **Logs off the box:** container logs are shipped to a hosted log service (Better Stack or Axiom, free tier), so the logs from before a crash can be read while the VPS is down.
+- **Uptime check:** an outside monitor (Better Stack or UptimeRobot, free tier) calls the api's health endpoint every minute and alerts by email.
+
+Coolify stays on the VPS rather than on a laptop: running it elsewhere doesn't keep logs either, and it would lose deploy on push (GitHub can't reach a laptop).
+
+**Things to watch:**
+- Upstash bills per command on pay-as-you-go, and an idle BullMQ worker still sends commands (blocking waits, stalled-job checks, the reap scheduler). Check the daily count after deploy and move to a fixed-price plan if it's high.
+- Neon's free tier suspends an idle database; the first query after a pause takes a moment longer. Fine at MVP scale.
 
 **Local dev:** `docker-compose` (Postgres, Redis) · `pnpm dev:web` / `dev:server` / `dev:worker` · `SANDBOX_PROVIDER=docker` (or `daytona` on free tier) · webhooks via smee.io or cloudflared tunnel.
 

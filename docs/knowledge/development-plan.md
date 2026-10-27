@@ -179,12 +179,12 @@ Walkthrough, by hand on real GitHub (all four `pnpm dev:*` running), on a small 
 
 - [x] Plans and the free tier ([billing.md](./billing.md) §2): `plans` and `subscriptions` (seeded `free` and `unlimited`, a subscription the first time it's needed, cycles from each user's start date, `admin:set-plan`); limits from the plan (tasks at once, runs per cycle) and the daily spend cap, each with a clear rejection message; `GET /me/usage`; the pricing page, the sidebar usage line, the Usage & limits dialog and the at-limit banner ([ui.md](./ui.md)). Lands before the deploy, since signup is open. **Done (2026-10-26, #55).**
 - [x] Hardening: helmet, and three rate limits per minute: per address for every request and for sign-in, per account for signed-in routes ([api.md](./api.md) §2.1); `TRUST_PROXY` so they see the real visitor; API docs only outside production. Plus one line in the setup agent's prompt: never offer an option that needs access the sandbox has already shown it can't get (e.g. "Allow access to binaries.prisma.sh" after its download failed with `ECONNRESET`). Scoped so nothing else changes: only options that depend on an access failure seen in this setup are left out; every other option, the question limit and how decisions are made stay as they are; provider-independent, so it does nothing on a sandbox with full internet. Checked by hand: DoDesk's setup no longer offers the Prisma option, and a setup without network failures asks the same questions as before. **Done (2026-10-26, #56):** the setup check was done by hand.
-- [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source.
-- [ ] Deploy: Vercel (web), Railway (api, worker, Postgres, Redis), prod GitHub App, custom domain, per-service secrets, migrations as release step.
+- [ ] Production builds for the server and worker: a bundler (e.g. `tsup`) that resolves the `@/…` aliases and includes the workspace packages, which ship TypeScript source; a Dockerfile per app, which Coolify builds.
+- [ ] Deploy ([architecture.md](./architecture.md) §10): Vercel (web); a Hostinger KVM 2 VPS with Coolify (api, worker); Neon (Postgres); Upstash (Redis); prod GitHub App, custom domain, per-service secrets, migrations before the api starts, `TRUST_PROXY=2`; logs shipped off the box and an uptime check on the api (architecture.md §10).
 - [ ] Re-run eval against production config.
 
 **Done when:** requirements §6 success criteria are met — U1–U7, U9 and U10 pass in production, eval targets hit, author using it for real work. **MVP complete.**
-**Needs:** Vercel, Railway, domain, prod GitHub App.
+**Needs:** Vercel, Hostinger VPS, Neon, Upstash, domain, prod GitHub App.
 
 ### Phase 6+ — Post-MVP
 follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same branch/PR *(U8)* · PR review comment / `@hobai` triggers · Jira intake, then Notion · plan approval · sandbox pause/resume for follow-ups · resume a lost run (restart its parked sandbox and skip setup; otherwise a fresh sandbox with its saved diff applied) · faster runs (setup snapshots, reused baselines: today setup and checks take most of a 6–10 minute DoDesk run, see [evals.md](./evals.md)) · live previews · paid plans: Pro tiers with included credits and top-ups ([billing.md](./billing.md)) · task assistant: a read-only chat per task, docked as a popup on the task page ([ui.md](./ui.md) §8) · structured logs with the run id across server and worker · admin panel: users, plans and statistics ([billing.md](./billing.md) §6) · **Run again** on a failed run (`trigger=retry`) · users shape their environment without editing the config directly (not designed yet) · team projects · more languages.
@@ -215,7 +215,7 @@ follow-ups: `POST /tasks/:id/messages` → `trigger=follow_up` run on the same b
 | 1 | LLM provider API key |
 | 2 | Daytona |
 | 3 | GitHub App (dev) + a test repo |
-| 5 | Vercel, Railway, domain, GitHub App (prod) |
+| 5 | Vercel, Hostinger VPS, Neon, Upstash, domain, GitHub App (prod) |
 
 ## 6. Risks
 
