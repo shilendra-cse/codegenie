@@ -32,8 +32,7 @@ export async function detectPackageManager(
   }
 
   const fromField = pkg.packageManager?.split("@")[0] as
-    | PackageManager
-    | undefined;
+    PackageManager | undefined;
   if (fromField && MANAGERS.includes(fromField)) {
     return {
       manager: fromField,

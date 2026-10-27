@@ -60,6 +60,14 @@ export async function runSegment(
   const stopWhen: StopCondition<ToolSet>[] = [
     hasToolCall(env.finishTool),
     stepCountIs(params.maxSteps),
+    // Checked by the SDK before the next model call; the abort below can arrive after that call has started.
+    ({ steps }) =>
+      steps
+        .at(-1)!
+        .content.some(
+          (part) =>
+            part.type === "tool-error" && isInfrastructureError(part.error),
+        ),
   ];
   if (params.costLimit) {
     stopWhen.push(() => state.usage.costUsd >= env.maxCostUsd);

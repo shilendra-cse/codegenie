@@ -5,12 +5,7 @@ import type { ChangeSet } from "../stages/deliver/index.js";
 import type { VerifyResult } from "../stages/verify/index.js";
 
 export type RunStageName =
-  | "sandbox"
-  | "checkout"
-  | "setup"
-  | "agent"
-  | "verify"
-  | "deliver";
+  "sandbox" | "checkout" | "setup" | "agent" | "verify" | "deliver";
 
 export type Delivery = { branchName: string; sha: string };
 

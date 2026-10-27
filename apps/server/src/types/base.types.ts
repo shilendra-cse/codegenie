@@ -34,7 +34,6 @@ export type PublicStream = (req: Request, res: Response) => Promise<void>;
 export type StreamRoute<Handler> = { kind: "stream"; handler: Handler };
 
 export type SecureHandler =
-  | AuthenticatedController
-  | StreamRoute<AuthenticatedStream>;
+  AuthenticatedController | StreamRoute<AuthenticatedStream>;
 
 export type PublicHandler = PublicController | StreamRoute<PublicStream>;

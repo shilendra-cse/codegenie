@@ -52,7 +52,10 @@ test.beforeAll(async ({ browser }) => {
 
 test("sign in with GitHub", async () => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Sign in with GitHub" }).first().click();
+  await page
+    .getByRole("link", { name: "Start free with GitHub" })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Continue with GitHub" }).click();
   await expect(page).toHaveURL(/\/welcome/);
 });
