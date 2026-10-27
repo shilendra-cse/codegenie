@@ -1,0 +1,16 @@
+# Images build only the server and the worker.
+**/node_modules
+**/dist
+**/.next
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.vscode
+.design-scratch
+apps/web
+apps/e2e
+apps/evals/results
+docs
+env.json
