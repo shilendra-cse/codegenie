@@ -5,3 +5,7 @@ packages:
 overrides:
   # ai pins 1.9.0 and the Daytona SDK needs ^1.9.1; two copies would split drizzle-orm (an optional peer) in two.
   "@opentelemetry/api": "1.9.1"
+  # Security fixes the packages that pin these haven't shipped. undici: the AI SDK's 5.x, only for its
+  # URL-download helper (Agent + fetch, unchanged in 6), which we never call. postcss: Next's 8.4.31, build-time only.
+  "undici@<6.29.1": "^6.29.1"
+  "postcss@<8.5.23": "^8.5.23"
