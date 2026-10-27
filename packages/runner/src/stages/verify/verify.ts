@@ -5,7 +5,9 @@ import { compareChecks, type ComparedCheck } from "./compare.js";
 
 export type VerifyResult = {
   checks: ComparedCheck[];
-  /** null when the repository has no checks. */
+  /** Checks that never started because the run reached its time limit. */
+  notRun?: Check[];
+  /** null when the repository has no checks, or when every check that ran passed but some didn't run. */
   passed: boolean | null;
   fixed: number;
   regressions: number;
@@ -15,16 +17,20 @@ export async function runVerify(
   sandbox: Sandbox,
   checks: Check[],
   baseline: CheckResult[] | null,
+  signal?: AbortSignal,
 ): Promise<VerifyResult> {
-  const compared = compareChecks(
-    baseline,
-    await runChecks(sandbox, checks, "verify"),
-  );
+  const results = await runChecks(sandbox, checks, "verify", signal);
+  const compared = compareChecks(baseline, results);
+  const notRun = checks.slice(results.length);
+  const allPassing = compared.every((check) => check.status === "passing");
   return {
     checks: compared,
-    passed: compared.length
-      ? compared.every((check) => check.status === "passing")
-      : null,
+    ...(notRun.length ? { notRun } : {}),
+    passed: !allPassing
+      ? false
+      : notRun.length || !compared.length
+        ? null
+        : true,
     fixed: compared.filter((c) => c.comparison === "fixed").length,
     regressions: compared.filter((c) => c.comparison === "regressed").length,
   };

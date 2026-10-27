@@ -22,13 +22,16 @@ export function isUsable(status: CheckStatus) {
   return status === "passing" || status === "failing";
 }
 
+/** No check starts once `signal` is aborted; the results so far are returned. */
 export async function runChecks(
   sandbox: Sandbox,
   checks: Check[],
   logPrefix: string,
+  signal?: AbortSignal,
 ): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   for (const [index, check] of checks.entries()) {
+    if (signal?.aborted) break;
     const run = await runLogged(sandbox, check.command, {
       logName: `${logPrefix}-${index + 1}-${check.name}`,
       timeoutMs: CHECK_TIMEOUT_MS,

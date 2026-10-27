@@ -30,6 +30,14 @@ type AgentResult = NonNullable<RunResult["agent"]>;
 
 export function runFailure(result: RunResult): RunFailure | null {
   const agent: AgentResult | undefined = result.agent;
+  if (result.timeLimitReached) {
+    return {
+      code: "time_limit",
+      message:
+        result.error ??
+        "Some checks didn't run: the run reached its time limit.",
+    };
+  }
   if (result.status === "failed") {
     return {
       code: `${result.failedStage ?? "agent"}_failed`,

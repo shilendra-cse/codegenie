@@ -145,7 +145,7 @@ export async function runOnboarding(
     if (signal?.aborted) return result("cancelled");
 
     channel.info("Installing dependencies and running checks…");
-    const tryEnvironment = createTryEnvironment(sandbox);
+    const tryEnvironment = createTryEnvironment(sandbox, "try", signal);
     const first = await tryEnvironment(draft);
     report("first", first);
     let proposal = asProposal(first, draft.checks);
@@ -198,7 +198,7 @@ export async function runOnboarding(
 
     channel.info("Final check in a fresh sandbox…");
     const fresh = await newSandbox();
-    const final = await createTryEnvironment(fresh, "final")(proposal);
+    const final = await createTryEnvironment(fresh, "final", signal)(proposal);
     report("final", final);
     if (sameProposal(lastTry.proposal, proposal)) {
       notes.push(...compareWithLastTry(lastTry.result, final));

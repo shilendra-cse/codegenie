@@ -1,5 +1,6 @@
 import {
   createToolContext,
+  DEFAULT_LIMITS,
   runAgent,
   type AgentLimits,
   type Emit,
@@ -31,7 +32,19 @@ export type RunTaskOptions = {
   afterCheckout?: (sandbox: Sandbox) => Promise<void>;
   /** Called for a succeeded or incomplete run with changes, while the sandbox is still there. */
   deliver?: Deliver;
+  /** Default RUN_TIME_LIMIT_MS. */
+  maxDurationMs?: number;
 };
+
+/**
+ * A whole run, from sandbox to pull request. Commands can't be interrupted, so the limit is
+ * checked before each one starts: a run ends by RUN_TIME_LIMIT_MS plus one command (10 minutes
+ * at most) and delivery, inside the hour a deploy waits for work in progress.
+ */
+export const RUN_TIME_LIMIT_MS = 45 * 60_000;
+
+const timeLimitMessage = (ms: number) =>
+  `This run took longer than ${Math.round(ms / 60_000)} minutes and was stopped.`;
 
 const EVENT_STAGE: Record<RunStageName, RunStage> = {
   sandbox: "prepare",
@@ -50,6 +63,10 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
   const { runId, signal } = options;
   const emit: Emit = options.emit ?? (() => {});
   const startedAt = Date.now();
+  const maxDurationMs = options.maxDurationMs ?? RUN_TIME_LIMIT_MS;
+  const timeLimit = new AbortController();
+  const timer = setTimeout(() => timeLimit.abort(), maxDurationMs);
+  const timeLeft = () => startedAt + maxDurationMs - Date.now();
   const result: Omit<RunResult, "status" | "durationMs"> = {};
   const finish = (status: RunResult["status"]): RunResult => ({
     status,
@@ -68,11 +85,20 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
     });
   };
 
+  // Before the agent there's nothing to keep, so reaching the limit fails the run.
+  const timedOut = (): RunResult => ({
+    ...finish("failed"),
+    failedStage: stage,
+    error: timeLimitMessage(maxDurationMs),
+    timeLimitReached: true,
+  });
+
   enter("sandbox");
   let sandbox: Sandbox;
   try {
     sandbox = await (options.createSandbox ?? (() => DockerSandbox.create()))();
   } catch (error) {
+    clearTimeout(timer);
     return {
       ...finish("failed"),
       failedStage: "sandbox",
@@ -94,6 +120,7 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
     result.checkout = await checkoutRepo(sandbox, options.source);
     await options.afterCheckout?.(sandbox);
     if (signal?.aborted) return finish("cancelled");
+    if (timeLimit.signal.aborted) return timedOut();
 
     enter("setup");
     const { setup, gitBase } = await runSetup(sandbox, {
@@ -101,17 +128,25 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
       emit,
       environment: options.environment,
       baselineChecks: options.baselineChecks ?? true,
+      signal: timeLimit.signal,
     });
     result.setup = setup;
     if (signal?.aborted) return finish("cancelled");
+    if (timeLimit.signal.aborted) return timedOut();
 
     enter("agent");
+    const maxWallTimeMs =
+      options.limits?.maxWallTimeMs ?? DEFAULT_LIMITS.maxWallTimeMs;
     const agent = await runAgent({
       runId,
       task: options.task,
       ctx: createToolContext(sandbox, setup.checks),
       model: options.model,
-      limits: options.limits,
+      // The agent stops at whichever comes first, so its own time limit keeps its work (incomplete).
+      limits: {
+        ...options.limits,
+        maxWallTimeMs: Math.min(maxWallTimeMs, timeLeft()),
+      },
       setup,
       emit,
       signal,
@@ -123,7 +158,12 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
     // Before the checks run again, so files they write stay out of the diff.
     result.diff = await collectDiff(sandbox, gitBase);
     const snapshot = options.deliver ? await snapshotChanges(sandbox) : null;
-    result.verify = await runVerify(sandbox, setup.checks, setup.baseline);
+    result.verify = await runVerify(
+      sandbox,
+      setup.checks,
+      setup.baseline,
+      timeLimit.signal,
+    );
     emit({
       type: "checks_completed",
       runId,
@@ -158,8 +198,13 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
       });
     }
 
+    // The checks that didn't run leave the result unknown, so the work is delivered as a draft.
+    if (result.verify.notRun && agent.status === "succeeded") {
+      return { ...finish("incomplete"), timeLimitReached: true };
+    }
     return finish(agent.status);
   } catch (error) {
+    if (timeLimit.signal.aborted && stage === "setup") return timedOut();
     // An agent failure (e.g. the sandbox disappeared) already has its own status.
     if (stage === "verify" && result.agent?.status === "failed") {
       return finish("failed");
@@ -170,6 +215,7 @@ export async function runTask(options: RunTaskOptions): Promise<RunResult> {
       error: errorMessage(error),
     };
   } finally {
+    clearTimeout(timer);
     if (!options.keepSandbox) await sandbox.destroy().catch(() => {});
   }
 }

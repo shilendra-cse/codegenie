@@ -30,6 +30,8 @@ export type RunResult = {
   status: FinalRunStatus;
   failedStage?: RunStageName;
   error?: string;
+  /** The run reached its time limit (RUN_TIME_LIMIT_MS) and was stopped. */
+  timeLimitReached?: boolean;
   sandboxId?: string;
   checkout?: { description: string; files: number | null };
   setup?: SetupResult;

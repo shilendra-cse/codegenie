@@ -1,6 +1,6 @@
 import { scriptedModel } from "@hobai/agent/testing";
 import { FakeSandbox } from "@hobai/sandbox/testing";
-import type { RunEvent } from "@hobai/shared";
+import type { EnvironmentConfig, RunEvent } from "@hobai/shared";
 import { describe, expect, it, vi } from "vitest";
 import type { ChangeSet } from "../stages/deliver/index.js";
 import { runTask, type RunTaskOptions } from "./run-task.js";
@@ -252,6 +252,77 @@ describe("runTask", () => {
       steps: [{ command: "pnpm install", status: "ok" }],
       checks: [{ name: "lint", command: "pnpm lint" }],
       config: { meta: { source: "user" } },
+    });
+  });
+
+  describe("time limit", () => {
+    const environment: EnvironmentConfig = {
+      version: 1,
+      steps: [
+        { name: "install", cwd: ".", command: "slow install" },
+        { name: "build", cwd: ".", command: "pnpm build" },
+      ],
+      checks: [
+        { name: "lint", cwd: ".", command: "pnpm lint" },
+        { name: "test", cwd: ".", command: "pnpm test" },
+      ],
+      meta: { source: "user", createdAt: "", decisions: [] },
+    };
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const delivered = { branchName: "hobai/1-set-a", sha: "c0ffee" };
+
+    it("fails the run when setup passes the limit, starting nothing after", async () => {
+      const { sandbox, destroyed } = fakeSandbox();
+      const handle = sandbox.execHandler;
+      sandbox.execHandler = async (command, opts) => {
+        if (command.includes("slow install")) await sleep(80);
+        return handle(command, opts);
+      };
+
+      const result = await runTask(
+        options(sandbox, { environment, maxDurationMs: 20 }),
+      );
+
+      expect(result).toMatchObject({
+        status: "failed",
+        failedStage: "setup",
+        timeLimitReached: true,
+        error: expect.stringContaining("took longer than"),
+      });
+      expect(result.agent).toBeUndefined();
+      const commands = sandbox.execCalls.map((c) => c.command);
+      expect(commands.some((c) => c.includes("pnpm build"))).toBe(false);
+      expect(destroyed()).toBe(1);
+    });
+
+    it("keeps the agent's work as a draft when the checks after it pass the limit", async () => {
+      const { sandbox } = fakeSandbox();
+      const handle = sandbox.execHandler;
+      sandbox.execHandler = async (command, opts) => {
+        if (command.includes("slow install")) return handle("", opts);
+        if (command.includes("logs/verify-") && command.includes("pnpm lint")) {
+          await sleep(400);
+        }
+        return handle(command, opts);
+      };
+      const deliver = vi.fn(async () => delivered);
+
+      const result = await runTask(
+        options(sandbox, { environment, deliver, maxDurationMs: 250 }),
+      );
+
+      expect(result).toMatchObject({
+        status: "incomplete",
+        timeLimitReached: true,
+        agent: { status: "succeeded" },
+        verify: {
+          checks: [{ name: "lint" }],
+          notRun: [{ name: "test" }],
+          passed: null,
+        },
+        delivery: delivered,
+      });
+      expect(deliver).toHaveBeenCalledOnce();
     });
   });
 

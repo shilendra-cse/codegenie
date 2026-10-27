@@ -50,3 +50,33 @@ describe("runVerify", () => {
     });
   });
 });
+
+describe("runVerify at the time limit", () => {
+  it("starts no check once the signal is aborted, and leaves the result unknown", async () => {
+    const sandbox = new FakeSandbox();
+    const stop = new AbortController();
+    sandbox.execHandler = () => {
+      stop.abort();
+      return {};
+    };
+
+    const result = await runVerify(sandbox, checks, null, stop.signal);
+
+    expect(result.checks.map((c) => c.name)).toEqual(["lint"]);
+    expect(result.notRun?.map((c) => c.name)).toEqual(["test"]);
+    expect(result.passed).toBeNull();
+  });
+
+  it("still fails when a check that ran failed", async () => {
+    const sandbox = new FakeSandbox();
+    const stop = new AbortController();
+    sandbox.execHandler = () => {
+      stop.abort();
+      return { exitCode: 1, stdout: "lint error" };
+    };
+
+    const result = await runVerify(sandbox, checks, null, stop.signal);
+
+    expect(result.passed).toBe(false);
+  });
+});

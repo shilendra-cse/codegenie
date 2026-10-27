@@ -14,7 +14,11 @@ const COMPARISON: Record<string, string> = {
 };
 
 export function isDraft(run: DeliverableRun) {
-  return run.verify.passed === false || run.agent.status === "incomplete";
+  return (
+    run.verify.passed === false ||
+    run.agent.status === "incomplete" ||
+    Boolean(run.verify.notRun?.length)
+  );
 }
 
 export function commitMessage(title: string, summary: string | null) {
@@ -23,6 +27,9 @@ export function commitMessage(title: string, summary: string | null) {
     line.length > MAX_SUBJECT ? `${line.slice(0, MAX_SUBJECT - 1)}…` : line;
   return summary ? `${subject}\n\n${summary.trim()}` : subject;
 }
+
+const checkName = (c: { name: string; cwd: string }) =>
+  `${c.name}${c.cwd === "." ? "" : ` (\`${c.cwd}\`)`}`;
 
 function truncate(text: string, max: number) {
   return text.length > max ? `${text.slice(0, max)}\n\n…(shortened)` : text;
@@ -38,6 +45,11 @@ export function pullRequestBody(
       `> **Incomplete:** the agent stopped at its ${run.agent.limitReached ?? "run"} limit before finishing. Review what's here before merging.`,
     );
   }
+  if (run.verify.notRun?.length) {
+    sections.push(
+      "> **Not every check ran:** the run reached its time limit. Run the missing checks before merging.",
+    );
+  }
   if (options.draftUnavailable) {
     sections.push(
       "> **Not ready to merge:** this would be a draft, but draft pull requests aren't available on this repository.",
@@ -50,8 +62,9 @@ export function pullRequestBody(
   );
 
   const checks = run.verify.checks;
+  const notRun = run.verify.notRun ?? [];
   sections.push(
-    checks.length
+    checks.length || notRun.length
       ? [
           "### Checks",
           "",
@@ -59,7 +72,10 @@ export function pullRequestBody(
           "|---|---|---|",
           ...checks.map(
             (c) =>
-              `| ${c.name}${c.cwd === "." ? "" : ` (\`${c.cwd}\`)`} | \`${c.command}\` | ${COMPARISON[c.comparison] ?? c.status} |`,
+              `| ${checkName(c)} | \`${c.command}\` | ${COMPARISON[c.comparison] ?? c.status} |`,
+          ),
+          ...notRun.map(
+            (c) => `| ${checkName(c)} | \`${c.command}\` | ⏱️ not run |`,
           ),
         ].join("\n")
       : "### Checks\n\nNo checks are set up for this repository.",

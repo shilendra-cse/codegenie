@@ -32,6 +32,15 @@ import {
   type EndedOnboarding,
 } from "../onboardings/onboarding-record.js";
 
+/** Waiting for answers included; the same reasoning as a run's RUN_TIME_LIMIT_MS. */
+export const SETUP_TIME_LIMIT_MS = 45 * 60_000;
+
+const TIME_LIMIT = (minutes: number): EndedOnboarding => ({
+  status: "failed",
+  errorCode: "TIME_LIMIT",
+  errorMessage: `Setup took longer than ${minutes} minutes and was stopped.`,
+});
+
 const NO_ANSWER = (minutes: number): EndedOnboarding => ({
   status: "failed",
   errorCode: "NO_ANSWER",
@@ -47,6 +56,8 @@ export type OnboardProjectDeps = {
   answers: AnswerRouter;
   /** How long a question waits for its answer before setup stops. */
   answerTimeoutMs: number;
+  /** Default SETUP_TIME_LIMIT_MS. */
+  maxDurationMs?: number;
 } & Pick<RunOnboardingOptions, "model" | "agentLimits">;
 
 /** Null when the setup was no longer queued (e.g. cancelled before it started). */
@@ -104,6 +115,12 @@ export async function handleOnboardProject(
   if (signal?.aborted) stopped();
   signal?.addEventListener("abort", stopped, { once: true });
   let unanswered = false;
+  let timedOut = false;
+  const maxDurationMs = deps.maxDurationMs ?? SETUP_TIME_LIMIT_MS;
+  const timeLimit = setTimeout(() => {
+    timedOut = true;
+    stop.abort();
+  }, maxDurationMs);
   const channel = createEventChannel({
     sink,
     record,
@@ -133,6 +150,7 @@ export async function handleOnboardProject(
     emit: (event) => sink.emit(event),
     signal: stop.signal,
   }).finally(() => {
+    clearTimeout(timeLimit);
     stopReceiving();
     signal?.removeEventListener("abort", stopped);
   });
@@ -145,9 +163,11 @@ export async function handleOnboardProject(
           result.config.meta.source,
         )
       : null;
-  const outcome = unanswered
-    ? NO_ANSWER(Math.round(deps.answerTimeoutMs / 60_000))
-    : onboardingOutcome(result, saved?.id ?? null);
+  const outcome = timedOut
+    ? TIME_LIMIT(Math.round(maxDurationMs / 60_000))
+    : unanswered
+      ? NO_ANSWER(Math.round(deps.answerTimeoutMs / 60_000))
+      : onboardingOutcome(result, saved?.id ?? null);
   done(outcome.status, {
     ...(saved ? { version: saved.version } : {}),
     ...(outcome.errorMessage ? { error: outcome.errorMessage } : {}),
