@@ -21,9 +21,9 @@ function resolveOpenApiSpecPath(): string {
   return specPath;
 }
 
-export const openApiSpecPath = resolveOpenApiSpecPath();
-
 export function registerOpenApiDocs(app: Express): void {
+  // Resolved here, not on import: production images don't include the spec.
+  const openApiSpecPath = resolveOpenApiSpecPath();
   app.get("/api/openapi.yaml", (_req, res) => {
     res.sendFile(openApiSpecPath);
   });
