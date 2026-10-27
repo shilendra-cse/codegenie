@@ -11,7 +11,7 @@ import type {
   SecureHandler,
 } from "@/types/base.types.js";
 import { protect } from "@/middleware/auth.js";
-import { rateLimits } from "@/middleware/rate-limits.js";
+import { rateLimits } from "@/middleware/app-rate-limits.js";
 import { logger } from "./logger.js";
 import { handleStream } from "./sse.js";
 

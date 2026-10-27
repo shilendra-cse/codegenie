@@ -1,6 +1,6 @@
 # hobai Architecture
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-25
+> Status: **Accepted** (MVP) · Last updated: 2026-10-26
 
 hobai is a web-based autonomous coding agent. A user connects their GitHub repositories, assigns a task (a prompt for the MVP; Jira and Notion later), and the agent completes it inside an isolated cloud sandbox and delivers the result as a pull request.
 
@@ -19,7 +19,7 @@ hobai is a web-based autonomous coding agent. A user connects their GitHub repos
 | D7 | Autonomy | Fire-and-forget to PR. Plan-approval step is a **post-MVP** per-task toggle. | Keep MVP flow minimal. |
 | D8 | Sandbox lifetime | **One sandbox per run, deleted at the end.** Pause/resume for follow-ups is post-MVP. | Cost and simplicity. |
 | D9 | LLM | Provider-agnostic via **Vercel AI SDK**; platform-controlled model from a **catalog** (prices, context window), selected by env (`AGENT_MODEL`); currently `gpt-6-luna` | Avoid lock-in; predictable cost; pick models by eval results. See [agent.md](./agent.md). |
-| D10 | Hosting | **Vercel** (web) + **Railway** (api, worker, Postgres, Redis) | Managed, cheap at MVP scale, private networking between services. |
+| D10 | Hosting | **Vercel** (web) + one **VPS with Coolify** (api, worker) + **Neon** (Postgres) + **Upstash** (Redis) | Fixed, low cost at MVP scale; the database and Redis are managed (backups, no upkeep), so the VPS holds no data and can be rebuilt. See §10. |
 | D11 | Domains & auth cookies | Custom domain; web at `app.`, API proxied via Next.js rewrite (`/api/*` → api service) | Single browser origin: no third-party-cookie or CORS problems with Better Auth. |
 | D12 | Task intake | All sources normalize to one `Task`; MVP = prompt only, then Jira, then Notion | Pipeline is source-agnostic; integrations are adapters. |
 | D13 | Task vs Run | A **task** owns conversation, branch and PR; a **run** is one attempt at it | Follow-ups and PR-comment replies reuse the task's branch/PR without run chains. |
@@ -34,12 +34,13 @@ hobai is a web-based autonomous coding agent. A user connects their GitHub repos
 Browser ──HTTPS──► apps/web (Next.js, Vercel)                                      │
                         │  /api/* rewrite                                          │
                         ▼                                                          │
-                   apps/server (Express, Railway) ── enqueue ──► Redis (BullMQ,    │
-                        │   auth, projects, tasks,    ◄─subscribe─  pub/sub)       │
-                        │   SSE, GitHub webhooks                      ▲   │        │
+                   apps/server (Express, VPS) ──── enqueue ──► Redis (Upstash,     │
+                        │   auth, projects, tasks,    ◄─subscribe─  BullMQ,        │
+                        │   SSE, GitHub webhooks                    pub/sub)       │
+                        │                                             ▲   │        │
                         ▼                                    publish  │   │ consume│
-                   Postgres (Railway) ◄──────────────────────────── apps/worker     │
-                                                                   (Railway, no    │
+                   Postgres (Neon) ◄─────────────────────────────── apps/worker    │
+                                                                   (VPS, no        │
                                                                     public port)   │
                         └──────────────────────────────────────────────┬───┬───────┘
                                                         Daytona SDK    │   │ GitHub App API
@@ -78,7 +79,7 @@ Dependencies point one way: `runner → agent, sandbox, shared`; `agent → sand
 
 **`packages/db` rules.** The server and the worker both use the database directly (the server writes rows and enqueues; the worker updates runs and writes events), so the schema lives in one shared package instead of inside one app:
 - **all data access lives here:** schema, client, migrations and every query (`src/queries/`, one folder per domain, mirroring `src/schema/`). Apps call query functions and never build queries; ESLint enforces it (`@hobai/db/eslint`). Queries hold no business rules: they report what happened, and the app decides what it means;
-- migrations run from one place (the deploy step, `pnpm migrate`), never on app startup;
+- migrations run from one place, never inside an app: `pnpm migrate` in development, and in production the server container runs `dist/migrate.js` just before the server starts (§10); the worker never migrates;
 - the connection is created by each app (`createDb(url)` with its own config), never on import.
 A schema change can mean redeploying both apps; that comes from sharing the database, not from the package. The old `apps/agent` REPL is replaced by `apps/cli`. Details: [runner.md](./runner.md), [agent.md](./agent.md), [sandbox.md](./sandbox.md).
 
@@ -103,9 +104,11 @@ Consumes the BullMQ queue `hobai-work` and runs the pipeline in §5. Details and
 - **Work kinds:** `run-task { runId }` (one run of a task) and `onboard-project { onboardingId }` (one setup of a project's environment, recorded in `onboardings`; [environment.md](./environment.md) §3.5). A setup's events are stored in `onboarding_events` and published live on `onboarding:{id}`; a failed setup fails its queue item, and the reaper ends setups whose worker is gone, as it does for runs.
 - **Concurrency:** `WORKER_CONCURRENCY` items at once per process (default 3), each in its own sandbox; more throughput means more processes.
 - **Cancellation:** a queued run is marked `cancelled` in the database, and the worker skips it. A running one gets a `run-cancel` message carrying its id; every worker process hears it, and the one running it aborts the run's signal.
-- **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money).
+- **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money). A worker renews its items' locks while it works; a lock lasts 2 minutes, so a short Redis outage doesn't look like a dead worker.
 - **Reaper:** a `reap` work item, every 5 minutes (one BullMQ job scheduler shared by all workers) and at startup. It fails runs nothing will finish: `running` with no active queue item (`worker_lost`), or `queued` for over 15 minutes with the item gone (`lost_in_queue`), adding `error` + `done` events. For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox (Daytona: stopped, kept 4 h for a future resume; Docker: deleted).
-- **Shutdown:** the first SIGINT/SIGTERM stops taking work and waits for the work in progress; a second one a second or more later exits at once and leaves the rest to the reaper.
+- **Shutdown:** the first SIGINT/SIGTERM stops taking work and waits for the work in progress. Repeated SIGTERMs are ignored (a deploy's hard stop is Docker's SIGKILL at the end of the grace period, §10); only a second Ctrl-C, a second or more later, exits at once and leaves the rest to the reaper. An unhandled promise rejection is logged, not fatal, so one stray error doesn't end every run in progress.
+- **Health:** `GET /health` on `WORKER_HEALTH_PORT` (default 4100, inside the container only) answers 200 while Postgres and Redis answer.
+- **Time limits:** a run stops at 45 minutes and a setup at 45 minutes, waiting for answers included (why: §10). Commands can't be interrupted, so the limit is checked before each one starts. A run that reaches it before the agent fails (`time_limit`); after that the agent stops as incomplete, checks not yet run are skipped, and the work goes out as a draft PR. A setup that reaches it fails (`TIME_LIMIT`).
 - **Clone:** with a read token for the project's repository from the GitHub App, passed only to the clone command ([github.md](./github.md) §7).
 
 ### packages/agent
@@ -208,7 +211,7 @@ The clone token is passed to git through that command's environment rather than 
 - Loop ends only on `finish_task` or a limit — not when the model stops calling tools.
 - Tool output truncated head+tail with an "N lines omitted" marker.
 - At ~70% of the context window, older tool results are summarized; task, plan and recent turns kept.
-- Limits per run: `maxSteps` (~150), `maxWallTime` (~30 min), `maxCostUsd`. On limit: force a summary, deliver as draft PR marked incomplete.
+- Limits per run: `maxSteps` (~150), `maxWallTime` (~30 min, or less when the whole run's 45 minutes run out first), `maxCostUsd`. On limit: force a summary, deliver as draft PR marked incomplete.
 - Cancellation via `AbortSignal`, checked every step.
 - Message history uses the SDK's native tool messages (`response.messages`), never synthetic user/assistant turns.
 
@@ -232,7 +235,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Failure | Handling |
 |---|---|
-| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (`maxStalledCount: 0`, never retried). Within 5 minutes (or at the next worker start) the reaper saves the run's diff, parks its sandbox and fails the run with `worker_lost`. Daytona deletes a parked sandbox after `SANDBOX_RETENTION_HOURS`. |
+| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (its lock ran out: up to 2 minutes; `maxStalledCount: 0`, never retried). Within 5 minutes (or at the next worker start) the reaper saves the run's diff, parks its sandbox and fails the run with `worker_lost`. Daytona deletes a parked sandbox after `SANDBOX_RETENTION_HOURS`. |
 | Sandbox create fails | Retry with backoff (nothing has happened yet). |
 | Dependency install fails | Continue; agent is told setup failed and may fix it. |
 | LLM error / rate limit | Backoff retry inside loop; fail after N attempts. |
@@ -259,7 +262,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 - Webhook signatures verified; production refuses to boot with default secrets.
 - Agent never pushes to the default branch; one active run per task (enforced by a DB index).
-- Per-user limits (1 concurrent run, 10 runs a month) and a global daily spend cap, enforced at task creation, are planned (Phase 5, [billing.md](./billing.md)).
+- Per-user limits from the plan (free: 1 task at once, 10 runs a cycle) and a global daily spend cap, enforced at task creation ([billing.md](./billing.md) §2).
 - Full audit trail in `run_events`.
 
 ---
@@ -268,13 +271,67 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Component | Host | Notes |
 |---|---|---|
-| web | Vercel | `/api/*` rewrite to api service (SSE buffering disabled) |
-| api | Railway service | public; migrations run as release step |
-| worker | Railway service | private; scale via replicas / BullMQ concurrency |
-| Postgres | Railway | managed, backups |
-| Redis | Railway | real TCP Redis (BullMQ + pub/sub) |
+| web | Vercel | `/api/*` rewrite to the api (SSE buffering disabled) |
+| api | VPS, Coolify app (Docker) | public behind Coolify's proxy (Traefik, HTTPS); migrations run before it starts |
+| worker | VPS, Coolify app (Docker) | no public port; scale with BullMQ concurrency |
+| Postgres | Neon | managed, backups; the **direct** connection string for both apps and migrations: about 40 connections at most (a pool of 20 per app), well inside Neon's limit, and no pooler to work around |
+| Redis | Upstash | TCP over TLS (`rediss://`), which BullMQ and pub/sub need; eviction off (`noeviction`) so jobs are never dropped |
 | Sandboxes | Daytona Cloud | `hobai-base` snapshot built by script |
 | GitHub App | GitHub | separate dev and prod Apps |
+
+**VPS:** Hostinger KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe), Ubuntu 24.04 with Coolify. It runs only the api and the worker; untrusted code never runs there (sandboxes are on Daytona), and it stores no data, so it can be rebuilt from the repo and its secrets.
+
+**Proxies:** a request passes Vercel's rewrite, then Coolify's Traefik, so production sets `TRUST_PROXY=2` (checked at deploy: the rate limits must see the visitor's address).
+
+**If the VPS goes down:** no data is lost (it lives in Neon and Upstash); the web still loads but API calls fail; queued tasks wait in Upstash and the worker picks them up when it's back; runs in progress are lost (resuming them is post-MVP). Coolify runs on the same box, so it can't help here: it reads container logs live and doesn't keep them. Two outside services cover this:
+- **Logs off the box:** container logs are shipped to a hosted log service (Better Stack or Axiom, free tier), so the logs from before a crash can be read while the VPS is down.
+- **Uptime check:** an outside monitor (Better Stack or UptimeRobot, free tier) calls the api's health endpoint every minute and alerts by email.
+
+Coolify stays on the VPS rather than on a laptop: running it elsewhere doesn't keep logs either, and it would lose deploy on push (GitHub can't reach a laptop).
+
+**Things to watch:**
+- Upstash bills per command on pay-as-you-go, and an idle BullMQ worker still sends commands (blocking waits, stalled-job checks, the reap scheduler). Check the daily count after deploy and move to a fixed-price plan if it's high.
+- Neon's free tier suspends an idle database; the first query after a pause takes a moment longer. Fine at MVP scale.
+
+### Images
+One Dockerfile per app (`apps/server/Dockerfile`, `apps/worker/Dockerfile`), built from the repository root:
+1. **build:** installs the app and its workspace packages, then bundles them with tsup into `dist/` (the `@/…` aliases and our packages, which ship TypeScript, are bundled; npm packages aren't). The server's build copies `packages/db/drizzle` into `dist/drizzle`.
+2. **deps:** installs only the app's runtime npm packages, all hoisted to the top so the bundle finds those of our packages too. `--no-optional` leaves out `next` and `react`, which reach the server as optional peers of `better-auth` (shared with the web app).
+3. **image:** `node:24-slim` with `node_modules`, `package.json` and `dist/` only, running as the `node` user, with `node` as the main process so it receives Docker's SIGTERM itself. The server runs `dist/migrate.js` and then `exec`s `dist/index.js`, with `HOST=0.0.0.0`.
+
+Both have a Docker health check (`/health`, the worker's on its internal port). `.dockerignore` keeps every `.env`, `.git`, `docs` and the other apps out. CI builds both images on every pull request without pushing them. About 0.5 GB each, half of it Node.
+
+### Deploys don't end work in progress
+A deploy replaces the containers; a run lives in its worker's memory, so it can't move: the old worker has to finish it.
+1. **Overlap (rolling update):** Coolify starts the new container, waits for its health check, then sends SIGTERM to the old one. The new worker takes new work at once; the old one takes nothing new and finishes what it's running. Stop and setup answers still reach it (they go through Redis), and its runs aren't reaped (it keeps renewing their locks).
+2. **Grace period:** Coolify waits up to its Stop Grace Period before killing the old container. It's set to the maximum, **3600 seconds**.
+3. **Everything ends within it:** a run or setup stops starting commands at 45 minutes; the one already running has its own 10-minute cap, and delivery takes about a minute, so all work ends by about 56 minutes.
+4. **The server** gets the same rolling update. On SIGTERM it ends its open event streams; browsers reconnect, to the new server, from the last event they saw (`Last-Event-ID`).
+
+Old and new code run side by side for a while, so every change has to work with the previous version:
+- **Migrations are additive:** add a column or table, deploy, and remove the old one only in a later deploy. The new server migrates while the old worker may still be running.
+- **Queue messages stay readable by the previous version:** add optional fields, never rename or remove one in the same deploy.
+
+### Coolify settings
+Two applications from this repository, each a Dockerfile build:
+
+| Setting | api | worker |
+|---|---|---|
+| Base directory | `/` | `/` |
+| Dockerfile | `apps/server/Dockerfile` | `apps/worker/Dockerfile` |
+| Port | 4000, with the domain | none published |
+| Health check | the image's (`/health` on 4000) | the image's (`/health` on 4100) |
+| Stop Grace Period (Advanced → Operations) | 3600 | 3600 |
+| Watch paths | `apps/server/**`, `packages/**`, `pnpm-lock.yaml` | `apps/worker/**`, `packages/**`, `pnpm-lock.yaml` |
+| Container name | generated (a custom name turns rolling updates off) | generated |
+
+Coolify uses a Dockerfile's `HEALTHCHECK` instead of the one in its dashboard. Ours run with `node`; the dashboard's would need `curl` or `wget`, which the images don't have, so it stays empty.
+
+Environment variables are set per app in Coolify, from each app's `.env.example`, with two differences from local `.env` files:
+- `GITHUB_APP_PRIVATE_KEY` goes on one line, with `\n` where the line breaks are; the apps turn them back into line breaks.
+- `HOST` is left unset: the image sets `0.0.0.0`, and `localhost` would make the server reachable only inside its container.
+
+Watch paths mean a change to the web app or the docs redeploys neither, and a server-only change leaves the worker, and its runs, alone.
 
 **Local dev:** `docker-compose` (Postgres, Redis) · `pnpm dev:web` / `dev:server` / `dev:worker` · `SANDBOX_PROVIDER=docker` (or `daytona` on free tier) · webhooks via smee.io or cloudflared tunnel.
 

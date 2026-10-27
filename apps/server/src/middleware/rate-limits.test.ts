@@ -2,7 +2,6 @@ import type { AddressInfo } from "node:net";
 import express, { type RequestHandler } from "express";
 import helmet from "helmet";
 import { afterEach, describe, expect, it } from "vitest";
-import { config } from "@/config";
 import type { AuthenticatedRequest } from "@/types/base.types";
 import { createRateLimits } from "./rate-limits";
 
@@ -18,7 +17,7 @@ async function serve(limits = { flood: 100, signIn: 100, user: 100 }) {
   const rateLimits = createRateLimits(limits);
   const app = express();
   app.set("trust proxy", 1);
-  app.use(helmet(config.security.helmet));
+  app.use(helmet());
   app.use(rateLimits.flood);
   app.use("/api/auth/sign-in", rateLimits.signIn);
   app.post("/api/auth/sign-in/social", ok);

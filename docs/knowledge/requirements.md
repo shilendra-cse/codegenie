@@ -55,14 +55,16 @@ Follow-ups on a task (U8: a message starts a new run on the same branch, pushed 
 ### Limits (defaults, configurable by env)
 | Limit | Default |
 |---|---|
-| Max wall time per run | 30 min |
+| Max time per run, start to pull request | 45 min |
+| Max agent time per run | 30 min |
+| Max time per environment setup, waiting for answers included | 45 min |
 | Max agent steps per run | 150 |
 | Max LLM cost per run | $2 |
 | Concurrent runs per user | 1 |
 | Runs per user per cycle (a month from signup) | 10 on the free plan ([billing.md](./billing.md) §2) |
 | Global concurrent runs | set by worker capacity (start: 3) |
 
-On hitting a per-run limit the agent stops gracefully and delivers a draft PR marked incomplete.
+On hitting a per-run limit the agent stops gracefully and delivers a draft PR marked incomplete. A run that reaches 45 minutes before the agent starts fails with "Stopped at the time limit".
 
 ### Security
 - User code runs **only** inside Daytona sandboxes, never on our servers.

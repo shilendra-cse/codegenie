@@ -99,7 +99,12 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
     {
       answer,
       answerTimeoutMs = 60_000,
-    }: { answer?: OnboardingAnswer; answerTimeoutMs?: number } = {},
+      maxDurationMs,
+    }: {
+      answer?: OnboardingAnswer;
+      answerTimeoutMs?: number;
+      maxDurationMs?: number;
+    } = {},
   ) {
     const answers = createAnswerRouter();
     const labels: SandboxLabels[] = [];
@@ -131,6 +136,7 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       github: fakeGithubApp().github,
       answers,
       answerTimeoutMs,
+      maxDurationMs,
     };
     return {
       deps,
@@ -357,6 +363,33 @@ describe.skipIf(!database)("onboard-project handler against Postgres", () => {
       openQuestionId: null,
     });
     expect(messages().at(-1)).toMatchObject({ type: "done", status: "failed" });
+    expect(await environments.load(project.id)).toBeNull();
+  });
+
+  it("stops at its time limit, without starting another command", async () => {
+    const { project, onboardingId } = await queuedSetup();
+    const commands: string[] = [];
+    const { deps } = depsFor(
+      async (command) => {
+        commands.push(command);
+        if (command.includes("npm ci")) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return {};
+      },
+      [],
+      { maxDurationMs: 20 },
+    );
+
+    await expect(handleOnboardProject(deps, { onboardingId })).rejects.toThrow(
+      "longer than",
+    );
+
+    expect(await findOnboarding(db, onboardingId)).toMatchObject({
+      status: "failed",
+      errorCode: "TIME_LIMIT",
+    });
+    expect(commands.filter((c) => c.includes("npm run"))).toEqual([]);
     expect(await environments.load(project.id)).toBeNull();
   });
 

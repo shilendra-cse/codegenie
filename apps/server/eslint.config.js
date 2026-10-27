@@ -14,6 +14,7 @@ export default tseslint.config(
       "drizzle.config.ts",
       "eslint.config.js",
       "vitest.config.ts",
+      "tsup.config.ts",
     ],
   },
   eslint.configs.recommended,

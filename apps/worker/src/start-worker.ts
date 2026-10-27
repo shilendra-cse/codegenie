@@ -1,5 +1,5 @@
 import { resolveModel, type ResolvedModel } from "@hobai/agent";
-import { createDb } from "@hobai/db";
+import { createDb, pingDatabase } from "@hobai/db";
 import { createGithubApp, type GithubApp } from "@hobai/github";
 import {
   connectSandbox,
@@ -28,6 +28,8 @@ export type WorkerOverrides = {
 };
 
 export type RunningWorker = {
+  /** Throws when Postgres or Redis can't be reached. */
+  check(): Promise<void>;
   /** Stops taking new work, waits for the work in progress, then closes the connections. */
   stop(): Promise<void>;
 };
@@ -101,6 +103,10 @@ export async function startWorker(
   await scheduleReaper(queue, config.reaperIntervalMs);
 
   return {
+    async check() {
+      await pingDatabase(db);
+      await redis.queue.ping();
+    },
     async stop() {
       await consumer.close();
       await queue.close();

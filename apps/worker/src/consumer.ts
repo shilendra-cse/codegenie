@@ -107,6 +107,9 @@ export async function startConsumer(
     concurrency: options.concurrency,
     // A run whose worker died isn't retried; the reaper ends it.
     maxStalledCount: 0,
+    // How long the lock outlives the last renewal: a short Redis outage mustn't look like a dead worker,
+    // whose runs the reaper would end while they're still going.
+    lockDuration: 2 * 60_000,
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 1000 },
   });

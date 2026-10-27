@@ -62,6 +62,7 @@ const FAILURE_TITLES: Record<string, string> = {
   worker_lost: `${PRODUCT_NAME} stopped unexpectedly`,
   lost_in_queue: `${PRODUCT_NAME} stopped unexpectedly`,
   worker_error: `${PRODUCT_NAME} stopped unexpectedly`,
+  time_limit: "Stopped at the time limit",
 };
 
 export const failureTitle = (code: string | undefined) =>

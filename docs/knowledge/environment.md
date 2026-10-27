@@ -188,6 +188,7 @@ The website starts setup, shows it live and asks its questions in the browser.
 - **Stop:** a queued setup is cancelled directly; a running or waiting one is told to stop and ends `cancelled`.
 - **Saving:** a setup that succeeds is saved straight away as the project's next active version (`runOnboarding({ autoApprove: true })` skips "Save this environment?"; the CLI still asks); re-running setup makes a newer one.
 - **The wait** is `ONBOARDING_ANSWER_TIMEOUT_MINUTES` in the worker (default 30). If the worker itself dies while waiting, the reaper ends the setup (`worker_lost`).
+- **Time limit:** a whole setup stops at 45 minutes, waiting included (`failed`, `TIME_LIMIT`: "Setup took longer than 45 minutes and was stopped."), so it always ends before a deploy's grace period does ([architecture.md](./architecture.md) §10). No new command starts after it; the one running finishes.
 - **API:** `POST /onboarding` (start), `GET /onboarding` (latest), `GET /onboarding/events` (stream), `POST /onboarding/answer`, `POST /onboarding/cancel`, `GET /environments` (versions), `POST /environments/:version/restore`, all under `/projects/:id`.
 
 ## 4. Task runs

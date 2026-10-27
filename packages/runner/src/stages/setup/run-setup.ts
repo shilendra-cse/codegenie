@@ -22,6 +22,8 @@ export type RunSetupOptions = {
   emit: Emit;
   environment?: EnvironmentConfig;
   baselineChecks: boolean;
+  /** Setup throws its reason as soon as it can once this is aborted. */
+  signal?: AbortSignal;
 };
 
 export type PreparedEnvironment = {
@@ -43,7 +45,9 @@ export async function runSetup(
   const checks: Check[] = environment?.checks ?? draft!.checks;
   const notes = [...(draft?.notes ?? [])];
 
-  const steps = await applySteps(sandbox, stepsToRun);
+  const { signal } = options;
+  const steps = await applySteps(sandbox, stepsToRun, { signal });
+  signal?.throwIfAborted();
   for (const step of steps.filter((s) => s.status === "failed")) {
     notes.push(
       `Setup step "${step.name}" (${step.cwd}) failed: \`${step.command}\`. Full output: ${step.logPath}.`,
@@ -51,8 +55,9 @@ export async function runSetup(
   }
 
   const baseline = options.baselineChecks
-    ? await runChecks(sandbox, checks, "baseline")
+    ? await runChecks(sandbox, checks, "baseline", signal)
     : null;
+  signal?.throwIfAborted();
   // After the checks, so files they write are part of the baseline, not the agent's changes.
   const gitBase = await createBaseline(sandbox);
 

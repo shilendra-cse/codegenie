@@ -115,3 +115,28 @@ describe("pullRequestBody", () => {
     );
   });
 });
+
+describe("checks that didn't run", () => {
+  const timedOut = () => {
+    const base = run({});
+    const [lint, test] = base.verify.checks;
+    return {
+      ...base,
+      verify: {
+        ...base.verify,
+        passed: null,
+        checks: [lint!],
+        notRun: [{ name: test!.name, cwd: test!.cwd, command: test!.command }],
+      },
+    } as DeliverableRun;
+  };
+
+  it("makes a draft that lists them and says why", () => {
+    const body = pullRequestBody(timedOut());
+    expect(isDraft(timedOut())).toBe(true);
+    expect(body).toContain(
+      "**Not every check ran:** the run reached its time limit.",
+    );
+    expect(body).toContain("| test (`api`) | `npm test` | ⏱️ not run |");
+  });
+});

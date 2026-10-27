@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { config as loadEnv } from "dotenv";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 import { SHORT_NAME } from "@hobai/shared/brand";
 import { createDb, type Db } from "../client.js";
+import { migrateDatabase } from "../migrate.js";
 
 const MIGRATIONS = path.join(import.meta.dirname, "..", "..", "drizzle");
 
@@ -67,7 +67,7 @@ export async function testDatabaseOrSkip(
   const testUrl = new URL(url!);
   testUrl.pathname = `/${name}`;
   const { db, pool } = createDb(testUrl.toString(), { max: 5 });
-  await migrate(db, { migrationsFolder: MIGRATIONS });
+  await migrateDatabase(db, MIGRATIONS);
 
   return {
     db,
@@ -99,7 +99,7 @@ export async function recreateDatabase(url: string): Promise<void> {
   }
   const { db, pool } = createDb(url, { max: 1 });
   try {
-    await migrate(db, { migrationsFolder: MIGRATIONS });
+    await migrateDatabase(db, MIGRATIONS);
   } finally {
     await pool.end();
   }

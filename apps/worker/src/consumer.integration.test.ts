@@ -114,6 +114,35 @@ describe.skipIf(!redis)("consumer against Redis", () => {
     expect(logs).toContainEqual({ level: "error", message: "Work failed" });
   });
 
+  it("finishes the work in progress when closed, while another worker takes new work", async () => {
+    let signal: AbortSignal | undefined;
+    const started = deferred();
+    const release = deferred();
+    const old = await start({
+      "run-task": async (_data, s) => {
+        signal = s;
+        started.resolve();
+        await release.promise;
+      },
+    });
+    const running = await queue.add("run-task", { runId: "run-long" });
+    await started.promise;
+
+    let closed = false;
+    const closing = old.close().then(() => (closed = true));
+    const taken: unknown[] = [];
+    await start({ "run-task": async (data) => void taken.push(data) });
+    await finished(await queue.add("run-task", { runId: "run-new" }));
+
+    expect(taken).toEqual([{ runId: "run-new" }]);
+    expect(closed).toBe(false);
+    release.resolve();
+    await finished(running);
+    await closing;
+    expect(signal?.aborted).toBe(false);
+    expect(await running.getState()).toBe("completed");
+  });
+
   it("aborts only the run named in a cancel message", async () => {
     const signals = new Map<string, AbortSignal>();
     const bothStarted = { a: deferred(), b: deferred() };

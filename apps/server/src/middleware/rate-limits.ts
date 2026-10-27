@@ -1,6 +1,5 @@
 import type { Request } from "express";
 import { rateLimit } from "express-rate-limit";
-import { config } from "@/config";
 import type { AuthenticatedRequest } from "@/types/base.types";
 
 export type RateLimitOptions = {
@@ -48,5 +47,3 @@ export function createRateLimits({ flood, signIn, user }: RateLimitOptions) {
     }),
   };
 }
-
-export const rateLimits = createRateLimits(config.security.rateLimit);

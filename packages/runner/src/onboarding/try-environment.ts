@@ -12,7 +12,11 @@ const stepKey = (step: { cwd: string; command: string }) =>
  * succeeded with the same command in the same folder aren't run again: installs
  * take minutes and their results stay in the sandbox.
  */
-export function createTryEnvironment(sandbox: Sandbox, logPrefix = "try") {
+export function createTryEnvironment(
+  sandbox: Sandbox,
+  logPrefix = "try",
+  signal?: AbortSignal,
+) {
   const succeeded = new Map<string, StepResult>();
   let attempt = 0;
 
@@ -28,13 +32,19 @@ export function createTryEnvironment(sandbox: Sandbox, logPrefix = "try") {
         const done = succeeded.get(stepKey(step));
         return done && { ...done, name: step.name, reused: true };
       },
+      signal,
     });
     for (const step of steps) {
       if (step.status === "ok" && !step.reused) {
         succeeded.set(stepKey(step), step);
       }
     }
-    const checks = await runChecks(sandbox, setup.checks, `${prefix}-check`);
+    const checks = await runChecks(
+      sandbox,
+      setup.checks,
+      `${prefix}-check`,
+      signal,
+    );
     return { steps, checks };
   };
 }

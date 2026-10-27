@@ -27,6 +27,7 @@ const worker = await startWorker(
     reaperIntervalMs: 60 * 60_000,
     answerTimeoutMs: 5 * 60_000,
     frontendUrl: WEB_URL,
+    healthPort: WORKER_HEALTH_PORT,
     github: { appId: "", privateKey: "" },
   },
   (level, message, data) =>

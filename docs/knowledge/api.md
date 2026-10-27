@@ -29,7 +29,7 @@ Counted per minute, in the server's memory (one server instance; a shared store 
 
 - A busy user sends 40–60 requests a minute per tab (lists polled every 3 s while something runs), so 300 per account leaves room for several tabs; counting per account means people sharing one network don't share a count.
 - `/health` and `/api/github/webhooks` (GitHub's servers, verified by signature) are never limited.
-- Addresses come from `X-Forwarded-For`, trusting `TRUST_PROXY` proxies (default 1: the web app's `/api` rewrite; production also has the host's edge).
+- Addresses come from `X-Forwarded-For`, trusting `TRUST_PROXY` proxies (default 1: the web app's `/api` rewrite; production sets 2, for Vercel's rewrite and Coolify's proxy).
 
 Security headers come from helmet on every response, with a content security policy in production. The API docs (`/api/docs`, `/api/openapi.yaml`) are served only outside production.
 

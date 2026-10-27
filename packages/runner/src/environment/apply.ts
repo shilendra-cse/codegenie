@@ -24,6 +24,8 @@ export type ApplyOptions = {
   logPrefix?: string;
   /** A result to use instead of running the step, e.g. when it already succeeded. */
   reuse?: (step: DraftStep) => StepResult | undefined;
+  /** No step starts once it's aborted; the results so far are returned. */
+  signal?: AbortSignal;
 };
 
 export async function applySteps(
@@ -43,6 +45,7 @@ export async function applySteps(
     let last: { command: string; run: LoggedRun } | null = null;
 
     for (const [attempt, command] of candidates.entries()) {
+      if (options.signal?.aborted) break;
       const run = await runLogged(sandbox, command, {
         logName: `${options.logPrefix ?? "setup"}-${index + 1}-${slug(step.name)}${attempt ? `-alt${attempt}` : ""}`,
         timeoutMs: STEP_TIMEOUT_MS,
@@ -52,7 +55,8 @@ export async function applySteps(
       if (run.ok) break;
     }
 
-    const { command, run } = last!;
+    if (!last) break;
+    const { command, run } = last;
     results.push({
       name: step.name,
       cwd: step.cwd,

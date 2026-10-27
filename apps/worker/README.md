@@ -37,12 +37,15 @@ pnpm dev:worker
 | `DATABASE_URL` | built from `DB_*`, same defaults as the server | |
 | `REDIS_URL` | `redis://localhost:6380` | |
 | `LOG_LEVEL` | `info` | |
+| `WORKER_HEALTH_PORT` | `4100` | `GET /health`, for the container's health check; never published |
 
 **Logs:** each piece of work logs `Work started`, its outcome (`Run finished` with status, steps and cost, or `Onboarding finished` with status and version) and `Work finished` with its duration; failures log `Work failed`.
 
 **Reaper:** every `REAPER_INTERVAL_MINUTES` and at startup, one worker runs a `reap` item. It fails runs whose worker is gone (`running` with no active queue item: `worker_lost`) or that never left the queue (`queued` over 15 minutes, item gone: `lost_in_queue`). For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox. Logs: `Reaped` (with the count), `Failed a lost run`, `Kept a lost run's work`.
 
-**Stopping:** Ctrl-C stops taking new work and waits for the work in progress (a run can take up to 30 minutes). Ctrl-C again, a second or more later, exits at once; anything unfinished is left for the reaper. `pnpm dev:worker` reloads when a file it uses changes (the worker or the packages it imports, like the runner and the agent), the same as the server. A reload stops the worker the same way, but force-stops it after 5 seconds, so a run in progress at that moment is cut off and left for the reaper.
+**Stopping:** Ctrl-C or SIGTERM stops taking new work and waits for the work in progress (a run or a setup stops itself by 45 minutes). Ctrl-C again, a second or more later, exits at once; anything unfinished is left for the reaper. Repeated SIGTERMs are ignored, so a deploy never cuts runs short ([architecture.md](../../docs/knowledge/architecture.md) §10). `pnpm dev:worker` reloads when a file it uses changes (the worker or the packages it imports, like the runner and the agent), the same as the server. A reload stops the worker the same way, but force-stops it after 5 seconds, so a run in progress at that moment is cut off and left for the reaper.
+
+**Production:** `pnpm build:worker` bundles it into `dist/` (tsup); the image is `docker build -f apps/worker/Dockerfile .` from the repository root ([architecture.md](../../docs/knowledge/architecture.md) §10). `pnpm start` from the repository doesn't work: the bundle needs our packages' npm packages hoisted, which only the image does.
 
 ## Giving it work
 
