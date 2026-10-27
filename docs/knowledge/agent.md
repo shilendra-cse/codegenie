@@ -93,7 +93,7 @@ Shared rules:
 | Model stopped without `finish_task` | **nudge** ("continue, or call finish_task"), up to 2 times; then **failed** |
 
 Details:
-- **Limits** (defaults, override per run): 150 steps, 30 minutes, $2. The cost check runs after each step, so the last step plus the wrap-up can go slightly over.
+- **Limits** (defaults, override per run): 150 steps, 30 minutes, $2. The cost check runs after each step, so the last step plus the wrap-up can go slightly over. In a run, the runner shortens the time limit to what's left of the run's 45 minutes.
 - **Wrap-up** has its own 2-minute budget and forces the `finish_task` tool (`toolChoice`).
 - **Messages** of completed steps are kept even if a segment is aborted mid-step.
 - **Events:** the loop emits `tool_start`, `tool_end` (output preview ≤ 2 KB), `text_delta`, and after every model step `agent_step` (steps so far and cost so far; streamed, not persisted). It does not emit `done`/`error`: the agent loop ending is not the run ending (checks and delivery follow), so the caller reports the outcome.
