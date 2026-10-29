@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { DevlogProse } from "@/components/organisms/devlog-prose";
 import { getPost, getPosts } from "@/features/devlog/posts";
 import { DevlogPost } from "./post";
+import { postComponents } from "./post-components";
 
 type Params = Promise<{ slug: string }>;
 
@@ -19,7 +20,7 @@ export default async function DevlogPostPage({ params }: { params: Params }) {
   const previous = posts[posts.indexOf(post) + 1] ?? null;
   return (
     <DevlogPost post={post} previous={previous}>
-      <DevlogProse source={post.body} />
+      <DevlogProse source={post.body} components={postComponents(slug)} />
     </DevlogPost>
   );
 }

@@ -20,6 +20,29 @@ A paragraph long enough to wrap onto a second line, so the line height and the r
 
 > Every setup step it keeps has actually run in a fresh sandbox.
 
+<Figure
+  src="flow.svg"
+  darkSrc="flow-dark.svg"
+  alt="Your repository goes into a sandbox, through checks, and out as a pull request."
+  caption="Where your code goes during a run."
+  width={1200}
+  height={240}
+/>
+
+| Area | Supported |
+| --- | --- |
+| Code host | GitHub, through the GitHub App |
+| Languages | JavaScript, TypeScript |
+| Package managers | `npm`, `pnpm`, `yarn` |
+| Repository layout | One app, or a separate `frontend/` and `backend/` |
+
+```ts
+router.get("/health", async (_req, res) => {
+  const db = await checkDatabase();
+  res.status(db.ok ? 200 : 503).json({ db });
+});
+```
+
 ### A smaller heading
 
 ```

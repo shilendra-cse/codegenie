@@ -183,6 +183,7 @@ apps/web/
     post-schema.ts                        zod schema for the header
     posts.ts                              getPosts(), getPost(slug): read, check, sort, hide drafts in production
     posts.test.ts
+    assets.ts                             devlogAssetUrl(slug, file): a post's asset address; fails the build if the file is missing
     rss.ts                                buildRss(posts): the feed's XML
     rss.test.ts
   components/
@@ -198,6 +199,7 @@ apps/web/
     page.tsx · devlog.tsx                 list: the page loads posts, the view renders them
     session.tsx                           DevlogHeader and SignedOutOnly (client)
     [slug]/page.tsx · [slug]/post.tsx     post
+    [slug]/post-components.tsx            the components posts can use (Figure, Artifact): checks their props and resolves asset files
     [slug]/opengraph-image.tsx
     rss.xml/route.ts
 ```

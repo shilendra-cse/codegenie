@@ -27,6 +27,45 @@ describe("DevlogProse", () => {
 
     expect(screen.getByRole("columnheader", { name: "Step" })).toBeVisible();
     expect(screen.getByRole("cell", { name: "Sandbox" })).toBeVisible();
+    expect(screen.getByRole("table").parentElement).toHaveClass("devlog-table");
+  });
+
+  it("highlights code blocks for light and dark", async () => {
+    const { container } = render(
+      await DevlogProse({ source: "```ts\nconst ok = true;\n```" }),
+    );
+
+    const code = container.querySelector("pre code[data-language='ts']");
+    expect(code).toHaveTextContent("const ok = true;");
+    const keyword = [...(code?.querySelectorAll("span[style]") ?? [])].find(
+      (span) => span.textContent === "const",
+    );
+    expect(keyword?.getAttribute("style")).toMatch(
+      /--shiki-light:.+--shiki-dark:/,
+    );
+  });
+
+  it("renders a code block without a language as plain text", async () => {
+    const { container } = render(
+      await DevlogProse({ source: "```\nAdd a /health endpoint.\n```" }),
+    );
+
+    expect(container.querySelector("pre code")).toHaveTextContent(
+      "Add a /health endpoint.",
+    );
+  });
+
+  it("renders the components it's given", async () => {
+    render(
+      await DevlogProse({
+        source: '<Note text="Hi" />',
+        components: {
+          Note: ({ text }: { text: string }) => <aside>{text}</aside>,
+        },
+      }),
+    );
+
+    expect(screen.getByRole("complementary")).toHaveTextContent("Hi");
   });
 
   it("strips imports from a post", async () => {
