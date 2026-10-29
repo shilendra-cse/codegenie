@@ -3,14 +3,15 @@ import type { ComponentType } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { postComponents } from "./post-components";
 
+vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "dark" }) }));
 vi.mock("@/features/devlog/assets", () => ({
   devlogAssetUrl: (slug: string, file: string) =>
     `/devlog-assets/${slug}/${file}`,
 }));
 
-const Figure = postComponents("a-post").Figure as ComponentType<
-  Record<string, unknown>
->;
+const components = postComponents("a-post");
+const Figure = components.Figure as ComponentType<Record<string, unknown>>;
+const Artifact = components.Artifact as ComponentType<Record<string, unknown>>;
 
 const props = {
   src: "flow.svg",
@@ -37,6 +38,34 @@ describe("postComponents", () => {
       expect.objectContaining({
         message: expect.stringMatching(
           new RegExp(`^a-post\\.mdx: <Figure>:[\\s\\S]*${field}`),
+        ),
+      }),
+    );
+  });
+
+  it("points an Artifact at the post's assets, in the site's theme", () => {
+    render(<Artifact src="run.html" title="Run lifecycle" height={520} />);
+
+    expect(screen.getByTitle("Run lifecycle")).toHaveAttribute(
+      "src",
+      "/devlog-assets/a-post/run.html?theme=dark",
+    );
+  });
+
+  it.each([
+    ["that isn't HTML", { src: "run.png", title: "Run", height: 520 }, "html"],
+    ["without a title", { src: "run.html", height: 520 }, "title"],
+    ["without a height", { src: "run.html", title: "Run" }, "height"],
+    [
+      "taller than 2000 px",
+      { src: "run.html", title: "Run", height: 5000 },
+      "height",
+    ],
+  ])("refuses an Artifact %s, naming the post", (_, artifact, field) => {
+    expect(() => render(<Artifact {...artifact} />)).toThrow(
+      expect.objectContaining({
+        message: expect.stringMatching(
+          new RegExp(`^a-post\\.mdx: <Artifact>:[\\s\\S]*${field}`),
         ),
       }),
     );

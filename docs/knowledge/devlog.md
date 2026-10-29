@@ -200,6 +200,7 @@ apps/web/
     session.tsx                           DevlogHeader and SignedOutOnly (client)
     [slug]/page.tsx · [slug]/post.tsx     post
     [slug]/post-components.tsx            the components posts can use (Figure, Artifact): checks their props and resolves asset files
+    [slug]/themed-artifact.tsx            ArtifactEmbed with the site's current theme (client)
     [slug]/opengraph-image.tsx
     rss.xml/route.ts
 ```
@@ -233,8 +234,8 @@ It returns `{ slug, title, date, summary, author, image?, body }[]`. `getPost(sl
 
 - **Isolated from hobai.** Without `allow-same-origin`, the artifact runs in an opaque origin of its own. hobai.app serves the app and proxies `/api` with the session cookie on the same origin, so the artifact can't call the API as the reader, see their session, or read the page around it.
 - **Isolated opened on its own, too.** **Open full screen** opens the HTML file in a new tab, where an iframe attribute doesn't apply. So `next.config.ts` sends `Content-Security-Policy: sandbox allow-scripts allow-popups` on every `/devlog-assets/:path*` response. The browser then sandboxes the file the same way however it's opened.
-- **Theme.** The embed is a client component. It reads next-themes' resolved theme and adds `?theme=light|dark` to the address, which the artifact reads (§3.4). Until the theme is known, after the first render, the frame shows the muted surface instead of loading twice.
-- **Size.** `height` is required, in px. At phone width the frame is full width, at the same height. Artifacts don't report their own size: that needs a script in every artifact and a message channel, and fixed heights are enough for now.
+- **Theme.** `ThemedArtifact` (a client component in the route folder, since components don't read app state) reads next-themes' resolved theme and adds `?theme=light|dark` to the address, which the artifact reads (§3.4). Until the theme is known, after the first render, the frame shows the muted surface instead of loading twice.
+- **Size.** `height` is required, in px, between 120 and 2000. At phone width the frame is full width, at the same height. Artifacts don't report their own size: that needs a script in every artifact and a message channel, and fixed heights are enough for now.
 - **Loading.** `loading="lazy"`, so artifacts further down a post load only when you reach them.
 - The top bar's title is `title`; **Open full screen** links to the file with `target="_blank" rel="noopener"`.
 
