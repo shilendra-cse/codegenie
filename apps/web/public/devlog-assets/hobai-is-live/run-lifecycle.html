@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside a run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fafafa;--card:#fff;--hover:#f2f2f4;--border:#e6e6ea;--strong:#d4d4da;--text:#0f0f12;--muted:#55565e;--faint:#6b6c74;--accent:#0f0f12;--on-accent:#fff}
+:root[data-theme="dark"]{--bg:#0f0f11;--card:#131316;--hover:#1c1c20;--border:#26262b;--strong:#36363d;--text:#ededef;--muted:#a3a3ab;--faint:#8e8e97;--accent:#ededef;--on-accent:#0a0a0b}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--text);font:14px/1.5 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:0;list-style:none}
+.step{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.step:hover{color:var(--text);border-color:var(--strong)}
+.step[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.n{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;opacity:.7}
+.card{display:flex;flex-direction:column;gap:8px;padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.stage{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--faint)}
+h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.015em}
+p{margin:0;color:var(--muted);font-size:15px;max-width:560px}
+.nav{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+.nav button{min-height:32px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.nav button:hover{background:var(--hover)}
+.nav button:disabled{opacity:.45;cursor:default;background:var(--card)}
+@media (prefers-reduced-motion:reduce){.step{transition:none}}
+</style>
+</head>
+<body>
+<ul class="steps" aria-label="Stages of a run"></ul>
+<section class="card" aria-live="polite">
+  <span class="stage" id="stage"></span>
+  <h2 id="name"></h2>
+  <p id="text"></p>
+  <div class="nav">
+    <button type="button" id="back">Back</button>
+    <button type="button" id="next">Next</button>
+  </div>
+</section>
+<script>
+const theme = new URLSearchParams(location.search).get("theme");
+document.documentElement.dataset.theme =
+  theme === "light" || theme === "dark"
+    ? theme
+    : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+const stages = [
+  ["Sandbox", "A fresh, isolated cloud sandbox is created for this run. Nothing from another run is in it."],
+  ["Install", "Your repository is cloned and installed with the setup hobai worked out once, with your input only where it was needed."],
+  ["Checks before", "Your lint, type-check and tests run on the untouched code, so there's a baseline to compare against."],
+  ["Change", "The agent reads files, edits them and runs commands until the task is done. You can watch every step, and cancel at any time."],
+  ["Checks after", "The same checks run again and are compared with the baseline: fixed, still passing, or regressed."],
+  ["Pull request", "A pull request lands on its own hobai/ branch with a summary, the changed files and the check results. Ready when the checks pass, a draft when they don't."],
+];
+
+const list = document.querySelector(".steps");
+const back = document.getElementById("back");
+const next = document.getElementById("next");
+let current = 0;
+
+function show(index) {
+  current = index;
+  list.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === index)));
+  document.getElementById("stage").textContent = `Stage ${index + 1} of ${stages.length}`;
+  document.getElementById("name").textContent = stages[index][0];
+  document.getElementById("text").textContent = stages[index][1];
+  back.disabled = index === 0;
+  next.disabled = index === stages.length - 1;
+}
+
+stages.forEach(([name], i) => {
+  const item = document.createElement("li");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "step";
+  const n = document.createElement("span");
+  n.className = "n";
+  n.textContent = String(i + 1).padStart(2, "0");
+  button.append(n, name);
+  button.onclick = () => show(i);
+  item.append(button);
+  list.append(item);
+});
+back.onclick = () => show(current - 1);
+next.onclick = () => show(current + 1);
+show(0);
+</script>
+</body>
+</html>

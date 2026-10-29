@@ -1,0 +1,89 @@
+---
+title: hobai is live
+date: 2026-10-29
+summary: Describe a clear coding task, and hobai opens the pull request. Here's how it works end to end, and what it can and can't do yet.
+draft: true
+---
+
+A lot of coding tasks are clear before I even start. Add an endpoint. Fix a validation bug. Write the missing tests. I know exactly what should change, and it still takes a couple of hours of my attention.
+
+So I built hobai. **You describe the change; it opens the pull request.** An agent does the work in an isolated cloud sandbox while you watch, runs your checks, and hands you a pull request to review.
+
+## How it works
+
+1. **Connect GitHub.** Install the hobai GitHub App on just the repositories you choose.
+2. **Set up once.** hobai works out how to install and check your repository: package manager, lint, type-check, tests, build. If it can't decide, it asks you a few multiple-choice questions. Every step it keeps has actually run in a fresh sandbox.
+3. **Describe the task.** In plain words, the way you'd write it for a teammate.
+4. **Watch it work.** Every file it reads, every edit, every command and its output, live.
+5. **Review the pull request.** Your checks run before and after the change, and the results go into the PR with a summary and the changed files.
+
+<Figure
+  src="run-flow.svg"
+  darkSrc="run-flow-dark.svg"
+  alt="Your repository goes into a sandbox made for the run, through your checks before and after the change, and out as a pull request on its own branch."
+  caption="Where your code goes during a run."
+  width={1200}
+  height={260}
+/>
+
+A task can be as small as this:
+
+```
+Add a GET /health endpoint that returns 200 with the database status,
+and 503 when the database is down. Add tests.
+```
+
+hobai sets up the repository, runs the existing checks, explores the code, writes the endpoint and its tests, runs them, and opens the pull request.
+
+## Inside a run
+
+Every run goes through the same six stages. Click through them:
+
+<Artifact
+  src="run-lifecycle.html"
+  title="Inside a run"
+  height={360}
+  caption="Interactive: click a stage, or step through with Next."
+/>
+
+## Results you can trust
+
+I wanted an agent that doesn't pretend. How a run ends decides what you get:
+
+| When | You get |
+| --- | --- |
+| The checks pass | A ready pull request |
+| The checks fail | A draft pull request, so nothing unfinished looks finished |
+| Nothing needed changing | No pull request, and an explanation of why |
+| The run hits its limit | The pull request says so |
+
+And the rules I'd want from any tool that touches my code:
+
+- **Your code runs only in sandboxes.** Every run gets its own, isolated and short-lived.
+- **Never your main branch.** Every change arrives on its own `hobai/` branch, as a pull request you review.
+- **The agent never holds a token that can write.** hobai makes the commit through GitHub's API from outside the sandbox.
+- **Access you choose, per repository.** The GitHub App only sees the repositories you pick.
+- **You can cancel any run, at any time.**
+
+## What it supports today
+
+| Area | Supported |
+| --- | --- |
+| Code host | GitHub, through the hobai GitHub App |
+| Languages | JavaScript, TypeScript |
+| Package managers | `npm`, `pnpm`, `yarn` |
+| Repository layout | One app, or a separate `frontend/` and `backend/` |
+
+It works best on well-defined tasks a developer would finish in one to a few hours: a feature or an endpoint, a bug fix, missing tests, a refactor, a dependency update and its fallout.
+
+It's free to start: 10 runs a month, no card needed. Setting up a repository doesn't use a run. See [pricing](/pricing) for the details.
+
+## What I'd like to hear
+
+If you try it, I'd love to know:
+
+- What task did you give it, and would you merge the pull request?
+- Where did setup get stuck, or ask the wrong question?
+- What would you need before trusting it on your team's repository?
+
+This devlog is where I'll write up what I learn, what breaks, and what changes because of it.
