@@ -1,6 +1,6 @@
 # Development Plan
 
-> Status: **Accepted** · Last updated: 2026-10-25 · Related: [requirements.md](./requirements.md), [architecture.md](./architecture.md), [database.md](./database.md)
+> Status: **Accepted** · Last updated: 2026-10-29 · Related: [requirements.md](./requirements.md), [architecture.md](./architecture.md), [database.md](./database.md)
 
 ## 1. Approach
 
@@ -182,7 +182,7 @@ Walkthrough, by hand on real GitHub (all four `pnpm dev:*` running), on a small 
 - [ ] Deploy ([architecture.md](./architecture.md) §10): Vercel (web); a Hostinger KVM 2 VPS with Coolify (api, worker); Neon (Postgres); Upstash (Redis); prod GitHub App, custom domain, per-service secrets, migrations before the api starts, `TRUST_PROXY=2`; logs shipped off the box and an uptime check on the api (architecture.md §10).
 - [ ] Capacity ([architecture.md](./architecture.md) §10 "Capacity"): measure how many runs one worker handles (fake sandbox and scripted model, 10, 25 and 50 at once), check OpenAI's tokens-per-minute limit, and make a run wait instead of fail when Daytona refuses a sandbox for quota. Daytona on Tier 2 before real users: Tier 1 fits only 2 sandboxes at once.
 - [ ] Re-run eval against production config.
-- [ ] Devlog ([devlog.md](./devlog.md)): `/devlog` and its posts as MDX in the repo, with Claude artifacts in sandboxed frames, figures, tables and code; RSS and link previews. Built on `feat/devlog`; the first post ("hobai is live") goes up with the launch.
+- [x] Devlog ([devlog.md](./devlog.md)): `/devlog` and its posts as MDX in the repo, with Claude artifacts in sandboxed frames, figures, tables and code; RSS and link previews. **Done (2026-10-29):** checked by hand against the canvas, light and dark, at phone width; artifacts can't reach the signed-in session. The feed and preview validators run after the deploy, and the first post ("hobai is live") goes up with the launch.
 
 **Done when:** requirements §6 success criteria are met — U1–U7, U9 and U10 pass in production, eval targets hit, author using it for real work. **MVP complete.**
 **Needs:** Vercel, Hostinger VPS, Neon, Upstash, domain, prod GitHub App.

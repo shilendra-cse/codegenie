@@ -1,6 +1,6 @@
 # Devlog
 
-> Status: **Proposed** · Last updated: 2026-10-29 · Code: `apps/web` · Design: [hobai App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), boards **Devlog** and **Devlog: post** (Signed out row) · Related: [ui.md](./ui.md), [web.md](./web.md), [development-plan.md](./development-plan.md)
+> Status: **Accepted** (built on `feat/dev-log`) · Last updated: 2026-10-29 · Code: `apps/web` · Design: [hobai App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), boards **Devlog** and **Devlog: post** (Signed out row) · Related: [ui.md](./ui.md), [web.md](./web.md), [development-plan.md](./development-plan.md)
 
 A public build-in-public log at `hobai.app/devlog`: what shipped, what broke, and why hobai is built the way it is. Posts can hold interactive Claude artifacts, diagrams, tables and code alongside the writing. This file covers what it is, how a post is written, how it's built, and the order we build it in.
 
@@ -281,16 +281,16 @@ No end-to-end test: these pages have no flow, and the unit tests cover the rules
 
 ## 7. Build plan
 
-One branch, `feat/devlog`, in small batches. Each batch is built, explained and reviewed, then committed, before the next starts ([development-plan.md](./development-plan.md) §3).
+One branch, `feat/dev-log`, in small batches; all six are built. Each batch is built, explained and reviewed, then committed, before the next starts ([development-plan.md](./development-plan.md) §3).
 
 | # | Batch | Done when |
 |---|---|---|
 | 1 | **Post loader.** `post-schema.ts`, `posts.ts`, fixtures and tests; `yaml` and zod. | `getPosts` and `getPost` pass their tests |
 | 2 | **Pages with plain Markdown.** `/devlog` and `/devlog/[slug]` as server pages; `next-mdx-remote-client` with `remark-gfm` and `rehype-slug`; `DevlogDate`, the list, latest card, pager and prose styles (in `globals.css`); `DevlogHeader`, `SignedOutOnly`, the CTA; routes; Devlog in the header menu. One placeholder post (a draft) in `content/devlog/` to see it render | Both pages match the canvas in light and dark at desktop and phone width, with headings, lists, quotes and inline code |
 | 3 | **Tables, code and figures.** The table wrapper, rehype-pretty-code + shiki, `Figure` with dark variants | A test post's table, code block and figure match the canvas |
-| 4 | **Artifact embed.** `ArtifactEmbed` with its sandbox, theme and lazy loading; the CSP header on `/devlog-assets`; tests | An artifact downloaded from Claude works in the post and full screen; from inside it, `fetch("/api/me")` and `document.cookie` don't reach hobai |
-| 5 | **Navigation, metadata and feed.** Devlog and RSS in the footer; `generateMetadata`; the preview image; `rss.xml` with its tests and the `alternate` link | The feed validates (W3C Feed Validator) and loads in a feed reader; a post link shows its card in a preview validator |
-| 6 | **Docs.** ui.md (the two screens), web.md (routes, structure), this file's status to Accepted, the development plan ticked | Docs match what's built |
+| 4 | **Artifact embed.** `ArtifactEmbed` with its sandbox, theme and lazy loading; the CSP header on `/devlog-assets`; tests | An artifact downloaded from Claude works in the post and full screen; from inside it, `fetch("/api/me/usage")` and `document.cookie` don't reach hobai (checked: the site gets 200, the artifact runs in origin `null` with cookies, storage and the API blocked) |
+| 5 | **Navigation, metadata and feed.** Devlog and RSS in the footer; `generateMetadata`; the preview image; `rss.xml` with its tests and the `alternate` link | The feed, metadata and preview image are built statically. After the deploy: the feed validates (W3C Feed Validator) and loads in a feed reader, and a post link shows its card in a preview validator |
+| 6 | **Docs.** The placeholder post and its assets removed (`content/devlog/.gitkeep` keeps the folder, which the loader needs); ui.md (the two screens), web.md (routes, structure), this file's status to Accepted, the development plan ticked | Docs match what's built |
 
 The placeholder post is removed in batch 6. **The first real post** ("hobai is live", from `launch-posts.md`, with the run lifecycle artifact and a run screenshot) is its own PR after the branch merges, so writing it doesn't hold up the code. It goes up with the launch.
 
