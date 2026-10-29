@@ -1,3 +1,7 @@
+import { DOMAIN } from "@hobai/shared/brand";
+
+export const SITE_URL = `https://${DOMAIN}`;
+
 export const INBOX = "/inbox";
 export const APP_HOME = INBOX;
 export const WELCOME = "/welcome";
@@ -6,6 +10,7 @@ export const ADD_REPOSITORY = "/projects/new";
 export const NEW_TASK = "/new";
 export const PRICING = "/pricing";
 export const DEVLOG = "/devlog";
+export const DEVLOG_RSS = "/devlog/rss.xml";
 
 export const projectPath = (id: string) => `/projects/${id}`;
 export const environmentPath = (projectId: string) =>

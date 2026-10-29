@@ -18,7 +18,10 @@ export const postHeaderSchema = z.strictObject({
   draft: z.boolean().default(false),
   image: z
     .string()
-    .regex(/^[\w.-]+$/, "must be a file name in the post's assets folder")
+    .regex(
+      /^[\w-][\w.-]*\.(png|jpe?g)$/,
+      "must be a .png or .jpg file name in the post's assets folder",
+    )
     .optional(),
 });
 

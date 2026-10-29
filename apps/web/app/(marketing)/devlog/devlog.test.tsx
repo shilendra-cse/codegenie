@@ -37,6 +37,23 @@ describe("Devlog", () => {
     ).toHaveAttribute("href", "/devlog/watching-a-run-live");
   });
 
+  it("offers the RSS feed, in the hero and the footer", () => {
+    render(<Devlog posts={posts} />);
+
+    expect(
+      screen.getByRole("link", { name: "Follow with RSS" }),
+    ).toHaveAttribute("href", "/devlog/rss.xml");
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByRole("link", { name: "RSS" })).toHaveAttribute(
+      "href",
+      "/devlog/rss.xml",
+    );
+    expect(footer.getByRole("link", { name: "Devlog" })).toHaveAttribute(
+      "href",
+      "/devlog",
+    );
+  });
+
   it("leaves out Earlier when there's only one post", () => {
     render(<Devlog posts={posts.slice(0, 1)} />);
 

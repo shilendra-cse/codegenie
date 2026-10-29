@@ -91,6 +91,11 @@ describe("parsePost", () => {
       `${valid}\nimage: ../other/card.png`,
       "assets folder",
     ],
+    [
+      "an image that isn't a PNG or JPEG",
+      `${valid}\nimage: card.webp`,
+      ".png or .jpg",
+    ],
     ["a field it doesn't know", `${valid}\ntags: [launch]`, "tags"],
   ])("rejects %s, naming the file and the field", (_, header, field) => {
     expect(() => parsePost("a.mdx", post(header))).toThrow(

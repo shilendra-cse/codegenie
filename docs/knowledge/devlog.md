@@ -80,7 +80,7 @@ draft: false
 | `summary` | yes | One or two sentences. Shown in the list, as the lead, in the feed and in link previews. At most 200 characters |
 | `author` | no | Defaults to `Shilendra Singh` |
 | `draft` | no | `true` hides the post from the list, the feed and the build in production; it still shows in `pnpm dev` |
-| `image` | no | A file name in the post's assets folder (`card.png`), used for link previews instead of the generated one (§4.8) |
+| `image` | no | A `.png` or `.jpg` in the post's assets folder (`card.png`), 1200×630, used for link previews instead of the generated one (§4.8) |
 
 A header that's missing a field or has a wrong value fails the build with the file name and the field, so a broken post can't ship.
 
@@ -184,10 +184,11 @@ apps/web/
     posts.ts                              getPosts(), getPost(slug): read, check, sort, hide drafts in production
     posts.test.ts
     assets.ts                             devlogAssetUrl(slug, file): a post's asset address; fails the build if the file is missing
-    rss.ts                                buildRss(posts): the feed's XML
+    devlog.ts                             the devlog's title and description
+    rss.ts                                buildRss(posts, siteUrl): the feed's XML
     rss.test.ts
   components/
-    molecules/devlog-date.tsx             a date in the house format ("Oct 26, 2026", UTC so it never shifts a day)
+    molecules/devlog-date.tsx             a date in the house format ("Oct 26, 2026", UTC so it never shifts a day; `formatPostDate` in lib/format.ts)
     molecules/artifact-embed.tsx          the framed, sandboxed artifact (client: reads the theme)
     molecules/figure.tsx                  image or diagram with caption and dark variant
     organisms/devlog-latest-card.tsx
@@ -249,8 +250,8 @@ It returns `{ slug, title, date, summary, author, image?, body }[]`. `getPost(sl
 ### 4.8 Metadata, link previews and the feed
 
 - **Each page:** `generateMetadata` sets the title (`<title> · hobai devlog`), the description (the summary), canonical URL, and Open Graph and Twitter card fields (`article`, published time, author).
-- **Preview image:** `opengraph-image.tsx` draws a 1200×630 card with `next/og`: the dark surface, the hobai logo, the post title in Geist, the date. A post's `image` field replaces it.
-- **Absolute URLs** come from `DOMAIN` in `@hobai/shared/brand` (`https://hobai.app`).
+- **Preview image:** `opengraph-image.tsx` draws a 1200×630 card with `next/og`: the dark surface, the hobai logo, the post title in Geist, the date and `hobai.app/devlog`. The fonts come from the `geist` package's TTF files (the preview renderer can't read woff2). A post's `image` field replaces it.
+- **Absolute URLs** come from `SITE_URL` in `lib/routes.ts`, built from `DOMAIN` in `@hobai/shared/brand` (`https://hobai.app`). It's also the root layout's `metadataBase`.
 - **RSS 2.0:** the channel (title "hobai devlog", link, description, language) and one item per published post, newest first: title, link, `guid` (the post URL), `pubDate` (RFC 822, midnight UTC) and the summary as `description`. Summaries only: artifacts and figures don't survive in feed readers, so the feed links to the real post. Text is XML-escaped.
 - The devlog pages advertise the feed with `<link rel="alternate" type="application/rss+xml">`, so feed readers find it from the page address.
 
