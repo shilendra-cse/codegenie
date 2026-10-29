@@ -35,3 +35,13 @@ export const formatCost = (usd: number) => `$${usd.toFixed(2)}`;
 /** "25 Nov". */
 export const formatDay = (iso: string) =>
   new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+const postDate = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+export const formatPostDate = (date: string) =>
+  postDate.format(new Date(`${date}T00:00:00Z`));

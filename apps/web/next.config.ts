@@ -10,6 +10,20 @@ const nextConfig: NextConfig = {
     // Next's defaults plus 192: the full logo (96px wide) is then served at exactly its retina size, unscaled.
     imageSizes: [16, 32, 48, 64, 96, 128, 192, 256, 384],
   },
+  async headers() {
+    return [
+      {
+        // Artifacts run in an origin of their own, even opened outside their frame: never with the signed-in session.
+        source: "/devlog-assets/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "sandbox allow-scripts allow-popups",
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiUrl}/api/:path*` }];
   },

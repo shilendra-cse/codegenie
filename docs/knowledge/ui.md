@@ -1,6 +1,6 @@
 # Web UI
 
-> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-25 · Code: `apps/web` · Design: [hobai App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
+> Status: **Accepted** (design for Phase 4) · Last updated: 2026-10-29 · Code: `apps/web` · Design: [hobai App Design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr) (private; clickable, light and dark) · Related: [requirements.md](./requirements.md) (U1–U10), [architecture.md](./architecture.md), [environment.md](./environment.md)
 
 The screens, what they show in every state, and what each needs from the API. The canvas is the visual source of truth; this file is the written one. Phase 4 builds what's drawn.
 
@@ -65,6 +65,8 @@ Never on status colours, errors or the diff; nothing loops except the beam, the 
 |---|---|---|
 | `/` | Landing (signed in: Open hobai, no redirect) | no |
 | `/pricing` | Pricing | no |
+| `/devlog` | Devlog | no |
+| `/devlog/:slug` | Devlog post | no |
 | `/signin` | Sign in | no |
 | `/welcome` | First-run checklist | yes |
 | `/new` | New task | yes |
@@ -90,6 +92,15 @@ Public, linked from the landing page's header (**Pricing**) and from Usage & lim
 - **Questions:** what a run is (one attempt at a task; setups don't count, nor runs that failed through hobai's fault), when runs reset (a month from the day you signed up), what happens at the limit.
 
 **Data:** none; the plans shown are fixed text until Pro exists.
+
+### Devlog
+Public, linked from the header (**Devlog**, after Pricing) and the footer (**Devlog**, **RSS**) of every public page. Written spec, how posts are made, and how it's built: [devlog.md](./devlog.md).
+- **List** (`/devlog`): a hero ("Building hobai", one line, **Follow with RSS**); the newest post as a large card with the beam border (Latest badge, date, title, summary, Read post); every older post under **Earlier** as a row (date on the left, title and summary on the right; the date moves above the title at phone width). **Empty:** "No posts yet".
+- **Post** (`/devlog/:slug`): ← Devlog, the date and author, the title, the summary as the lead, then the post in a 720 px reading column: prose, tables (scroll sideways on a phone), highlighted code (light and dark), figures with captions (a dark version when given), and Claude artifacts in a framed, sandboxed box with **Open full screen**. Signed out: **Try it on one of your repos** with **Start free**. Then links to the previous post and back to the list.
+
+**Data:** none from the API; posts are MDX files in the repository, built into static pages.
+
+At phone width, the header of every public page hides How it works and Security, so the menu fits.
 
 ### Sign in
 One card: Continue with GitHub, what's shared (name and email; repository access comes separately). **States:** default, sign-in failed. **Data:** Better Auth.

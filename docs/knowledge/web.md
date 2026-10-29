@@ -1,6 +1,6 @@
 # Web app
 
-> Status: **Accepted** (Phase 4) · Last updated: 2026-10-25 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
+> Status: **Accepted** (Phase 4) · Last updated: 2026-10-29 · Code: `apps/web` · Related: [ui.md](./ui.md) (screens, states) and its [design canvas](https://claude.ai/artifact/7CrGGxQmeSht3KyDnahRUr), [api.md](./api.md) (the API it calls), [development-plan.md](./development-plan.md)
 
 How the web app is built: the stack, how it talks to the API, how the code is organized, and the order we build it in. **What** each screen shows is in ui.md; this file is **how**.
 
@@ -74,6 +74,7 @@ The translator is the hard logic of the main screen; as a plain function it's te
 apps/web/
   app/                      pages: a route + data hooks + a template
     (marketing)/page.tsx    landing
+    (marketing)/pricing · devlog · devlog/[slug] · devlog/rss.xml
     signin/page.tsx
     (app)/layout.tsx        the app shell, for signed-in pages
     (app)/welcome · inbox · new
@@ -85,7 +86,8 @@ apps/web/
     molecules/              a few atoms doing one job (TaskStatusBadge, SetupStatusBadge, PullRequestCard, DiffView, NavItem…)
     organisms/              complete sections (Sidebar, RunCard, QuestionCard, ProjectTaskTable, InboxList…)
     templates/              page layouts with slots (AppShell, CenteredLayout, MarketingLayout, ProjectTabs)
-  features/<domain>/        data only: endpoint functions, query hooks, the run-events translator (account, github, projects, onboarding, setup, tasks, runs)
+  features/<domain>/        data only: endpoint functions, query hooks, the run-events translator (account, github, projects, onboarding, setup, tasks, runs); devlog reads the posts from content/devlog
+  content/devlog/           devlog posts, one MDX file each ([devlog.md](./devlog.md))
   lib/                      api/client.ts (axios), query client, auth client, routes
   middleware.ts             the sign-in guard
 ```

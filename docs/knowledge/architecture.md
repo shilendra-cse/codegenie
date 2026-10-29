@@ -333,6 +333,23 @@ Environment variables are set per app in Coolify, from each app's `.env.example`
 
 Watch paths mean a change to the web app or the docs redeploys neither, and a server-only change leaves the worker, and its runs, alone.
 
+### Capacity
+How many runs execute at once is `WORKER_CONCURRENCY` per worker process (production: **8**); more wait in the queue, nobody is refused. Setups share the same slots. Four things cap it, and going past an outside limit fails runs instead of queueing them, so the setting must stay under the smallest:
+
+| Limit | Today | When exceeded |
+|---|---|---|
+| **Daytona quota** (total for the account, all sandboxes at once) | Tier 1: 10 vCPU, 10 GiB memory, 30 GiB storage. One sandbox reserves 2 vCPU, 4 GiB and 10 GiB (`build-snapshot.ts`), and a setup holds two at once (its tries, then a fresh one for the final check): **2 sandboxes fit**. Tier 2 (a card and a $25 top-up) raises it | Creating the sandbox is refused: the run fails, "Couldn't prepare the sandbox" |
+| **The worker on the VPS** | Not measured. Estimate: 30–50 runs, since a run mostly waits on OpenAI, the sandbox and GitHub; memory (each run's conversation, roughly 20–100 MB) and the database pool (20 connections) go first. About 5–6 GB of the 8 GB is left for the worker | Slow event saving, then out of memory |
+| **OpenAI rate limit** (tokens per minute for the account's tier) | Not checked | Calls are retried, then the run fails |
+| **Daily spend cap** (`DAILY_SPEND_CAP_USD`, $5) | Roughly 10–25 runs a day | New tasks are refused with a clear message; nothing running fails |
+
+So `WORKER_CONCURRENCY=8` needs Daytona on Tier 2 or higher with room for 8 sandboxes plus setups (about 32+ GiB of memory). Signs it needs changing: runs often sitting at "Queued" (raise it, and the Daytona tier); "Couldn't prepare the sandbox" (lower it, or raise the quota).
+
+**Still to do:**
+- **Measure the worker:** run it locally with the fake sandbox and scripted model from the tests (no Daytona, no OpenAI), push 10, 25 and 50 runs through at once, and record memory, the time to save events and database pool waits. That replaces the estimate above with numbers.
+- **Check the OpenAI tier's tokens per minute** against 8 agents at once.
+- **Wait instead of failing** when Daytona refuses a sandbox for quota: today the run fails; it should go back to the queue or retry after a delay.
+
 **Local dev:** `docker-compose` (Postgres, Redis) · `pnpm dev:web` / `dev:server` / `dev:worker` · `SANDBOX_PROVIDER=docker` (or `daytona` on free tier) · webhooks via smee.io or cloudflared tunnel.
 
 ---
