@@ -512,3 +512,101 @@
     opacity: 0;
   }
 }
+
+/* Devlog posts: Markdown renders plain elements, so they're styled from the wrapper. */
+
+@layer components {
+  .devlog-prose {
+    font-size: 16.5px;
+    line-height: 1.75;
+    color: var(--text-muted);
+  }
+  .devlog-prose > :first-child {
+    margin-top: 0;
+  }
+  .devlog-prose p,
+  .devlog-prose ul,
+  .devlog-prose ol {
+    margin: 0 0 20px;
+  }
+  .devlog-prose h2,
+  .devlog-prose h3 {
+    color: var(--foreground);
+    font-weight: 600;
+    line-height: 1.3;
+    scroll-margin-top: 80px;
+  }
+  .devlog-prose h2 {
+    margin: 44px 0 14px;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+  .devlog-prose h3 {
+    margin: 32px 0 10px;
+    font-size: 18px;
+    letter-spacing: -0.015em;
+  }
+  .devlog-prose strong {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+  .devlog-prose a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--border-strong);
+  }
+  .devlog-prose a:hover {
+    text-decoration-color: var(--foreground);
+  }
+  .devlog-prose ul,
+  .devlog-prose ol {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 22px;
+  }
+  .devlog-prose ul {
+    list-style: disc;
+  }
+  .devlog-prose ol {
+    list-style: decimal;
+  }
+  .devlog-prose li::marker {
+    color: var(--text-faint);
+  }
+  .devlog-prose blockquote {
+    margin: 0 0 24px;
+    padding: 2px 0 2px 18px;
+    border-left: 2px solid var(--border-strong);
+    color: var(--foreground);
+    font-size: 17px;
+  }
+  .devlog-prose blockquote p {
+    margin: 0;
+  }
+  .devlog-prose hr {
+    margin: 40px 0;
+  }
+  .devlog-prose :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--hover);
+    color: var(--foreground);
+  }
+  .devlog-prose pre {
+    margin: 0 0 24px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+}

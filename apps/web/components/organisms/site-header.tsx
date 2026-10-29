@@ -2,12 +2,12 @@ import Link from "next/link";
 import { PRODUCT_NAME } from "@hobai/shared/brand";
 import { Button } from "@/components/atoms/button";
 import { Logo } from "@/components/atoms/logo";
-import { APP_HOME, PRICING, SIGN_IN } from "@/lib/routes";
+import { APP_HOME, DEVLOG, PRICING, SIGN_IN } from "@/lib/routes";
 
 export type SiteHeaderProps = {
   signedIn: boolean;
   /** The page it's on, when that's in the menu; the landing page's sections are linked from anywhere else. */
-  current?: "pricing";
+  current?: "pricing" | "devlog";
 };
 
 export function SiteHeader({ signedIn, current }: SiteHeaderProps) {
@@ -18,11 +18,11 @@ export function SiteHeader({ signedIn, current }: SiteHeaderProps) {
         <Link href="/" aria-label={`${PRODUCT_NAME} home`}>
           <Logo />
         </Link>
-        <nav aria-label="Main" className="ml-4 flex flex-1 gap-1">
-          <Button asChild variant="ghost">
+        <nav aria-label="Main" className="flex flex-1 gap-1 sm:ml-4">
+          <Button asChild variant="ghost" className="hidden sm:inline-flex">
             <a href={section("how")}>How it works</a>
           </Button>
-          <Button asChild variant="ghost">
+          <Button asChild variant="ghost" className="hidden sm:inline-flex">
             <a href={section("trust")}>Security</a>
           </Button>
           <Button
@@ -35,6 +35,18 @@ export function SiteHeader({ signedIn, current }: SiteHeaderProps) {
               aria-current={current === "pricing" ? "page" : undefined}
             >
               Pricing
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            className="aria-[current=page]:text-foreground"
+          >
+            <Link
+              href={DEVLOG}
+              aria-current={current === "devlog" ? "page" : undefined}
+            >
+              Devlog
             </Link>
           </Button>
         </nav>

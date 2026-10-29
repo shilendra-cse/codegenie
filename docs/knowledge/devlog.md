@@ -164,10 +164,12 @@ No client-side Markdown or highlighting: the reader downloads finished HTML.
 
 Unlike Pricing (a client component, because it reads the session), devlog pages are **server components**: the MDX compiles at build time and only finished HTML reaches the browser. The one signed-in difference, the header button and the Start free card, comes from small client components:
 
-- `SessionSiteHeader` (organism): reads `useSession()` and renders the existing `SiteHeader`. Signed out is rendered first, so the static HTML matches what most readers see.
-- `SignedOutOnly` (atom): renders its children only without a session. It wraps the post's Start free card.
+- `DevlogHeader`: reads `useSession()` and renders the existing `SiteHeader` with Devlog marked. Signed out is rendered first, so the static HTML matches what most readers see.
+- `SignedOutOnly`: renders its children only without a session. It wraps the post's Start free card.
 
-`SiteHeader` gets `"devlog"` as a `current` value and a **Devlog** link. `SiteFooter` gets the Devlog and RSS links.
+Both live in `app/(marketing)/devlog/session.tsx`: components can't read the session (ESLint keeps data out of `components/`), pages can.
+
+`SiteHeader` gets `"devlog"` as a `current` value and a **Devlog** link, on every public page. At phone width it hides How it works and Security, so the menu fits on one line. `SiteFooter` gets the Devlog and RSS links.
 
 ### 4.4 Code structure
 
@@ -184,19 +186,18 @@ apps/web/
     rss.ts                                buildRss(posts): the feed's XML
     rss.test.ts
   components/
-    atoms/signed-out-only.tsx
     molecules/devlog-date.tsx             a date in the house format ("Oct 26, 2026", UTC so it never shifts a day)
     molecules/artifact-embed.tsx          the framed, sandboxed artifact (client: reads the theme)
     molecules/figure.tsx                  image or diagram with caption and dark variant
-    organisms/session-site-header.tsx
     organisms/devlog-latest-card.tsx
     organisms/devlog-post-list.tsx
     organisms/devlog-post-pager.tsx
-    organisms/devlog-prose.tsx            the prose styles and the MDX component map
+    organisms/devlog-prose.tsx            compiles a post's MDX (imports and exports stripped) into the prose wrapper
     organisms/devlog-cta.tsx              "Try it on one of your repos"
   app/(marketing)/devlog/
-    page.tsx                              list
-    [slug]/page.tsx                       post
+    page.tsx · devlog.tsx                 list: the page loads posts, the view renders them
+    session.tsx                           DevlogHeader and SignedOutOnly (client)
+    [slug]/page.tsx · [slug]/post.tsx     post
     [slug]/opengraph-image.tsx
     rss.xml/route.ts
 ```
@@ -281,10 +282,10 @@ One branch, `feat/devlog`, in small batches. Each batch is built, explained and 
 | # | Batch | Done when |
 |---|---|---|
 | 1 | **Post loader.** `post-schema.ts`, `posts.ts`, fixtures and tests; `yaml` and zod. | `getPosts` and `getPost` pass their tests |
-| 2 | **Pages with plain Markdown.** `/devlog` and `/devlog/[slug]` as server pages; `next-mdx-remote-client` with `remark-gfm` and `rehype-slug`; `DevlogDate`, the list, latest card, pager and prose styles; `SessionSiteHeader`, `SignedOutOnly`, the CTA; routes. One placeholder post in `content/devlog/` to see it render | Both pages match the canvas in light and dark at desktop and phone width, with headings, lists, quotes and inline code |
+| 2 | **Pages with plain Markdown.** `/devlog` and `/devlog/[slug]` as server pages; `next-mdx-remote-client` with `remark-gfm` and `rehype-slug`; `DevlogDate`, the list, latest card, pager and prose styles (in `globals.css`); `DevlogHeader`, `SignedOutOnly`, the CTA; routes; Devlog in the header menu. One placeholder post (a draft) in `content/devlog/` to see it render | Both pages match the canvas in light and dark at desktop and phone width, with headings, lists, quotes and inline code |
 | 3 | **Tables, code and figures.** The table wrapper, rehype-pretty-code + shiki, `Figure` with dark variants | A test post's table, code block and figure match the canvas |
 | 4 | **Artifact embed.** `ArtifactEmbed` with its sandbox, theme and lazy loading; the CSP header on `/devlog-assets`; tests | An artifact downloaded from Claude works in the post and full screen; from inside it, `fetch("/api/me")` and `document.cookie` don't reach hobai |
-| 5 | **Navigation, metadata and feed.** Devlog in the header and footer of every public page; `generateMetadata`; the preview image; `rss.xml` with its tests and the `alternate` link | The feed validates (W3C Feed Validator) and loads in a feed reader; a post link shows its card in a preview validator |
+| 5 | **Navigation, metadata and feed.** Devlog and RSS in the footer; `generateMetadata`; the preview image; `rss.xml` with its tests and the `alternate` link | The feed validates (W3C Feed Validator) and loads in a feed reader; a post link shows its card in a preview validator |
 | 6 | **Docs.** ui.md (the two screens), web.md (routes, structure), this file's status to Accepted, the development plan ticked | Docs match what's built |
 
 The placeholder post is removed in batch 6. **The first real post** ("hobai is live", from `launch-posts.md`, with the run lifecycle artifact and a run screenshot) is its own PR after the branch merges, so writing it doesn't hold up the code. It goes up with the launch.
