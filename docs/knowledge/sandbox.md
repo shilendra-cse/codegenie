@@ -1,6 +1,6 @@
 # Sandbox
 
-> Status: **Accepted** · Last updated: 2026-10-25 · Code: `packages/sandbox` · Related: [architecture.md](./architecture.md)
+> Status: **Accepted** · Last updated: 2026-10-30 · Code: `packages/sandbox` · Related: [architecture.md](./architecture.md)
 
 The sandbox is the isolated environment where the agent's work happens: the repository is cloned into it, dependencies are installed, files are edited and checks are run. Nothing the agent does runs on our machines or servers.
 
@@ -128,13 +128,66 @@ Decisions, from a probe of the real API (SDK 0.225):
 
 Measured on `octocat/Hello-World` (2026-10-20): onboarding 22 s and a run 23 s (5 agent steps, $0.0004 model cost), sandboxes deleted afterwards. A sandbox from Daytona's default snapshot starts in about 1.3 s.
 
-## 8. TODO (post-MVP or when evals show the need)
+## 8. E2B (planned)
+
+> Status: **Planned** · Branch: `feat/e2b-sandbox`
+
+E2B becomes the production provider; Daytona stays as it is, selectable with `SANDBOX_PROVIDER=daytona`. Local dev keeps `docker`.
+
+**Why:** Daytona's network limit (§7) breaks every repo that downloads from a host outside its essential services, during install or at runtime: Prisma engines, Puppeteer's Chrome, Cypress, packages fetching from their own CDN, tests calling real APIs. These are common in TypeScript repos, and full internet on Daytona needs Tier 3 ($500 top-up). E2B gives full internet on every plan, at the same price per hour.
+
+**Comparison** (checked 2026-10-30):
+
+| | E2B | Daytona |
+|---|---|---|
+| Isolation | Firecracker microVM, own kernel | Docker container, shared kernel |
+| Internet | Full by default, every plan; optional allowlist (`network.allowOut` / `denyOut`) | Essential services only below Tier 3 |
+| Price (2 vCPU, 4 GB) | ≈ $0.166/h; storage free | ≈ $0.166/h, plus disk after 5 GiB |
+| Free credit | $100 once (Hobby) | $200 |
+| Plans | Hobby: free, 20 at once. Pro: $150/month, 100 at once | Pay as you go, quota by tier |
+| Longest sandbox | Hobby 1 h, Pro 24 h (pausing resets it) | No cap; ours set by us |
+| Image | `Template().fromDockerfile()` (FROM, RUN, COPY, ENV, USER, WORKDIR…) | Snapshot from the Dockerfile |
+| Exec output | stdout and stderr separate | Mixed (hence the wrapper in §7) |
+| Labels | `metadata`, filtered server-side by `Sandbox.list` | Labels |
+| Safety net | Killed when its `timeout` passes | Auto-stop, auto-delete, TTL |
+| Paused sandboxes | Kept until killed: no auto-delete | Deleted after the retention period |
+
+**Mapping:**
+
+| Method | E2BSandbox |
+|---|---|
+| create | `Sandbox.create("hobai-base", { metadata: labels, timeoutMs })` |
+| exec | `commands.run`, under the same `timeout -k` as Docker (exit 124 = timed out); same 1 MB head + tail cap; no marker wrapper |
+| readFile / writeFile | `files.read` (bytes; same 10 MB refusal) / `files.write` |
+| listFiles | the same `find`, through `exec` |
+| destroy | `kill()`; "already gone" is ignored |
+| connect | `Sandbox.connect(id)`; `null` when it's gone |
+
+**Decisions:**
+
+| Area | Decision |
+|---|---|
+| Plan | Hobby. Sandbox lifetime capped at 1 h on E2B (2 h on Docker and Daytona); runs are far shorter. Pro only when usage needs more than 20 at once or longer sandboxes. |
+| Parking lost runs | Deleted, like Docker. The diff is already saved and nothing resumes parked sandboxes yet; a paused E2B sandbox would never expire on its own. When resume is built, park becomes pause plus a reaper sweep killing paused sandboxes older than `SANDBOX_RETENTION_HOURS`. |
+| Template | `hobai-base`, built on E2B from the same Dockerfile, 2 vCPU and 4 GB, by `pnpm sandbox:build-template`, then checked with the same commands as `build-snapshot`. |
+| Errors | Mapped to `SandboxUnavailableError`, `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`, as for Daytona. |
+| Testing | A one-time manual probe of the real API records its answers (which user commands run as, `ENV` from the Dockerfile, errors for non-zero exit, timeout, missing file, bad key, killed sandbox). `E2BSandbox` is tested with a fake client built from them; no automated tests call E2B. |
+| Config | `SANDBOX_PROVIDER=docker\|daytona\|e2b`; `E2B_API_KEY` required for `e2b`. Production sets `e2b`. |
+
+**Build order** (one PR, a commit per batch):
+
+1. Probe, `providers/e2b/e2b-sandbox.ts` and its tests.
+2. `pnpm sandbox:build-template`.
+3. Worker: config, `createSandbox` / `connectSandbox` / `parkSandbox`, `.env.example`, README.
+4. Docs: this section becomes the E2B reference; architecture.md (D1, quota, deploy, parking) and requirements.md stop saying "only Daytona".
+
+## 9. TODO (post-MVP or when evals show the need)
 
 - [ ] Support other Node versions (fnm/nvm in the image, picked from `.nvmrc` / `engines`).
 - [ ] bun and other runtimes in the image.
 - [ ] Optional image variant with browsers for Playwright.
 - [ ] Network allowlist (GitHub, npm registry) for production Docker sandboxes.
-- [ ] Another sandbox provider with full internet access, if Daytona's network limit blocks too many repos (§7).
+- [ ] Another sandbox provider with full internet access, since Daytona's network limit blocks too many repos (§7): E2B, planned in §8.
 - [ ] Streaming `exec` output (`onOutput` callback) for long commands.
 - [ ] Background processes (dev servers) for live previews.
 - [x] Cache the image build in CI.

@@ -1,6 +1,6 @@
 # Development Plan
 
-> Status: **Accepted** · Last updated: 2026-10-29 · Related: [requirements.md](./requirements.md), [architecture.md](./architecture.md), [database.md](./database.md)
+> Status: **Accepted** · Last updated: 2026-10-30 · Related: [requirements.md](./requirements.md), [architecture.md](./architecture.md), [database.md](./database.md)
 
 ## 1. Approach
 
@@ -181,6 +181,7 @@ Walkthrough, by hand on real GitHub (all four `pnpm dev:*` running), on a small 
 - [x] Production builds for the server and worker ([architecture.md](./architecture.md) §10): tsup bundles with the `@/…` aliases and our TypeScript packages; a Dockerfile per app, which Coolify builds, and CI builds on every PR; migrations just before the server starts. Deploys don't end work in progress: rolling updates with a 1-hour grace period, a 45-minute limit for runs and setups so everything ends within it, a worker health check, a 2-minute queue lock, repeated SIGTERMs ignored, and the server ending its event streams on shutdown. **Done (2026-10-27, #57):** checked locally in Docker; a real task through the images comes with the deploy.
 - [ ] Deploy ([architecture.md](./architecture.md) §10): Vercel (web); a Hostinger KVM 2 VPS with Coolify (api, worker); Neon (Postgres); Upstash (Redis); prod GitHub App, custom domain, per-service secrets, migrations before the api starts, `TRUST_PROXY=2`; logs shipped off the box and an uptime check on the api (architecture.md §10).
 - [ ] Capacity ([architecture.md](./architecture.md) §10 "Capacity"): measure how many runs one worker handles (fake sandbox and scripted model, 10, 25 and 50 at once), check OpenAI's tokens-per-minute limit, and make a run wait instead of fail when Daytona refuses a sandbox for quota. Daytona on Tier 2 before real users: Tier 1 fits only 2 sandboxes at once.
+- [ ] **`feat/e2b-sandbox`** ([sandbox.md](./sandbox.md) §8): E2B as the production sandbox provider, for full internet access (Daytona's network limit breaks installs like Prisma's engines); Daytona kept as it is. `E2BSandbox` from a probe of the real API and tested with a fake from its recorded answers; `pnpm sandbox:build-template` from the same Dockerfile; `SANDBOX_PROVIDER=e2b` in the worker. Before the deploy.
 - [ ] Re-run eval against production config.
 - [x] Devlog ([devlog.md](./devlog.md)): `/devlog` and its posts as MDX in the repo, with Claude artifacts in sandboxed frames, figures, tables and code; RSS and link previews. **Done (2026-10-29):** checked by hand against the canvas, light and dark, at phone width; artifacts can't reach the signed-in session. The feed and preview validators run after the deploy, and the first post ("hobai is live") goes up with the launch.
 
