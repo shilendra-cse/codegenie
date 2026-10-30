@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How an event reaches you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fafafa;--card:#fff;--hover:#f2f2f4;--border:#e6e6ea;--strong:#d4d4da;--text:#0f0f12;--muted:#55565e;--faint:#6b6c74;--accent:#0f0f12;--on-accent:#fff}
+:root[data-theme="dark"]{--bg:#0f0f11;--card:#131316;--hover:#1c1c20;--border:#26262b;--strong:#36363d;--text:#ededef;--muted:#a3a3ab;--faint:#8e8e97;--accent:#ededef;--on-accent:#0a0a0b}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--text);font:14px/1.5 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.nodes{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:0;list-style:none}
+.node{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--faint);font-size:13px;font-weight:500;transition:background .15s,border-color .15s,color .15s}
+.node.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.card{display:flex;flex-direction:column;gap:8px;padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.stage{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--faint)}
+h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.015em}
+p{margin:0;color:var(--muted);font-size:15px;max-width:600px;min-height:68px}
+code{font-family:"Geist Mono",ui-monospace,monospace;font-size:13px}
+.rows{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;align-items:center;margin-top:8px}
+.label{font-size:13px;color:var(--faint)}
+.seqs{display:flex;flex-wrap:wrap;gap:6px}
+.seq{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:26px;padding:0 8px;border:1px solid var(--strong);border-radius:6px;font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--text)}
+.seq.missing{border-style:dashed;color:var(--faint);opacity:.6}
+.nav{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.nav button{min-height:32px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.nav button:hover{background:var(--hover)}
+.nav button:disabled{opacity:.45;cursor:default;background:var(--card)}
+@media (prefers-reduced-motion:reduce){.node{transition:none}}
+</style>
+</head>
+<body>
+<ul class="nodes" aria-label="Parts of the system"></ul>
+<section class="card" aria-live="polite">
+  <span class="stage" id="stage"></span>
+  <h2 id="name"></h2>
+  <p id="text"></p>
+  <div class="rows">
+    <span class="label">Saved for the run</span><div class="seqs" id="saved"></div>
+    <span class="label">In your browser</span><div class="seqs" id="browser"></div>
+  </div>
+  <div class="nav">
+    <button type="button" id="back">Back</button>
+    <button type="button" id="next">Next</button>
+  </div>
+</section>
+<script>
+const theme = new URLSearchParams(location.search).get("theme");
+document.documentElement.dataset.theme =
+  theme === "light" || theme === "dark"
+    ? theme
+    : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+const nodes = ["Worker", "Postgres", "Redis", "API server", "Browser"];
+
+// saved / seen: the last event number in Postgres and in the browser.
+const steps = [
+  { name: "Something happens", on: ["Worker"], saved: 41, seen: 41,
+    text: "The agent finishes editing a file. The worker turns that into an event, numbered with the run's next sequence number: 42." },
+  { name: "Saved first", on: ["Worker", "Postgres"], saved: 42, seen: 41,
+    text: "The event is written to the run's event log in Postgres, keyed by run and sequence number. This is the copy that lasts." },
+  { name: "Then published", on: ["Worker", "Redis"], saved: 42, seen: 41,
+    text: "The same event is published on the run's Redis channel. Whoever is listening gets it right away. If nobody is, nothing is lost: it's already saved." },
+  { name: "Streamed to you", on: ["Redis", "API server", "Browser"], saved: 42, seen: 42,
+    text: "The API server listens on that channel and forwards the event to your browser as a server-sent event. The event's id is its sequence number." },
+  { name: "The connection drops", on: ["Worker", "Postgres"], saved: 44, seen: 42,
+    text: "Your Wi-Fi blips, or the API server restarts for a deploy. The worker doesn't notice: events 43 and 44 are saved and published, and nobody receives them." },
+  { name: "Reconnect", on: ["Browser", "API server"], saved: 44, seen: 42,
+    text: "The browser reconnects by itself and sends the last id it saw: <code>Last-Event-ID: 42</code>." },
+  { name: "Subscribe, then replay", on: ["API server", "Redis", "Postgres"], saved: 44, seen: 42,
+    text: "The server subscribes to the live channel first, then reads the events after 42 from Postgres. Subscribing first means nothing slips through the gap between the two." },
+  { name: "Caught up", on: ["API server", "Browser"], saved: 45, seen: 45,
+    text: "43 and 44 arrive from the replay, then 45 live. An event that arrives both ways is sent once, by its number. Reload the page instead, and the whole run replays from the start." },
+];
+
+const FIRST = 40;
+const nodeList = document.querySelector(".nodes");
+const back = document.getElementById("back");
+const next = document.getElementById("next");
+let current = 0;
+
+nodes.forEach((name) => {
+  const item = document.createElement("li");
+  item.className = "node";
+  item.textContent = name;
+  nodeList.append(item);
+});
+
+function renderSeqs(el, last, seen) {
+  el.replaceChildren();
+  for (let n = FIRST; n <= last; n++) {
+    const chip = document.createElement("span");
+    chip.className = n > seen ? "seq missing" : "seq";
+    chip.textContent = n;
+    el.append(chip);
+  }
+}
+
+function show(index) {
+  current = index;
+  const step = steps[index];
+  nodeList.querySelectorAll(".node").forEach((el, i) => el.classList.toggle("on", step.on.includes(nodes[i])));
+  document.getElementById("stage").textContent = `Step ${index + 1} of ${steps.length}`;
+  document.getElementById("name").textContent = step.name;
+  document.getElementById("text").innerHTML = step.text;
+  renderSeqs(document.getElementById("saved"), step.saved, step.saved);
+  renderSeqs(document.getElementById("browser"), step.saved, step.seen);
+  back.disabled = index === 0;
+  next.disabled = index === steps.length - 1;
+}
+
+back.onclick = () => show(current - 1);
+next.onclick = () => show(current + 1);
+show(0);
+</script>
+</body>
+</html>
