@@ -2,7 +2,7 @@
   "name": "@hobai/sandbox",
   "version": "0.0.0",
   "private": true,
-  "description": "Sandbox interface and providers (Daytona, Docker)",
+  "description": "Sandbox interface and providers (Docker, Daytona, E2B)",
   "type": "module",
   "exports": {
     ".": {
@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@daytonaio/sdk": "^0.225.0",
-    "@hobai/shared": "workspace:*"
+    "@hobai/shared": "workspace:*",
+    "e2b": "^2.62.0"
   }
 }

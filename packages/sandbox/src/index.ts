@@ -14,3 +14,7 @@ export {
   DaytonaSandbox,
   type DaytonaSandboxOptions,
 } from "./providers/daytona/daytona-sandbox.js";
+export {
+  E2BSandbox,
+  type E2BSandboxOptions,
+} from "./providers/e2b/e2b-sandbox.js";

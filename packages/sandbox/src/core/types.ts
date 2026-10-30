@@ -51,6 +51,10 @@ export type DaytonaConnection = {
   target?: string;
 };
 
+export type E2BConnection = {
+  apiKey: string;
+};
+
 export type CreateSandboxOptions =
   | { provider: "docker"; resources?: SandboxResources; labels?: SandboxLabels }
   | {
