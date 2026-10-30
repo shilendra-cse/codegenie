@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { DaytonaConnection } from "@hobai/sandbox";
+import type { DaytonaConnection, E2BConnection } from "@hobai/sandbox";
 import { DEFAULT_AGENT_MODEL } from "@hobai/shared";
 import { z } from "zod";
 import { SHORT_NAME } from "@hobai/shared/brand";
@@ -34,10 +34,11 @@ const schema = z
     AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).default(3),
 
-    SANDBOX_PROVIDER: z.enum(["docker", "daytona"]).default("docker"),
+    SANDBOX_PROVIDER: z.enum(["docker", "daytona", "e2b"]).default("docker"),
     DAYTONA_API_KEY: z.string().min(1).optional(),
     DAYTONA_API_URL: z.string().min(1).optional(),
     DAYTONA_TARGET: z.string().min(1).optional(),
+    E2B_API_KEY: z.string().min(1).optional(),
     SANDBOX_RETENTION_HOURS: z.coerce.number().min(0).default(4),
     REAPER_INTERVAL_MINUTES: z.coerce.number().min(1).default(5),
     ONBOARDING_ANSWER_TIMEOUT_MINUTES: z.coerce.number().min(1).default(30),
@@ -56,7 +57,13 @@ const schema = z
   .refine((e) => e.SANDBOX_PROVIDER !== "daytona" || e.DAYTONA_API_KEY, {
     path: ["DAYTONA_API_KEY"],
     message: `DAYTONA_API_KEY is required when SANDBOX_PROVIDER=daytona. Add it to ${ENV_FILE}.`,
+  })
+  .refine((e) => e.SANDBOX_PROVIDER !== "e2b" || e.E2B_API_KEY, {
+    path: ["E2B_API_KEY"],
+    message: `E2B_API_KEY is required when SANDBOX_PROVIDER=e2b. Add it to ${ENV_FILE}.`,
   });
+
+type Env = z.infer<typeof schema>;
 
 export type SandboxConfig =
   | { provider: "docker" }
@@ -64,7 +71,8 @@ export type SandboxConfig =
       provider: "daytona";
       connection: DaytonaConnection;
       retentionHours: number;
-    };
+    }
+  | { provider: "e2b"; connection: E2BConnection };
 
 export type WorkerConfig = {
   logLevel: string;
@@ -82,6 +90,25 @@ export type WorkerConfig = {
 };
 
 export class ConfigError extends Error {}
+
+function sandboxConfig(e: Env): SandboxConfig {
+  switch (e.SANDBOX_PROVIDER) {
+    case "docker":
+      return { provider: "docker" };
+    case "daytona":
+      return {
+        provider: "daytona",
+        connection: {
+          apiKey: e.DAYTONA_API_KEY!,
+          apiUrl: e.DAYTONA_API_URL,
+          target: e.DAYTONA_TARGET,
+        },
+        retentionHours: e.SANDBOX_RETENTION_HOURS,
+      };
+    case "e2b":
+      return { provider: "e2b", connection: { apiKey: e.E2B_API_KEY! } };
+  }
+}
 
 export function parseConfig(
   env: Record<string, string | undefined>,
@@ -104,18 +131,7 @@ export function parseConfig(
     redisUrl: e.REDIS_URL,
     model: e.AGENT_MODEL,
     concurrency: e.WORKER_CONCURRENCY,
-    sandbox:
-      e.SANDBOX_PROVIDER === "daytona"
-        ? {
-            provider: "daytona",
-            connection: {
-              apiKey: e.DAYTONA_API_KEY!,
-              apiUrl: e.DAYTONA_API_URL,
-              target: e.DAYTONA_TARGET,
-            },
-            retentionHours: e.SANDBOX_RETENTION_HOURS,
-          }
-        : { provider: "docker" },
+    sandbox: sandboxConfig(e),
     reaperIntervalMs: e.REAPER_INTERVAL_MINUTES * 60_000,
     answerTimeoutMs: e.ONBOARDING_ANSWER_TIMEOUT_MINUTES * 60_000,
     frontendUrl: e.FRONTEND_URL?.replace(/\/+$/, ""),

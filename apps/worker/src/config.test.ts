@@ -64,6 +64,13 @@ describe("parseConfig", () => {
     });
   });
 
+  it("connects to E2B when it's the sandbox provider", () => {
+    expect(
+      parseConfig({ ...key, SANDBOX_PROVIDER: "e2b", E2B_API_KEY: "e2b_test" })
+        .sandbox,
+    ).toEqual({ provider: "e2b", connection: { apiKey: "e2b_test" } });
+  });
+
   it.each([
     [{}, "OPENAI_API_KEY is not set"],
     [{ ...key, GITHUB_APP_ID: undefined }, "GITHUB_APP_ID is not set"],
@@ -72,7 +79,8 @@ describe("parseConfig", () => {
     [{ ...key, WORKER_CONCURRENCY: "0" }, "WORKER_CONCURRENCY"],
     [{ ...key, LOG_LEVEL: "loud" }, "LOG_LEVEL"],
     [{ ...key, SANDBOX_PROVIDER: "daytona" }, "DAYTONA_API_KEY is required"],
-    [{ ...key, SANDBOX_PROVIDER: "e2b" }, "SANDBOX_PROVIDER"],
+    [{ ...key, SANDBOX_PROVIDER: "e2b" }, "E2B_API_KEY is required"],
+    [{ ...key, SANDBOX_PROVIDER: "modal" }, "SANDBOX_PROVIDER"],
     [{ ...key, SANDBOX_RETENTION_HOURS: "-1" }, "SANDBOX_RETENTION_HOURS"],
     [{ ...key, REAPER_INTERVAL_MINUTES: "0" }, "REAPER_INTERVAL_MINUTES"],
     [{ ...key, FRONTEND_URL: "localhost:3000" }, "FRONTEND_URL"],

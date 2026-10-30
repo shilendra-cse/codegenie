@@ -62,9 +62,11 @@ export type CreateSandboxOptions =
       connection: DaytonaConnection;
       labels?: SandboxLabels;
       retentionHours?: number;
-    };
+    }
+  | { provider: "e2b"; connection: E2BConnection; labels?: SandboxLabels };
 
 export type ConnectSandboxOptions =
   | { provider: "docker"; id: string }
-  | { provider: "daytona"; connection: DaytonaConnection; id: string };
+  | { provider: "daytona"; connection: DaytonaConnection; id: string }
+  | { provider: "e2b"; connection: E2BConnection; id: string };
 import { SHORT_NAME } from "@hobai/shared/brand";
