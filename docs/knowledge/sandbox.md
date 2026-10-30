@@ -137,4 +137,4 @@ Measured on `octocat/Hello-World` (2026-10-20): onboarding 22 s and a run 23 s (
 - [ ] Another sandbox provider with full internet access, if Daytona's network limit blocks too many repos (§7).
 - [ ] Streaming `exec` output (`onOutput` callback) for long commands.
 - [ ] Background processes (dev servers) for live previews.
-- [ ] Cache the image build in CI.
+- [x] Cache the image build in CI.

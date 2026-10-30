@@ -10,8 +10,103 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      root: ${{ steps.areas.outputs.root }}
+      code: ${{ steps.areas.outputs.code }}
+      web: ${{ steps.areas.outputs.web }}
+      backend: ${{ steps.areas.outputs.backend }}
+      sandbox: ${{ steps.areas.outputs.sandbox }}
+      images: ${{ steps.images.outputs.changes }}
+
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+
+      - uses: dorny/paths-filter@v3
+        id: areas
+        with:
+          predicate-quantifier: every
+          filters: |
+            root:
+              - "{package.json,pnpm-lock.yaml,pnpm-workspace.yaml,.github/workflows/ci.yml}"
+            code:
+              - "{package.json,pnpm-lock.yaml,pnpm-workspace.yaml,.github/workflows/ci.yml,apps/**,packages/**}"
+              - "!apps/web/content/**"
+              - "!apps/web/public/devlog-assets/**"
+              - "!**/*.md"
+            web:
+              - "{package.json,pnpm-lock.yaml,pnpm-workspace.yaml,.github/workflows/ci.yml,apps/web/**,packages/shared/**}"
+              - "!apps/web/content/**"
+              - "!apps/web/public/devlog-assets/**"
+              - "!**/*.md"
+            backend:
+              - "{package.json,pnpm-lock.yaml,pnpm-workspace.yaml,.github/workflows/ci.yml,apps/**,packages/**}"
+              - "!apps/web/**"
+              - "!**/*.md"
+            sandbox:
+              - "{.github/workflows/ci.yml,packages/sandbox/images/base/**}"
+
+      - uses: dorny/paths-filter@v3
+        id: images
+        with:
+          predicate-quantifier: every
+          filters: |
+            server:
+              - "{pnpm-lock.yaml,pnpm-workspace.yaml,package.json,.dockerignore,.github/workflows/ci.yml,apps/server/**,packages/db/**,packages/github/**,packages/shared/**}"
+              - "!**/*.md"
+            worker:
+              - "{pnpm-lock.yaml,pnpm-workspace.yaml,package.json,.dockerignore,.github/workflows/ci.yml,apps/worker/**,packages/agent/**,packages/db/**,packages/github/**,packages/runner/**,packages/sandbox/**,packages/shared/**}"
+              - "!**/*.md"
+
   static:
     name: Lint, type-check
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Select packages
+        run: |
+          if [ "${{ needs.changes.outputs.root }}" = "true" ]; then
+            echo "CHANGED=*" >> "$GITHUB_ENV"
+            echo "AFFECTED=*" >> "$GITHUB_ENV"
+          else
+            echo "CHANGED=[origin/${{ github.base_ref }}]" >> "$GITHUB_ENV"
+            echo "AFFECTED=...[origin/${{ github.base_ref }}]" >> "$GITHUB_ENV"
+          fi
+
+      - name: Lint
+        run: pnpm -r --filter "$CHANGED" lint
+
+      - name: Type-check
+        run: pnpm -r --filter "$AFFECTED" --if-present run type-check
+
+  test-web:
+    name: Test (web)
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -28,14 +123,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
+      - name: Test
+        run: pnpm --filter web test
 
-      - name: Type-check
-        run: pnpm typecheck
+  sandbox-image:
+    name: Sandbox image
+    needs: changes
+    if: github.event_name == 'push' && needs.changes.outputs.sandbox == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-  test:
-    name: Test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: packages/sandbox/images/base
+          tags: hobai-base
+          cache-from: type=gha,scope=sandbox-base
+          cache-to: type=gha,mode=max,scope=sandbox-base
+
+  test-backend:
+    name: Test (backend)
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -65,6 +179,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -89,7 +205,13 @@ jobs:
           cache-to: type=gha,mode=max,scope=sandbox-base
 
       - name: Test
-        run: pnpm test
+        run: |
+          if [ "${{ needs.changes.outputs.root }}" = "true" ]; then
+            AFFECTED="*"
+          else
+            AFFECTED="...[origin/${{ github.base_ref }}]"
+          fi
+          pnpm -r --filter "$AFFECTED" --filter "!web" --if-present run test
         env:
           # Database tests each create (and drop) their own database on this server.
           TEST_DATABASE_URL: postgresql://hobai:hobai@localhost:5432/hobai
@@ -97,11 +219,13 @@ jobs:
 
   images:
     name: Docker image (${{ matrix.app }})
+    needs: changes
+    if: needs.changes.outputs.images != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       matrix:
-        app: [server, worker]
+        app: ${{ fromJSON(needs.changes.outputs.images) }}
 
     steps:
       - uses: actions/checkout@v4
