@@ -299,7 +299,7 @@ One Dockerfile per app (`apps/server/Dockerfile`, `apps/worker/Dockerfile`), bui
 2. **deps:** installs only the app's runtime npm packages, all hoisted to the top so the bundle finds those of our packages too. `--no-optional` leaves out `next` and `react`, which reach the server as optional peers of `better-auth` (shared with the web app).
 3. **image:** `node:24-slim` with `node_modules`, `package.json` and `dist/` only, running as the `node` user, with `node` as the main process so it receives Docker's SIGTERM itself. The server runs `dist/migrate.js` and then `exec`s `dist/index.js`, with `HOST=0.0.0.0`.
 
-Both have a Docker health check (`/health`, the worker's on its internal port). `.dockerignore` keeps every `.env`, `.git`, `docs` and the other apps out. CI builds both images on every pull request without pushing them. About 0.5 GB each, half of it Node.
+Both have a Docker health check (`/health`, the worker's on its internal port). `.dockerignore` keeps every `.env`, `.git`, `docs` and the other apps out. CI builds an image, without pushing it, on any pull request that changes its app or the packages it bundles. About 0.5 GB each, half of it Node.
 
 ### Deploys don't end work in progress
 A deploy replaces the containers; a run lives in its worker's memory, so it can't move: the old worker has to finish it.
