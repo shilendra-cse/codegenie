@@ -5,6 +5,7 @@ import type {
 } from "./core/types.js";
 import { DaytonaSandbox } from "./providers/daytona/daytona-sandbox.js";
 import { DockerSandbox } from "./providers/docker/docker-sandbox.js";
+import { E2BSandbox } from "./providers/e2b/e2b-sandbox.js";
 
 export async function createSandbox(
   options: CreateSandboxOptions,
@@ -21,6 +22,11 @@ export async function createSandbox(
         labels: options.labels,
         retentionHours: options.retentionHours,
       });
+    case "e2b":
+      return E2BSandbox.create({
+        ...options.connection,
+        labels: options.labels,
+      });
   }
 }
 
@@ -32,6 +38,8 @@ export async function connectSandbox(
       return DockerSandbox.connect(options.id);
     case "daytona":
       return DaytonaSandbox.connect(options.id, options.connection);
+    case "e2b":
+      return E2BSandbox.connect(options.id, options.connection);
   }
 }
 
@@ -40,6 +48,6 @@ export async function parkSandbox(sandbox: Sandbox): Promise<void> {
     await sandbox.stop();
     return;
   }
-  // A stopped Docker container never expires, so it's deleted instead.
+  // A stopped Docker container or paused E2B sandbox never expires, so it's deleted instead.
   await sandbox.destroy();
 }

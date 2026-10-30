@@ -1,6 +1,6 @@
 # Plans & Billing
 
-> Status: **Accepted** · Last updated: 2026-10-26 · Related: [requirements.md](./requirements.md), [development-plan.md](./development-plan.md), [database.md](./database.md) (`plans`, `subscriptions`), [api.md](./api.md), [ui.md](./ui.md) (pricing page, usage)
+> Status: **Accepted** · Last updated: 2026-10-30 · Related: [requirements.md](./requirements.md), [development-plan.md](./development-plan.md), [database.md](./database.md) (`plans`, `subscriptions`), [api.md](./api.md), [ui.md](./ui.md) (pricing page, usage)
 
 ## 1. MVP: free tier only
 
@@ -53,7 +53,7 @@ The daily cap is also checked when a setup starts, since setups spend too. It pr
 ```
 credits = AI cost + sandbox cost            (rounded up)
 AI cost      = runs.cost_usd × USD→INR rate
-sandbox cost = sandbox minutes × ₹/minute for its size (Daytona pricing, a config value)
+sandbox cost = sandbox minutes × ₹/minute for its size (E2B pricing, a config value)
 ```
 
 **Infra** (server, worker hosts, Postgres, Redis) is a fixed monthly cost and is never metered. Each plan's price, after GST, minus its included credits must cover infra and leave a margin, even when every credit is used.

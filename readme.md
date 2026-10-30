@@ -40,7 +40,7 @@ flowchart LR
   W -- /api --> S[Express API]
   S -- queue --> Q[(Redis + BullMQ)]
   Q --> K[Worker]
-  K --> X[Sandbox<br/>Docker / Daytona]
+  K --> X[Sandbox<br/>Docker / E2B / Daytona]
   K --> G[GitHub App<br/>commit + PR]
   K -- events --> Q
   K -- events --> P[(Postgres)]
@@ -58,7 +58,7 @@ flowchart LR
 
 ## Built with
 
-Next.js · React · Tailwind · TanStack Query · Express · Better Auth · BullMQ + Redis · Postgres + Drizzle · Vercel AI SDK · Daytona · Docker · GitHub App · Vitest · Playwright
+Next.js · React · Tailwind · TanStack Query · Express · Better Auth · BullMQ + Redis · Postgres + Drizzle · Vercel AI SDK · E2B · Daytona · Docker · GitHub App · Vitest · Playwright
 
 ## Repository layout
 
@@ -73,7 +73,7 @@ apps/
 packages/
   runner/     Runs a task end to end: sandbox, checkout, setup, agent, verify
   agent/      The AI agent: model, prompt, tools, loop
-  sandbox/    Isolated environments (Docker locally, Daytona in the cloud)
+  sandbox/    Isolated environments (Docker locally, E2B or Daytona in the cloud)
   db/         Postgres schema, client, migrations and queries, shared by server and worker
   github/     GitHub App access: repo-scoped tokens, the bot identity, webhook signatures
   terminal/   Terminal output shared by the CLI and evals (colors, layout, spinners)
@@ -137,6 +137,7 @@ pnpm admin:set-plan you@example.com unlimited
 | `pnpm migrate` | Apply database migrations |
 | `pnpm --filter @hobai/db generate` | Write a migration after a schema change (`packages/db/src/schema/`) |
 | `pnpm db:studio` | Browse the database (Drizzle Studio) |
+| `pnpm sandbox:build-template` | Build the E2B template, once per account (reads `apps/worker/.env`) |
 | `pnpm sandbox:build-snapshot` | Build the Daytona snapshot, once per account (reads `apps/worker/.env`) |
 | `pnpm sandbox:clean` | Remove leftover local sandbox containers |
 | `pnpm lint` | Lint all packages |

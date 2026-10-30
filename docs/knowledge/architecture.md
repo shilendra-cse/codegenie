@@ -1,6 +1,6 @@
 # hobai Architecture
 
-> Status: **Accepted** (MVP) · Last updated: 2026-10-26
+> Status: **Accepted** (MVP) · Last updated: 2026-10-30
 
 hobai is a web-based autonomous coding agent. A user connects their GitHub repositories, assigns a task (a prompt for the MVP; Jira and Notion later), and the agent completes it inside an isolated cloud sandbox and delivers the result as a pull request.
 
@@ -10,7 +10,7 @@ hobai is a web-based autonomous coding agent. A user connects their GitHub repos
 
 | # | Decision | Choice | Rationale |
 |---|---|---|---|
-| D1 | Sandbox provider | **Daytona Cloud**, behind a `Sandbox` interface | Generous free tier, pay-as-you-go, self-hostable later. Interface keeps the vendor swappable; a `DockerSandbox` serves local dev. |
+| D1 | Sandbox provider | **E2B**, behind a `Sandbox` interface; Daytona kept as an alternative | Full internet on every plan (Daytona's network limit broke installs like Prisma's engines), pay-as-you-go at the same price per hour. Interface keeps the vendor swappable; a `DockerSandbox` serves local dev. ([sandbox.md](./sandbox.md) §8) |
 | D2 | Where the agent loop runs | **In our worker**, tools execute remotely in the sandbox | LLM keys, DB and Redis never enter the sandbox; run state survives sandbox failure; trivial event streaming. |
 | D3 | GitHub access | **One GitHub App** for sign-in (its OAuth) and repo access (its installations); GitHub-only sign-in for the MVP | Per-repo consent, 1-hour tokens scoped to one repo and minimal permissions, bot identity on commits/PRs, webhooks; one registration and one identity. |
 | D4 | Run execution | **BullMQ** on Redis, dedicated `apps/worker` process | Already have Redis; durable queue, retries, concurrency control, stalled-job detection. |
@@ -43,9 +43,9 @@ Browser ──HTTPS──► apps/web (Next.js, Vercel)                         
                                                                    (VPS, no        │
                                                                     public port)   │
                         └──────────────────────────────────────────────┬───┬───────┘
-                                                        Daytona SDK    │   │ GitHub App API
+                                                            E2B SDK    │   │ GitHub App API
                                                                        ▼   ▼
-                                                     Daytona sandbox ──git──► GitHub
+                                                         E2B sandbox ──git──► GitHub
                                                      (one per run)
                                                                        LLM API ◄── worker
 ```
@@ -63,7 +63,7 @@ apps/
 packages/
   runner/     runs a task end to end: checkout → setup → agent → verify → deliver (no AI logic)
   agent/      AI only: LLM loop, model catalog, prompt, sandbox-backed tools
-  sandbox/    Sandbox interface + DockerSandbox (+ DaytonaSandbox)
+  sandbox/    Sandbox interface + DockerSandbox, E2BSandbox, DaytonaSandbox
   github/     GitHub App: repo-scoped installation tokens, bot identity, webhook signatures (github.md)
   db/         Postgres schema, client and migrations (Drizzle), shared by server and worker
   terminal/   terminal output for the CLI and evals
@@ -105,7 +105,7 @@ Consumes the BullMQ queue `hobai-work` and runs the pipeline in §5. Details and
 - **Concurrency:** `WORKER_CONCURRENCY` items at once per process (default 3), each in its own sandbox; more throughput means more processes.
 - **Cancellation:** a queued run is marked `cancelled` in the database, and the worker skips it. A running one gets a `run-cancel` message carrying its id; every worker process hears it, and the one running it aborts the run's signal.
 - **No retries:** an item whose worker died is failed when BullMQ detects it as stalled, never run again (the agent may already have pushed or spent money). A worker renews its items' locks while it works; a lock lasts 2 minutes, so a short Redis outage doesn't look like a dead worker.
-- **Reaper:** a `reap` work item, every 5 minutes (one BullMQ job scheduler shared by all workers) and at startup. It fails runs nothing will finish: `running` with no active queue item (`worker_lost`), or `queued` for over 15 minutes with the item gone (`lost_in_queue`), adding `error` + `done` events. For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox (Daytona: stopped, kept 4 h for a future resume; Docker: deleted).
+- **Reaper:** a `reap` work item, every 5 minutes (one BullMQ job scheduler shared by all workers) and at startup. It fails runs nothing will finish: `running` with no active queue item (`worker_lost`), or `queued` for over 15 minutes with the item gone (`lost_in_queue`), adding `error` + `done` events. For a `worker_lost` run it first saves the diff from its sandbox and parks the sandbox (Daytona: stopped, kept 4 h for a future resume; E2B and Docker: deleted).
 - **Shutdown:** the first SIGINT/SIGTERM stops taking work and waits for the work in progress. Repeated SIGTERMs are ignored (a deploy's hard stop is Docker's SIGKILL at the end of the grace period, §10); only a second Ctrl-C, a second or more later, exits at once and leaves the rest to the reaper. An unhandled promise rejection is logged, not fatal, so one stray error doesn't end every run in progress.
 - **Health:** `GET /health` on `WORKER_HEALTH_PORT` (default 4100, inside the container only) answers 200 while Postgres and Redis answer.
 - **Time limits:** a run stops at 45 minutes and a setup at 45 minutes, waiting for answers included (why: §10). Commands can't be interrupted, so the limit is checked before each one starts. A run that reaches it before the agent fails (`time_limit`); after that the agent stops as incomplete, checks not yet run are skipped, and the work goes out as a draft PR. A setup that reaches it fails (`TIME_LIMIT`).
@@ -128,9 +128,9 @@ interface Sandbox {
   destroy(): Promise<void>;
 }
 ```
-Implementations: `DaytonaSandbox` (prod), `DockerSandbox` (dev/tests). Selected by `SANDBOX_PROVIDER=daytona|docker`.
+Implementations: `E2BSandbox` (prod), `DaytonaSandbox` (alternative), `DockerSandbox` (dev/tests). Selected by `SANDBOX_PROVIDER=e2b|daytona|docker`.
 
-Daytona sandboxes are created from the **`hobai-base` snapshot**, built from the same Dockerfile as the Docker image (`pnpm sandbox:build-snapshot`). Every sandbox is labelled `hobai=1` plus `kind` and `runId` / `projectId`; Daytona's are ephemeral, with a 2-hour TTL and auto-stop as safety nets. Details: [sandbox.md](./sandbox.md) §7.
+E2B sandboxes are created from the **`hobai-base` template** (`pnpm sandbox:build-template`), Daytona's from the **`hobai-base` snapshot** (`pnpm sandbox:build-snapshot`), both built from the same Dockerfile as the Docker image. Every sandbox is labelled `hobai=1` plus `kind` and `runId` / `projectId`. E2B kills a sandbox after 1 hour whatever happens; Daytona's have a 2-hour TTL and auto-stop as safety nets. Details: [sandbox.md](./sandbox.md) §7 (Daytona) and §8 (E2B).
 
 ---
 
@@ -178,7 +178,7 @@ Every entry point reduces to **task → new run**.
 
 | Stage | Actions | Events |
 |---|---|---|
-| **Prepare** | load run/task/project; `status=running`; mint installation token; create Daytona sandbox; persist `sandboxId`. Alongside, on a task's first run, the model writes its short title ([agent.md](./agent.md) §10) | `sandbox_created`, `task_titled` |
+| **Prepare** | load run/task/project; `status=running`; mint installation token; create the sandbox; persist `sandboxId`. Alongside, on a task's first run, the model writes its short title ([agent.md](./agent.md) §10) | `sandbox_created`, `task_titled` |
 | **Checkout** | shallow clone of the base branch into `/workspace` (later runs will check out `task.branch_name`) | |
 | **Setup** | replay the project's environment config (setup steps), then run every check once as a baseline; the config is created once per repository by environment onboarding ([environment.md](./environment.md)) | `setup_started`, `setup_completed` |
 | **Agent** | run agent loop (§6) | `tool_start`, `tool_end`, `text_delta`, `agent_step` |
@@ -235,7 +235,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 | Failure | Handling |
 |---|---|
-| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (its lock ran out: up to 2 minutes; `maxStalledCount: 0`, never retried). Within 5 minutes (or at the next worker start) the reaper saves the run's diff, parks its sandbox and fails the run with `worker_lost`. Daytona deletes a parked sandbox after `SANDBOX_RETENTION_HOURS`. |
+| Worker crash mid-run | The item is failed when BullMQ detects it as stalled (its lock ran out: up to 2 minutes; `maxStalledCount: 0`, never retried). Within 5 minutes (or at the next worker start) the reaper saves the run's diff, parks its sandbox and fails the run with `worker_lost`. E2B and Docker sandboxes are deleted when parked; Daytona deletes a parked sandbox after `SANDBOX_RETENTION_HOURS`. |
 | Sandbox create fails | Retry with backoff (nothing has happened yet). |
 | Dependency install fails | Continue; agent is told setup failed and may fix it. |
 | LLM error / rate limit | Backoff retry inside loop; fail after N attempts. |
@@ -246,7 +246,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 ## 9. Security
 
-- Untrusted code runs **only** in Daytona sandboxes; never on our servers.
+- Untrusted code runs **only** in cloud sandboxes (E2B, or Daytona); never on our servers.
 - Sandbox receives only a repo-scoped, ~1h installation token, only for the run's duration.
 - Secret placement:
 
@@ -256,7 +256,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | GitHub App private key | – | ✓ | ✓ | – |
 | GitHub webhook secret | – | ✓ | – | – |
 | `DATABASE_URL`, `REDIS_URL` | – | ✓ | ✓ | – |
-| Daytona API key | – | – | ✓ | – |
+| E2B (or Daytona) API key | – | – | ✓ | – |
 | LLM API key | – | – | ✓ | – |
 | Installation token (repo-scoped, 1h) | – | – | – | ✓ |
 
@@ -276,10 +276,10 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 | worker | VPS, Coolify app (Docker) | no public port; scale with BullMQ concurrency |
 | Postgres | Neon | managed, backups; the **direct** connection string for both apps and migrations: about 40 connections at most (a pool of 20 per app), well inside Neon's limit, and no pooler to work around |
 | Redis | Upstash | TCP over TLS (`rediss://`), which BullMQ and pub/sub need; eviction off (`noeviction`) so jobs are never dropped |
-| Sandboxes | Daytona Cloud | `hobai-base` snapshot built by script |
+| Sandboxes | E2B (`SANDBOX_PROVIDER=e2b`) | `hobai-base` template built by script (`pnpm sandbox:build-template`) |
 | GitHub App | GitHub | separate dev and prod Apps |
 
-**VPS:** Hostinger KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe), Ubuntu 24.04 with Coolify. It runs only the api and the worker; untrusted code never runs there (sandboxes are on Daytona), and it stores no data, so it can be rebuilt from the repo and its secrets.
+**VPS:** Hostinger KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe), Ubuntu 24.04 with Coolify. It runs only the api and the worker; untrusted code never runs there (sandboxes are on E2B), and it stores no data, so it can be rebuilt from the repo and its secrets.
 
 **Proxies:** a request passes Vercel's rewrite, then Cloudflare, then Coolify's Traefik, so production sets `TRUST_PROXY=3` (checked at deploy: the rate limits must see the visitor's address). The `api` DNS record is proxied by Cloudflare (SSL mode Full (strict), Traefik's Let's Encrypt certificate at the origin): when Vercel connected to the VPS directly, some of its reused connections were silently dropped between Vercel and Hostinger, and random API calls failed with 502 `ROUTER_EXTERNAL_TARGET_CONNECTION_ERROR` while the VPS itself was healthy.
 
@@ -327,9 +327,10 @@ Two applications from this repository, each a Dockerfile build:
 
 Coolify uses a Dockerfile's `HEALTHCHECK` instead of the one in its dashboard. Ours run with `node`; the dashboard's would need `curl` or `wget`, which the images don't have, so it stays empty.
 
-Environment variables are set per app in Coolify, from each app's `.env.example`, with two differences from local `.env` files:
+Environment variables are set per app in Coolify, from each app's `.env.example`, with three differences from local `.env` files:
 - `GITHUB_APP_PRIVATE_KEY` goes on one line, with `\n` where the line breaks are; the apps turn them back into line breaks.
 - `HOST` is left unset: the image sets `0.0.0.0`, and `localhost` would make the server reachable only inside its container.
+- The worker sets `SANDBOX_PROVIDER=e2b` and `E2B_API_KEY` (local `.env` files default to `docker`).
 
 Watch paths mean a change to the web app or the docs redeploys neither, and a server-only change leaves the worker, and its runs, alone.
 
@@ -338,19 +339,19 @@ How many runs execute at once is `WORKER_CONCURRENCY` per worker process (produc
 
 | Limit | Today | When exceeded |
 |---|---|---|
-| **Daytona quota** (total for the account, all sandboxes at once) | Tier 1: 10 vCPU, 10 GiB memory, 30 GiB storage. One sandbox reserves 2 vCPU, 4 GiB and 10 GiB (`build-snapshot.ts`), and a setup holds two at once (its tries, then a fresh one for the final check): **2 sandboxes fit**. Tier 2 (a card and a $25 top-up) raises it | Creating the sandbox is refused: the run fails, "Couldn't prepare the sandbox" |
+| **E2B concurrency** (sandboxes running at once, for the account) | Hobby: **20**, whatever their size. A run holds one sandbox and a setup two at once (its tries, then a fresh one for the final check). Pro ($150/month) raises it to 100 | Creating the sandbox is refused: the run fails, "Couldn't prepare the sandbox" |
 | **The worker on the VPS** | Not measured. Estimate: 30–50 runs, since a run mostly waits on OpenAI, the sandbox and GitHub; memory (each run's conversation, roughly 20–100 MB) and the database pool (20 connections) go first. About 5–6 GB of the 8 GB is left for the worker | Slow event saving, then out of memory |
 | **OpenAI rate limit** (tokens per minute for the account's tier) | Not checked | Calls are retried, then the run fails |
 | **Daily spend cap** (`DAILY_SPEND_CAP_USD`, $5) | Roughly 10–25 runs a day | New tasks are refused with a clear message; nothing running fails |
 
-So `WORKER_CONCURRENCY=8` needs Daytona on Tier 2 or higher with room for 8 sandboxes plus setups (about 32+ GiB of memory). Signs it needs changing: runs often sitting at "Queued" (raise it, and the Daytona tier); "Couldn't prepare the sandbox" (lower it, or raise the quota).
+So `WORKER_CONCURRENCY=8` fits E2B's Hobby plan: at most 16 sandboxes, if all 8 slots were setups. (On Daytona it would need Tier 2 or higher: Tier 1's 10 vCPU and 10 GiB fit only 2 sandboxes.) Signs it needs changing: runs often sitting at "Queued" (raise it, within E2B's limit); "Couldn't prepare the sandbox" (lower it, or move to Pro).
 
 **Still to do:**
-- **Measure the worker:** run it locally with the fake sandbox and scripted model from the tests (no Daytona, no OpenAI), push 10, 25 and 50 runs through at once, and record memory, the time to save events and database pool waits. That replaces the estimate above with numbers.
+- **Measure the worker:** run it locally with the fake sandbox and scripted model from the tests (no sandbox provider, no OpenAI), push 10, 25 and 50 runs through at once, and record memory, the time to save events and database pool waits. That replaces the estimate above with numbers.
 - **Check the OpenAI tier's tokens per minute** against 8 agents at once.
-- **Wait instead of failing** when Daytona refuses a sandbox for quota: today the run fails; it should go back to the queue or retry after a delay.
+- **Wait instead of failing** when the provider refuses a sandbox for quota: today the run fails; it should go back to the queue or retry after a delay.
 
-**Local dev:** `docker-compose` (Postgres, Redis) · `pnpm dev:web` / `dev:server` / `dev:worker` · `SANDBOX_PROVIDER=docker` (or `daytona` on free tier) · webhooks via smee.io or cloudflared tunnel.
+**Local dev:** `docker-compose` (Postgres, Redis) · `pnpm dev:web` / `dev:server` / `dev:worker` · `SANDBOX_PROVIDER=docker` (or `e2b` / `daytona` on their free credit) · webhooks via smee.io or cloudflared tunnel.
 
 ---
 

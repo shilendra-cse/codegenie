@@ -37,6 +37,7 @@ import {
 import { CappedBuffer } from "../../lib/capped-buffer.js";
 import { findArgs, parseFindOutput } from "../../lib/find-files.js";
 import { MAX_OUTPUT_BYTES } from "../../lib/run-process.js";
+import { shellQuote } from "../../lib/shell-quote.js";
 import { resolveInWorkspace } from "../../lib/workspace.js";
 import {
   AUTO_STOP_MINUTES,
@@ -94,8 +95,6 @@ const GONE_STATES = new Set(["destroyed", "destroying"]);
 
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
-
-const shellQuote = (value: string) => `'${value.replaceAll("'", `'\\''`)}'`;
 
 function capped(text: string) {
   const buffer = new CappedBuffer(MAX_OUTPUT_BYTES);

@@ -3,7 +3,7 @@
 Takes work off the Redis queue and runs it in a sandbox: task runs (`run-task`) and project onboarding (`onboard-project`). Design: [docs/knowledge/architecture.md](../../docs/knowledge/architecture.md) §3 and §5.
 
 ```
-server API ──────────► Redis queue "hobai-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker or Daytona)
+server API ──────────► Redis queue "hobai-work" ──► consumer ──► handler ──► runner ──► sandbox (Docker, E2B or Daytona)
                                                                    │            │
                                      "run-cancel" ─────────────────┘            ├──► Postgres: runs, run_events, onboardings, onboarding_events, project_environments
                                                                                 ├──► Redis: run:{id}, onboarding:{id}
@@ -14,7 +14,7 @@ A run that succeeds or ends incomplete with changes is delivered: one commit by 
 
 ## Running it
 
-Postgres and Redis come from `apps/server/docker-compose.yml` (`pnpm setup` starts them). Sandboxes come from Docker (`pnpm sandbox:build-image`) or Daytona (`SANDBOX_PROVIDER=daytona`, after `pnpm sandbox:build-snapshot` once per account).
+Postgres and Redis come from `apps/server/docker-compose.yml` (`pnpm setup` starts them). Sandboxes come from Docker (`pnpm sandbox:build-image`), E2B (`SANDBOX_PROVIDER=e2b`, after `pnpm sandbox:build-template` once per account; production uses it) or Daytona (`SANDBOX_PROVIDER=daytona`, after `pnpm sandbox:build-snapshot` once per account).
 
 ```bash
 cp apps/worker/.env.example apps/worker/.env   # pnpm setup does this; then set OPENAI_API_KEY
@@ -27,7 +27,8 @@ pnpm dev:worker
 | `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` | required | the GitHub App's, for clone tokens ([github.md](../../docs/knowledge/github.md) §5) |
 | `AGENT_MODEL` | `openai:gpt-6-luna` | must be in the model catalog |
 | `WORKER_CONCURRENCY` | `3` | items worked on at once, each in its own sandbox |
-| `SANDBOX_PROVIDER` | `docker` | `docker` (local containers) or `daytona` (cloud sandboxes) |
+| `SANDBOX_PROVIDER` | `docker` | `docker` (local containers), `e2b` or `daytona` (cloud sandboxes) |
+| `E2B_API_KEY` | required for `e2b` | |
 | `DAYTONA_API_KEY` | required for `daytona` | |
 | `DAYTONA_API_URL`, `DAYTONA_TARGET` | Daytona's defaults | endpoint and region |
 | `SANDBOX_RETENTION_HOURS` | `4` | how long a lost run's stopped Daytona sandbox is kept |
