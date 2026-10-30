@@ -1,0 +1,153 @@
+---
+title: How hobai is built
+date: 2026-10-30
+summary: The first post covered what hobai does. This one covers how it's built - where the agent runs, why it never holds a token that can write, and why a deploy doesn't kill a run.
+draft: false
+---
+
+In the [first post](/devlog/hobai-is-live) I followed a task from your prompt to a pull request. This time I'll follow the same run through the system, and explain why each part is built the way it is.
+
+Most of hobai's architecture comes from a few rules I set early. The agent is untrusted. Results have to be honest. A run must survive things going wrong around it. And the whole thing has to be cheap to keep running while it's just me.
+
+## The shape
+
+<Figure
+  src="architecture.svg"
+  darkSrc="architecture-dark.svg"
+  alt="The browser talks to the web app, which proxies to the API server. The API server enqueues work for the worker. The worker runs the agent loop and calls the sandbox, the model and GitHub. The API server and the worker share Postgres."
+  caption="Everything a run touches. Untrusted code runs only in the sandbox."
+  width={1200}
+  height={500}
+/>
+
+There are four parts I run, and three outside services the worker calls:
+
+- **Web app.** The pages. The browser only ever talks to it, and it forwards `/api/*` to the API server, so for the browser everything is one origin: no cross-site cookies, no CORS.
+- **API server.** Sign-in, the REST API, live event streams and GitHub webhooks. It writes rows and puts work on the queue. It never does anything slow, and it never touches a sandbox.
+- **Queue.** Redis, holding the work to do and carrying live messages between processes.
+- **Worker.** Takes a run off the queue and does all of it: creates the sandbox, sets up the repository, runs the agent, runs the checks, opens the pull request.
+
+The API server and the worker share one Postgres database. All their queries live in one shared package, and the apps call functions from it instead of writing queries themselves, so both sides read and write the data the same way.
+
+## The agent's brain stays outside the sandbox
+
+A common way to build a coding agent is to put the whole agent inside the sandbox, next to the code. I did the opposite. **The agent loop runs in the worker; only its tools run in the sandbox.**
+
+When the model asks to read a file, edit one or run a command, the worker turns that into a remote call into the run's sandbox. To the agent, the sandbox is a small interface:
+
+```ts
+interface Sandbox {
+  exec(command: string, options?: ExecOptions): Promise<ExecResult>;
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  listFiles(path: string): Promise<FileEntry[]>;
+  destroy(): Promise<void>;
+}
+```
+
+The agent's tools (`read_file`, `edit_file`, `search`, `bash`, `run_checks`, `finish_task` and a couple more) are thin wrappers over it. Three things come from this:
+
+- **Secrets never go where your code runs.** Your repository's install scripts and tests are code I didn't write, running with whatever they find around them. The model key, the database and Redis are never in the sandbox, so there's nothing there to find.
+- **A run outlives its sandbox.** The conversation, the step count and the money spent live in the worker. If a sandbox dies, the run knows exactly where it was.
+- **The provider is swappable.** Production uses a cloud sandbox; on my laptop the same interface runs on Docker. Nothing above the interface knows the difference.
+
+Here's where every secret lives:
+
+| Secret | Web app | API server | Worker | Sandbox |
+| --- | --- | --- | --- | --- |
+| Sign-in secrets | – | ✓ | – | – |
+| GitHub App private key | – | ✓ | ✓ | – |
+| Database and Redis | – | ✓ | ✓ | – |
+| Sandbox provider key | – | – | ✓ | – |
+| Model API key | – | – | ✓ | – |
+| Read token for one repository, about an hour | – | – | – | only for the clone |
+
+The sandbox gets one thing: a read-only token for the run's repository, passed to the clone command alone and never written into the repository's git config.
+
+## The model never pushes
+
+The agent can change files. It can't commit, push or open anything.
+
+When it calls `finish_task`, the worker collects the changes from the sandbox and commits them itself, through GitHub's API, as the hobai GitHub App. That's why no token that can write ever enters the sandbox, and why the commits show up as verified. The branch is always a new `hobai/` branch, never your default one.
+
+The pull request is a draft when the checks fail or the run hit a limit, and ready only when they pass. The model doesn't decide that. The worker does, from the results of the checks.
+
+The GitHub App helps here too. You choose which repositories it can see, and every token hobai uses is minted when needed, scoped to one repository and expires within an hour. No long-lived credential for your code is stored anywhere.
+
+## Live, and you can refresh mid-run
+
+You can watch every step of a run as it happens, reload the page halfway through, and lose nothing. That comes from one rule: **every event is saved first, then published.**
+
+The worker writes each event to the run's event log in Postgres, then publishes it on Redis. The API server streams events to your browser with server-sent events, using each event's sequence number as its id. A reconnecting browser says which event it saw last, and the server picks up from there:
+
+<Artifact
+  src="live-events.html"
+  title="How an event reaches you"
+  height={420}
+  caption="Interactive: step through an event's path, a dropped connection and the catch-up."
+/>
+
+The streamed text of the model's replies is published live but never saved: it's a lot of tiny messages, and the finished summary is saved anyway.
+
+The event log also works as an audit trail: every file read, every edit and every command of every run is in it.
+
+## Tasks and runs
+
+Early on I split the work into two things. A **task** is what you asked for, and owns the branch and the pull request. A **run** is one attempt at it.
+
+```
+task  "Add a GET /health endpoint"
+      branch hobai/add-health-endpoint-…, one pull request
+  run 1  your prompt
+  run 2  a follow-up message         (later)
+  run 3  a review comment on the PR  (later)
+```
+
+Today every task has one run. But follow-ups, `@hobai` mentions on a pull request and tickets from an issue tracker all come down to the same thing: a new run on a task, working on the same branch and pull request. The data model already has room for that, so those features won't need a redesign. A database index makes sure a task never has two runs going at once.
+
+## Failing honestly
+
+The worst thing an agent can do is look finished when it isn't. So the failure paths got as much design as the happy path.
+
+- **No retries.** If a worker dies in the middle of a run, the run is failed, never run again. By then the agent may have spent money, and running the same task twice isn't something I'd want done to my repository without asking.
+- **A reaper.** Every five minutes the workers look for runs nothing will finish: one marked running with no worker holding it, or one stuck in the queue too long. Each gets an explanation instead of spinning forever. A run whose worker died has its diff saved first, so the work isn't lost.
+- **Cancel means cancel.** A queued run is just marked cancelled. A running one gets a message on Redis that every worker hears. The one running it stops the agent and deletes the sandbox.
+
+| What goes wrong | What you see |
+| --- | --- |
+| Setup fails during a run | The agent is told, and may fix it |
+| The model's API errors or rate-limits | Retried with backoff, then the run fails with the reason |
+| The worker dies | The run fails within minutes, its diff saved |
+| GitHub refuses the delivery | The run says why, and the diff stays saved |
+
+## Deploys don't kill runs
+
+A run lives in its worker's memory and can't move to another process. So a deploy has to let the old worker finish.
+
+1. **Overlap.** The new worker starts, passes its health check and starts taking new work. Only then does the old one get the signal to stop.
+2. **Drain.** The old worker takes nothing new and finishes what it's running. Cancels still reach it, since they go through Redis.
+3. **A hard ceiling.** A run stops starting commands at 45 minutes, a single command is capped at 10, and delivery takes about one. Everything ends within an hour, so the deploy waits up to an hour before forcing the old worker to stop.
+
+The API server does the same rolling restart. When it stops, it closes your event stream, and your browser reconnects to the new server from the last event it saw. That's the same catch-up path as the Wi-Fi blip above.
+
+Since old and new code run side by side for a while, every change has to work with the version before it:
+
+- **Database changes only add.** A new column comes in one deploy. The old one goes in a later deploy, once nothing reads it.
+- **Queue messages stay readable.** New fields are optional, and nothing is renamed or removed in the same deploy.
+
+## Running it cheaply
+
+The API server and the worker run on one small VPS (2 vCPU, 8 GB of memory). Postgres and Redis are managed services, and the web app is on a hosting platform.
+
+The VPS holds no data and never runs your code. If it goes down, nothing is lost: queued tasks wait in Redis until the worker is back, and the site still loads. Runs in progress at that moment are lost, which is the main gap I want to close. The logs are shipped off the box, so I can read what happened while it's down, and an outside monitor checks the API's health every minute.
+
+How many runs go at once is a setting on the worker. More than that wait in the queue rather than being refused. Today the real limit isn't the VPS: a run mostly waits on the model, the sandbox and GitHub. It's how many sandboxes my account can hold at once, and a global daily spend cap on the model.
+
+## What's next
+
+- **Measure the worker.** My numbers for how many runs one worker can hold are estimates. The plan is to push 10, 25 and 50 runs through it at once, with the fake sandbox and scripted model from the tests, and measure memory and database waits.
+- **Wait instead of failing** when the sandbox quota is full. Today the run fails; it should wait for a free slot.
+- **Pause and resume sandboxes**, so a follow-up can continue where a run stopped and a run on a crashed worker can pick up again.
+- **Triggers on the pull request**: replying to review comments and `@hobai` mentions as new runs on the task.
+
+If you've built something like this and would have done a part differently, I'd like to hear it. That's most of the reason I'm writing these up.
