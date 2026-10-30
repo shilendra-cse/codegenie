@@ -22,6 +22,7 @@
     "build:worker": "pnpm --filter @hobai/worker build",
     "sandbox:build-image": "pnpm --filter @hobai/sandbox build-image",
     "sandbox:build-snapshot": "pnpm --filter @hobai/sandbox build-snapshot",
+    "sandbox:build-template": "pnpm --filter @hobai/sandbox build-template",
     "sandbox:clean": "pnpm --filter @hobai/sandbox clean",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
