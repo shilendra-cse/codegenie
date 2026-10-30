@@ -42,7 +42,10 @@ describe("ProjectTabs", () => {
   it("marks the current tab", () => {
     show();
 
-    const tabs = within(screen.getByRole("navigation", { name: "Project" }));
+    const navigation = screen.getByRole("navigation", { name: "Project" });
+    expect(navigation.parentElement).toHaveClass("sticky", "top-0");
+
+    const tabs = within(navigation);
     expect(tabs.getByRole("link", { name: "Tasks" })).toHaveAttribute(
       "aria-current",
       "page",
