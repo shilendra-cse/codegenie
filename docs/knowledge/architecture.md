@@ -281,7 +281,7 @@ Removed from server: `WORKSPACES_ROOT`, `lib/workspaces.ts`, OAuth-token GitHub 
 
 **VPS:** Hostinger KVM 2 (2 vCPU, 8 GB RAM, 100 GB NVMe), Ubuntu 24.04 with Coolify. It runs only the api and the worker; untrusted code never runs there (sandboxes are on Daytona), and it stores no data, so it can be rebuilt from the repo and its secrets.
 
-**Proxies:** a request passes Vercel's rewrite, then Coolify's Traefik, so production sets `TRUST_PROXY=2` (checked at deploy: the rate limits must see the visitor's address).
+**Proxies:** a request passes Vercel's rewrite, then Cloudflare, then Coolify's Traefik, so production sets `TRUST_PROXY=3` (checked at deploy: the rate limits must see the visitor's address). The `api` DNS record is proxied by Cloudflare (SSL mode Full (strict), Traefik's Let's Encrypt certificate at the origin): when Vercel connected to the VPS directly, some of its reused connections were silently dropped between Vercel and Hostinger, and random API calls failed with 502 `ROUTER_EXTERNAL_TARGET_CONNECTION_ERROR` while the VPS itself was healthy.
 
 **If the VPS goes down:** no data is lost (it lives in Neon and Upstash); the web still loads but API calls fail; queued tasks wait in Upstash and the worker picks them up when it's back; runs in progress are lost (resuming them is post-MVP). Coolify runs on the same box, so it can't help here: it reads container logs live and doesn't keep them. Two outside services cover this:
 - **Logs off the box:** container logs are shipped to a hosted log service (Better Stack or Axiom, free tier), so the logs from before a crash can be read while the VPS is down.
