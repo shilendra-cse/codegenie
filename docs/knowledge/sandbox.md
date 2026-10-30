@@ -8,12 +8,13 @@ The sandbox is the isolated environment where the agent's work happens: the repo
 
 ```
 LLM ──tool call──► agent tools ──► Sandbox interface ──► DockerSandbox  ──► docker exec       ──► local container
+                                                     ├─► E2BSandbox     ──► E2B API             ──► cloud sandbox
                                                      └─► DaytonaSandbox ──► Daytona API         ──► cloud sandbox
 ```
 
 - The LLM only requests tool calls; our tool code decides what runs.
-- Tools only know the `Sandbox` interface, never Docker or Daytona, so swapping providers changes no agent code.
-- Local development uses `DockerSandbox`; production uses `DaytonaSandbox`. Selected by `createSandbox({ provider })`; the worker sets it with `SANDBOX_PROVIDER=docker|daytona`.
+- Tools only know the `Sandbox` interface, never Docker, E2B or Daytona, so swapping providers changes no agent code.
+- Local development uses `DockerSandbox`; production uses `E2BSandbox` (§8), and `DaytonaSandbox` (§7) stays available. Selected by `createSandbox({ provider })`; the worker sets it with `SANDBOX_PROVIDER=docker|e2b|daytona`.
 
 ## 2. Interface
 
@@ -41,17 +42,17 @@ interface Sandbox {
 | Node version | Node 24 only (see TODO). |
 | Environment | `CI=true` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` for every command, so test runners and corepack never wait for input. |
 | User | Non-root `agent` user; git identity `hobai <bot@hobai.app>`. |
-| Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). Daytona: 2 CPUs, 4 GB, 10 GB disk, set on the snapshot. |
-| Network | Docker: full internet access (needed for clone and package installs). Daytona: limited by our tier; see §7 "Network". |
+| Resources | 4 GB memory, 2 CPUs, 512 process limit per container (configurable via `resources`). Daytona: 2 CPUs, 4 GB, 10 GB disk, set on the snapshot. E2B: 2 CPUs, 4 GB, set on the template. |
+| Network | Docker and E2B: full internet access (needed for clone and package installs). Daytona: limited by our tier; see §7 "Network". |
 | Host access | No volume mounts, no Docker socket, no secrets in phase 1. Local folders are **copied** in, never mounted. |
 | Exec timeout | Default 2 min, max 10 min. Enforced **inside** the container with `timeout` (killing the host-side docker client would leave the process running). Host-side kill at timeout + 15 s as a backstop. |
 | Output cap | 1 MB per stream; over the cap, the first and last 512 KB are kept and `truncated: true`. |
 | readFile limit | 10 MB; larger files throw instead of returning truncated content (writing that back would corrupt the file). |
 | writeFile | Content sent via stdin, never in the command line: no quoting or injection issues. |
-| Lifecycle | One sandbox per run (two per onboarding). `destroy()` in `finally`. Docker: main process is `sleep 7200`, so a container exits by itself after 2 h even if cleanup never runs. Daytona: see §7. |
-| Lost runs | When a run's worker dies, the reaper reconnects to its sandbox (`connectSandbox`), saves its diff, then **parks** it (`parkSandbox`): Daytona stops it and keeps it for the retention period, so the run could be resumed there; Docker deletes it, since a stopped container never expires. |
+| Lifecycle | One sandbox per run (two per onboarding). `destroy()` in `finally`. Docker: main process is `sleep 7200`, so a container exits by itself after 2 h even if cleanup never runs. Daytona: see §7; E2B: killed after 1 hour (§8). |
+| Lost runs | When a run's worker dies, the reaper reconnects to its sandbox (`connectSandbox`), saves its diff, then **parks** it (`parkSandbox`): Daytona stops it and keeps it for the retention period, so the run could be resumed there; Docker and E2B delete it, since a stopped container or paused E2B sandbox never expires. |
 | Labels | Every sandbox has `hobai=1`, plus what the caller passes: the worker adds `kind=run, runId` or `kind=onboarding, projectId`, so the reaper can find sandboxes whose work is over. |
-| Errors | `SandboxUnavailableError` (Docker not running / image missing / Daytona key rejected), `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`. |
+| Errors | `SandboxUnavailableError` (Docker not running / image missing / Daytona or E2B key rejected), `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`. |
 
 ## 4. Code layout
 
@@ -68,6 +69,7 @@ packages/sandbox/
     ├── lib/                        provider-agnostic helpers
     │   ├── capped-buffer.ts        head + tail output cap
     │   ├── run-process.ts          spawn with stdin, timeout and output cap
+    │   ├── shell-quote.ts          single-quote a shell argument
     │   ├── find-files.ts           listFiles' find arguments and output parsing
     │   └── workspace.ts            paths relative to /workspace
     ├── providers/
@@ -75,12 +77,16 @@ packages/sandbox/
     │   │   ├── docker-sandbox.ts   DockerSandbox
     │   │   ├── docker-cli.ts       docker CLI wrapper, "container gone" detection
     │   │   └── constants.ts        image, label, resource defaults, timeouts
-    │   └── daytona/
-    │       ├── daytona-sandbox.ts  DaytonaSandbox
-    │       ├── exec-script.ts      the exec wrapper and its output parser
-    │       └── constants.ts        snapshot, labels, auto-stop, timeouts
+    │   ├── daytona/
+    │   │   ├── daytona-sandbox.ts  DaytonaSandbox
+    │   │   ├── exec-script.ts      the exec wrapper and its output parser
+    │   │   └── constants.ts        snapshot, labels, auto-stop, timeouts
+    │   └── e2b/
+    │       ├── e2b-sandbox.ts      E2BSandbox
+    │       └── constants.ts        template, metadata, environment, lifetime, timeouts
     ├── scripts/
-    │   └── build-snapshot.ts       pnpm sandbox:build-snapshot
+    │   ├── build-snapshot.ts       pnpm sandbox:build-snapshot
+    │   └── build-template.ts       pnpm sandbox:build-template
     └── testing/                    @hobai/sandbox/testing
         ├── fake-sandbox.ts         FakeSandbox: in-memory files, scripted exec
         └── docker.ts               dockerSandboxOrSkip(): a DockerSandbox, or null to skip without Docker (fails in CI)
@@ -94,6 +100,7 @@ Tests sit next to the code: `*.test.ts` are fast unit tests, `*.integration.test
 |---|---|
 | `pnpm sandbox:build-image` | Build `hobai-base` (needed once, and after Dockerfile changes) |
 | `pnpm sandbox:build-snapshot` | Build the `hobai-base` snapshot on Daytona from the same Dockerfile, then check a sandbox made from it (needed once per account, and `--replace` after Dockerfile changes). Reads `DAYTONA_*` from `apps/worker/.env`. |
+| `pnpm sandbox:build-template` | Build the `hobai-base` template on E2B from the same Dockerfile, then check a sandbox made from it (needed once per account, and `--replace` after Dockerfile changes). Reads `E2B_API_KEY` from `apps/worker/.env`. |
 | `pnpm sandbox:clean` | Remove any leftover Docker containers labelled `hobai=1` |
 | `docker exec -it <id> bash` | Inspect a running sandbox (e.g. one kept with `--keep`) |
 
@@ -101,7 +108,7 @@ Tests sit next to the code: `*.test.ts` are fast unit tests, `*.integration.test
 
 Unit tests (`src/lib/*.test.ts`) need nothing. Integration tests (`src/providers/docker/docker-sandbox.integration.test.ts`) run against real Docker. Locally they skip (with a warning) if Docker isn't running or the image isn't built; in CI they fail instead. CI builds the image before running tests.
 
-Daytona has **no automated tests against the real service**, by decision: every run would create billable sandboxes. `DaytonaSandbox` is tested with a fake client whose answers were recorded once from a real sandbox (`exec-script.test.ts`, `daytona-sandbox.test.ts`). The real service is checked by hand: `pnpm sandbox:build-snapshot` runs commands through `DaytonaSandbox`, and a worker run with `SANDBOX_PROVIDER=daytona` covers the rest (§7).
+Daytona and E2B have **no automated tests against the real service**, by decision: every run would create billable sandboxes. E2B's are described in §8. `DaytonaSandbox` is tested with a fake client whose answers were recorded once from a real sandbox (`exec-script.test.ts`, `daytona-sandbox.test.ts`). The real service is checked by hand: `pnpm sandbox:build-snapshot` runs commands through `DaytonaSandbox`, and a worker run with `SANDBOX_PROVIDER=daytona` covers the rest (§7).
 
 ## 7. Daytona
 
@@ -128,11 +135,9 @@ Decisions, from a probe of the real API (SDK 0.225):
 
 Measured on `octocat/Hello-World` (2026-10-20): onboarding 22 s and a run 23 s (5 agent steps, $0.0004 model cost), sandboxes deleted afterwards. A sandbox from Daytona's default snapshot starts in about 1.3 s.
 
-## 8. E2B (planned)
+## 8. E2B
 
-> Status: **Planned** · Branch: `feat/e2b-sandbox`
-
-E2B becomes the production provider; Daytona stays as it is, selectable with `SANDBOX_PROVIDER=daytona`. Local dev keeps `docker`.
+Production uses E2B (`SANDBOX_PROVIDER=e2b`); Daytona (§7) stays available with `SANDBOX_PROVIDER=daytona`.
 
 **Why:** Daytona's network limit (§7) breaks every repo that downloads from a host outside its essential services, during install or at runtime: Prisma engines, Puppeteer's Chrome, Cypress, packages fetching from their own CDN, tests calling real APIs. These are common in TypeScript repos, and full internet on Daytona needs Tier 3 ($500 top-up). E2B gives full internet on every plan, at the same price per hour.
 
@@ -146,40 +151,32 @@ E2B becomes the production provider; Daytona stays as it is, selectable with `SA
 | Free credit | $100 once (Hobby) | $200 |
 | Plans | Hobby: free, 20 at once. Pro: $150/month, 100 at once | Pay as you go, quota by tier |
 | Longest sandbox | Hobby 1 h, Pro 24 h (pausing resets it) | No cap; ours set by us |
-| Image | `Template().fromDockerfile()` (FROM, RUN, COPY, ENV, USER, WORKDIR…) | Snapshot from the Dockerfile |
+| Image | Template from the Dockerfile (`Template().fromDockerfile()`) | Snapshot from the Dockerfile |
 | Exec output | stdout and stderr separate | Mixed (hence the wrapper in §7) |
 | Labels | `metadata`, filtered server-side by `Sandbox.list` | Labels |
-| Safety net | Killed when its `timeout` passes | Auto-stop, auto-delete, TTL |
+| Safety net | Killed when its timeout passes | Auto-stop, auto-delete, TTL |
 | Paused sandboxes | Kept until killed: no auto-delete | Deleted after the retention period |
 
-**Mapping:**
+| Method | DockerSandbox | E2BSandbox |
+|---|---|---|
+| create | `docker run hobai-base` | `Sandbox.create` from the `hobai-base` template, with the labels as metadata |
+| exec | `docker exec … timeout … bash -lc` | `commands.run` of the same `timeout … bash -lc` (the command shell-quoted) |
+| readFile / writeFile | `docker exec cat` / stdin | `files.read` (bytes) / `files.write` (creates missing folders) |
+| listFiles | `docker exec find` | the same `find`, through `exec` |
+| destroy | `docker rm -f` | `kill()`; an already gone sandbox is fine |
 
-| Method | E2BSandbox |
-|---|---|
-| create | `Sandbox.create("hobai-base", { metadata: labels, timeoutMs })` |
-| exec | `commands.run`, under the same `timeout -k` as Docker (exit 124 = timed out); same 1 MB head + tail cap; no marker wrapper |
-| readFile / writeFile | `files.read` (bytes; same 10 MB refusal) / `files.write` |
-| listFiles | the same `find`, through `exec` |
-| destroy | `kill()`; "already gone" is ignored |
-| connect | `Sandbox.connect(id)`; `null` when it's gone |
-
-**Decisions:**
+Decisions, from a probe of the real API (SDK 2.62):
 
 | Area | Decision |
 |---|---|
-| Plan | Hobby. Sandbox lifetime capped at 1 h on E2B (2 h on Docker and Daytona); runs are far shorter. Pro only when usage needs more than 20 at once or longer sandboxes. |
-| Parking lost runs | Deleted, like Docker. The diff is already saved and nothing resumes parked sandboxes yet; a paused E2B sandbox would never expire on its own. When resume is built, park becomes pause plus a reaper sweep killing paused sandboxes older than `SANDBOX_RETENTION_HOURS`. |
-| Template | `hobai-base`, built on E2B from the same Dockerfile, 2 vCPU and 4 GB, by `pnpm sandbox:build-template`, then checked with the same commands as `build-snapshot`. |
-| Errors | Mapped to `SandboxUnavailableError`, `SandboxCreateError`, `SandboxGoneError`, `SandboxFileError`, as for Daytona. |
-| Testing | A one-time manual probe of the real API records its answers (which user commands run as, `ENV` from the Dockerfile, errors for non-zero exit, timeout, missing file, bad key, killed sandbox). `E2BSandbox` is tested with a fake client built from them; no automated tests call E2B. |
-| Config | `SANDBOX_PROVIDER=docker\|daytona\|e2b`; `E2B_API_KEY` required for `e2b`. Production sets `e2b`. |
-
-**Build order** (one PR, a commit per batch):
-
-1. Probe, `providers/e2b/e2b-sandbox.ts` and its tests.
-2. `pnpm sandbox:build-template`.
-3. Worker: config, `createSandbox` / `connectSandbox` / `parkSandbox`, `.env.example`, README.
-4. Docs: this section becomes the E2B reference; architecture.md (D1, quota, deploy, parking) and requirements.md stop saying "only Daytona".
+| Template | `hobai-base`, built on E2B from **the same Dockerfile** (2 vCPU, 4 GB) by `pnpm sandbox:build-template`, which then checks a sandbox made from it. Commands run as `agent` in `/workspace`, as on Docker. |
+| Environment | E2B doesn't apply the Dockerfile's `ENV` to commands, so the sandbox is created with `CI=true` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` (checked by `build-template`). |
+| exec | E2B throws on a non-zero exit (`CommandExitError`, which carries stdout, stderr and the code); the provider turns it back into a result. A missing `cwd` is refused by E2B and returned as a failed command (exit 1). Same timeouts as Docker (exit 124 means timed out); the SDK's own timeout (ours + 20 s) is a backstop and becomes `timedOut: true`. E2B doesn't cap output; the provider applies Docker's 1 MB head + tail cap. |
+| Lifetime | 1 hour, the most E2B's Hobby plan allows (2 h on Docker and Daytona); runs and setups end within 45 minutes. E2B kills the sandbox then, even if nothing else does. Pro (24 h, 100 at once) only when usage needs it. |
+| Parking | Deleted, like Docker: the diff is already saved and nothing resumes a parked sandbox yet, while a paused E2B sandbox would never expire on its own. When resume is built, parking becomes a pause plus a reaper sweep that kills paused sandboxes older than `SANDBOX_RETENTION_HOURS`. |
+| Errors | Key rejected → `SandboxUnavailableError`; other create failures (including a missing template) → `SandboxCreateError`; missing file or a directory read as a file → `SandboxFileError`; sandbox killed or timed out → `SandboxGoneError`. E2B's "killed" and "unreachable" errors are subclasses of its `TimeoutError`, so they're never taken for a timed-out command. |
+| Network | Full internet (checked: `binaries.prisma.sh` answers). |
+| Testing | No automated tests against the real service. `E2BSandbox` is tested with a fake client that answers and throws as the probe recorded (`e2b-sandbox.test.ts`). `pnpm sandbox:build-template` checks the real service by hand. |
 
 ## 9. TODO (post-MVP or when evals show the need)
 
@@ -187,7 +184,7 @@ E2B becomes the production provider; Daytona stays as it is, selectable with `SA
 - [ ] bun and other runtimes in the image.
 - [ ] Optional image variant with browsers for Playwright.
 - [ ] Network allowlist (GitHub, npm registry) for production Docker sandboxes.
-- [ ] Another sandbox provider with full internet access, since Daytona's network limit blocks too many repos (§7): E2B, planned in §8.
+- [x] Another sandbox provider with full internet access, since Daytona's network limit blocks too many repos (§7): E2B (§8).
 - [ ] Streaming `exec` output (`onOutput` callback) for long commands.
 - [ ] Background processes (dev servers) for live previews.
 - [x] Cache the image build in CI.

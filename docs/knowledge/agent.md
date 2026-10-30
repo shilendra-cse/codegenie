@@ -1,6 +1,6 @@
 # Agent
 
-> Status: **Accepted** · Last updated: 2026-10-25 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
+> Status: **Accepted** · Last updated: 2026-10-30 · Code: `packages/agent` · Related: [sandbox.md](./sandbox.md), [architecture.md](./architecture.md), [requirements.md](./requirements.md)
 
 The agent is the part of hobai that does the work: an LLM loop that explores a repository, edits code and runs checks inside a sandbox until the task is done. It is a library (`@hobai/agent`); the runner's `runTask()` calls `runAgent()`, and the CLI, the worker and the evals all go through `runTask()`. The worker also calls `titleTask()` directly (section 10). A second agent, the setup agent (section 9), shares the same loop.
 
@@ -11,7 +11,7 @@ runTask (runner; called by CLI / worker / evals)
   └─ runAgent({ task, ctx, model, setup, limits, emit, signal })
        ├─ prompt:  system rules + repository context (built once per run)
        ├─ loop:    streamText ⇄ tools, until finish_task / limit / cancel / failure
-       │     └─ tools ─► Sandbox interface ─► DockerSandbox / DaytonaSandbox
+       │     └─ tools ─► Sandbox interface ─► DockerSandbox / E2BSandbox / DaytonaSandbox
        └─ returns AgentResult { status, summary, usage, steps, messages, … }
 ```
 

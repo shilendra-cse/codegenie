@@ -1,6 +1,6 @@
 # MVP Requirements
 
-> Status: **Accepted** · Last updated: 2026-10-25 · Related: [architecture.md](./architecture.md), [database.md](./database.md)
+> Status: **Accepted** · Last updated: 2026-10-30 · Related: [architecture.md](./architecture.md), [database.md](./database.md)
 
 ## 1. Product
 
@@ -67,7 +67,7 @@ Follow-ups on a task (U8: a message starts a new run on the same branch, pushed 
 On hitting a per-run limit the agent stops gracefully and delivers a draft PR marked incomplete. A run that reaches 45 minutes before the agent starts fails with "Stopped at the time limit".
 
 ### Security
-- User code runs **only** inside Daytona sandboxes, never on our servers.
+- User code runs **only** inside cloud sandboxes (E2B in production), never on our servers.
 - Sandboxes receive only a repo-scoped GitHub installation token (~1 h TTL); no LLM keys, DB or Redis credentials.
 - The agent never pushes to the default branch or force-pushes.
 - GitHub webhooks are signature-verified; production refuses to start with default secrets.
