@@ -1,0 +1,196 @@
+---
+title: "A provider-agnostic sandbox layer: adding E2B"
+date: 2026-10-31
+summary: hobai's sandboxes moved from Daytona to E2B without a single line of agent code changing. Here's how the sandbox layer is built, and the rules that made the switch small.
+draft: false
+---
+
+Every run hobai does happens in a sandbox: an isolated machine where your repository is cloned, dependencies are installed and the agent's commands run. In [How hobai is built](/devlog/how-hobai-is-built) I said the sandbox provider is swappable. This week I swapped it, so this post is about what that took.
+
+Production now runs on **E2B** instead of Daytona. The agent code didn't change at all. Everything specific to E2B lives in one new file with its tests, plus a few lines of wiring. The rest of this post explains why it came out that small, and what I'd tell anyone building the same kind of layer.
+
+## Why switch at all
+
+Daytona worked well, apart from one thing: the network. On my tier, a Daytona sandbox can only reach a list of essential services: package registries, Git hosts, the common CDNs. Anything else fails.
+
+That sounds fine until you look at what TypeScript repos actually download. Prisma fetches its engines from its own host. Puppeteer downloads Chrome. Cypress downloads its binary. Some tests call real APIs. In a sandbox without full internet, each of those breaks setup, and the setup agent can't fix a network it doesn't control. Full internet on Daytona needs a much higher tier.
+
+E2B gives full internet on every plan, at a similar cost for the same machine:
+
+| | E2B | Daytona |
+| --- | --- | --- |
+| Internet | Full, every plan | Essential services below the top tier |
+| Isolation | Firecracker microVM, its own kernel | Container, shared kernel |
+| Longest sandbox | 1 hour | No cap |
+| Output | stdout and stderr separate | Mixed together |
+
+The one-hour limit is fine for hobai: a run stops starting commands at 45 minutes. And a microVM is a stronger wall than a container, which matters when the code inside is someone else's.
+
+## The result first
+
+Here's everything adding E2B changed outside the new provider:
+
+- **The agent:** nothing. Its tools, prompts and loop don't know a provider exists.
+- **The shared types:** one new type for E2B's settings (an API key), and E2B added to the list of providers.
+- **The factory:** two new branches, one to create an E2B sandbox and one to reconnect to an existing one.
+- **The worker:** `SANDBOX_PROVIDER` accepts `e2b`, and `E2B_API_KEY` is required when it's set.
+- **One helper moved:** shell quoting, which Daytona's provider had kept to itself, went to a shared file so both could use it.
+
+Everything else is `E2BSandbox`: about 300 lines, with about 350 lines of tests.
+
+<Figure
+  src="sandbox-layer.svg"
+  darkSrc="sandbox-layer-dark.svg"
+  alt="The agent's tools call one Sandbox interface with five methods. Behind it, three providers: Docker for local development, Daytona, and E2B in production. Each provider turns its service's behaviour into the same results and errors."
+  caption="Nothing left of the dashed line knows which provider is running."
+  width={1200}
+  height={540}
+/>
+
+That didn't happen by luck. By the time E2B came along, the interface already had two very different backends behind it: Docker on my laptop, and Daytona in the cloud. Most of what follows is what those two had already taught me.
+
+## How to do it right
+
+### 1. Design the interface around what the callers need
+
+It's tempting to start from what the providers can do and wrap all of it. I started from the other end: what do the agent's tools actually call? The answer was five methods.
+
+```ts
+interface Sandbox {
+  readonly id: string;
+  exec(command: string, options?: ExecOptions): Promise<ExecResult>;
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  listFiles(path: string, options?: ListFilesOptions): Promise<FileEntry[]>;
+  destroy(): Promise<void>;
+}
+```
+
+Every method on an interface is a promise each provider has to keep. A small interface is easy to keep. Docker can copy a folder from my laptop into a sandbox, which is useful for local testing, but no cloud provider can do that. So `copyIn` lives on `DockerSandbox` only, and the interface stays a promise every provider can keep.
+
+### 2. Make the behaviour match, not just the signatures
+
+Three classes implementing the same interface is the easy part. The hard part is that they **behave** the same, because the agent's decisions depend on the details.
+
+**A failed command is a result, not an error.** When `npm test` fails, the agent needs to read the output and fix the code. That's normal work, not a crash. Docker and Daytona report a non-zero exit as a result. E2B throws an error instead. So the provider catches it and turns it back (trimmed):
+
+```ts
+try {
+  output = await this.remote.commands.run(command, options);
+} catch (error) {
+  // A command that exits non-zero is an error to E2B, a result to us.
+  if (error instanceof CommandExitError) {
+    output = error;
+  } else if (isCommandTimeout(error)) {
+    return timedOutResult(seconds);
+  } else {
+    throw this.translate(error);
+  }
+}
+```
+
+**Timeouts are enforced inside the sandbox, the same way everywhere.** Every command runs under `timeout -k 5s 120s bash -lc '…'`, so exit code 124 means "timed out" on all three providers. Each provider's own client timeout is set a little longer, as a backstop in case the sandbox stops answering.
+
+**The same limits apply, even where the service has none.** Output is capped at 1 MB per stream, keeping the first and last 512 KB. Neither E2B nor Daytona cap it, so their providers apply the cap themselves. A file over 10 MB is refused rather than cut short: an edit written back from half a file would destroy the other half.
+
+**The environment is the same.** Commands run with `CI=true`, so test runners never wait for input. Docker gets that from the image. E2B builds its template from the same Dockerfile, but doesn't apply the Dockerfile's environment variables to commands. I only found that by checking, and now the provider sets them when it creates the sandbox.
+
+None of these show up in the type signatures. All of them would have shown up as an agent that behaves differently in production than on my laptop.
+
+### 3. Own your errors
+
+The code above the interface never sees an E2B or Daytona error. It sees four of mine:
+
+| Error | Means | What happens |
+| --- | --- | --- |
+| `SandboxUnavailableError` | The provider is down, or the key was rejected | The agent stops: an infrastructure failure, not the model's mistake |
+| `SandboxCreateError` | The sandbox couldn't be created | The run fails before the agent starts |
+| `SandboxGoneError` | The sandbox was killed or expired | The agent stops: an infrastructure failure, not the model's mistake |
+| `SandboxFileError` | A file is missing or unreadable | The model gets it as the tool's answer, and can try another path |
+
+The split matters. A missing file is something the model can work around, so it's shown to the model. A dead sandbox isn't, so the agent stops instead of burning steps on it. Each provider maps its service's errors onto these four. This is where most of the subtle bugs hide. E2B has a `TimeoutError` for a command that runs too long. Its errors for "the sandbox was killed" and "the sandbox is unreachable" are **subclasses** of `TimeoutError`. A plain `instanceof TimeoutError` check would have treated a dead sandbox as a slow command, and the agent would have kept sending commands to a machine that no longer exists:
+
+```ts
+// E2B's "sandbox gone" and "unreachable" errors are TimeoutErrors too.
+const isCommandTimeout = (error: unknown) =>
+  error instanceof TimeoutError &&
+  !(error instanceof SandboxNotRunningError) &&
+  !(error instanceof SandboxUnreachableError);
+```
+
+### 4. Depend on the part of the SDK you use
+
+The provider doesn't take E2B's whole SDK. It describes the few calls it makes, as its own type (simplified):
+
+```ts
+export type RemoteSandbox = {
+  sandboxId: string;
+  commands: {
+    run(command: string, options: RunOptions): Promise<CommandOutput>;
+  };
+  files: {
+    read(path: string, options: { format: "bytes" }): Promise<Uint8Array>;
+    write(path: string, data: string): Promise<unknown>;
+  };
+  kill(): Promise<boolean>;
+};
+```
+
+The real SDK fits this shape, so production passes it straight in. Tests pass a fake that fits it too. It also makes the dependency honest: if an SDK upgrade changes one of these calls, the compiler points at exactly where.
+
+### 5. Probe the real API once, then test against fakes
+
+hobai has no automated tests that call a paid service. They cost money, they're slow, and they fail when someone else's API has a bad day.
+
+Instead, before writing the provider, I probed the real E2B API once by hand. Which user do commands run as? Does the Dockerfile's environment apply? What exactly is thrown for a non-zero exit, a timeout, a missing file, a bad key, a killed sandbox? The answers became the fake. Its errors are the ones E2B really threw, down to the messages:
+
+```ts
+// Errors as the real E2B API threw them when probed (SDK 2.62).
+const killed = () =>
+  new SandboxNotRunningError(
+    "[unavailable] The sandbox was not found: The sandbox was killed or reached its timeout.",
+  );
+```
+
+The tests run in milliseconds, for free, on every commit. The real service is still checked by hand: `pnpm sandbox:build-template` builds the E2B template, then creates a sandbox from it and checks the user, the working folder, the environment and the tools.
+
+### 6. Keep provider-specific policy at the edge
+
+Some decisions can't be the same for every provider, and pretending they are causes bugs. When a worker dies mid-run, the run's sandbox is "parked" after its changes are saved. On Daytona, parking means stopping it: Daytona deletes stopped sandboxes on its own after a retention period. On E2B, a paused sandbox **never** expires, so parking it would leak sandboxes forever. There, parking means deleting.
+
+That difference is decided in one function next to the factory, not scattered through the worker:
+
+```ts
+export async function parkSandbox(sandbox: Sandbox): Promise<void> {
+  if (sandbox instanceof DaytonaSandbox) {
+    await sandbox.stop();
+    return;
+  }
+  // A stopped Docker container or paused E2B sandbox never expires, so it's deleted instead.
+  await sandbox.destroy();
+}
+```
+
+### 7. Build every image from one definition
+
+The machine the agent works in should be the same everywhere: same Node version, same tools, same user, same `/workspace`. So there's one Dockerfile. It builds the local Docker image, the Daytona snapshot and the E2B template. Changing the image means changing one file, and all three follow.
+
+### 8. Choose the provider by config, and let the types check it
+
+The worker reads `SANDBOX_PROVIDER=docker|daytona|e2b`. Each provider needs different settings, and the types say so:
+
+```ts
+type CreateSandboxOptions =
+  | { provider: "docker"; resources?: SandboxResources; labels?: SandboxLabels }
+  | {
+      provider: "daytona";
+      connection: DaytonaConnection;
+      labels?: SandboxLabels;
+      retentionHours?: number;
+    }
+  | { provider: "e2b"; connection: E2BConnection; labels?: SandboxLabels };
+```
+
+Forget E2B's API key and the code doesn't compile. Start the worker with `SANDBOX_PROVIDER=e2b` and no key, and it refuses to start, naming the missing variable. A wrong configuration fails at the first moment it can, not in the middle of someone's run.
+
+Daytona stays in the code, one environment variable away. If a third cloud provider is ever needed, the work is one file, its tests, and a few lines of wiring.
